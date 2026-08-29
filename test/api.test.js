@@ -1,0 +1,115 @@
+import { after, before, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { createApp } from '../src/app.js';
+import { createStore, emptyStore } from '../src/store.js';
+import { writeFileSync } from 'node:fs';
+
+function listen(app) {
+  return new Promise((resolve) => {
+    const server = app.listen(0, '127.0.0.1', () => {
+      const { port } = server.address();
+      resolve({ server, base: `http://127.0.0.1:${port}` });
+    });
+  });
+}
+
+describe('API', () => {
+  let dir;
+  let server;
+  let base;
+
+  before(async () => {
+    dir = mkdtempSync(path.join(tmpdir(), 'smr-'));
+    const filePath = path.join(dir, 'store.json');
+    writeFileSync(filePath, JSON.stringify(emptyStore()));
+    const started = await listen(createApp(createStore(filePath)));
+    server = started.server;
+    base = started.base;
+  });
+
+  after(async () => {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  async function json(url, options) {
+    const response = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    return { status: response.status, body: await response.json() };
+  }
+
+  it('saves and recalls a full daily report', async () => {
+    const saved = await json(`${base}/api/daily-report`, {
+      method: 'POST',
+      body: JSON.stringify({
+        date: '2026-08-29',
+        techHours: {
+          rows: [
+            { techName: 'Alex Rivera', clockHours: 8, soldHours: 8.5 },
+            { techName: 'Jordan Hale', clockHours: 8, soldHours: 7 }
+          ]
+        },
+        gross: { laborGross: 3000, partsGross: 1200, otherGross: 100 },
+        repairOrders: { openCount: 30, closedCount: 16, writtenCount: 19 }
+      })
+    });
+    assert.equal(saved.status, 201);
+    assert.equal(saved.body.techHours.soldHours, 15.5);
+    assert.equal(saved.body.repairOrders.closedCount, 16);
+
+    const recalled = await json(`${base}/api/daily-report/2026-08-29`);
+    assert.equal(recalled.body.techHours.rows.length, 2);
+    assert.equal(recalled.body.gross.daily.totalGross, 4300);
+
+    const hours = await json(`${base}/api/tech-hours?date=2026-08-29`);
+    assert.equal(hours.body.rows[0].techName, 'Alex Rivera');
+  });
+
+  it('tracks heat case briefing and resolution', async () => {
+    const created = await json(`${base}/api/heat-cases`, {
+      method: 'POST',
+      body: JSON.stringify({
+        openedDate: '2026-08-29',
+        customer: 'Test Customer',
+        roNumber: 'RO-100',
+        issue: 'Comeback on brakes',
+        severity: 'high'
+      })
+    });
+    assert.equal(created.status, 201);
+    assert.match(created.body.id, /^HEAT-20260829-001$/);
+    assert.equal(created.body.status, 'open');
+
+    const briefed = await json(`${base}/api/heat-cases/${created.body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action: 'brief' })
+    });
+    assert.equal(briefed.body.status, 'briefed');
+    assert.ok(briefed.body.briefedAt);
+
+    const resolved = await json(`${base}/api/heat-cases/${created.body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action: 'resolve', notes: 'Replaced pads, road test signed off.' })
+    });
+    assert.equal(resolved.body.status, 'resolved');
+    assert.ok(resolved.body.resolvedAt);
+    assert.match(resolved.body.resolutionNotes, /Replaced pads/);
+
+    const summary = await json(`${base}/api/summary?date=2026-08-29`);
+    assert.equal(summary.body.heatCases.openCount, 0);
+    assert.equal(summary.body.heatCases.resolvedTodayCount, 1);
+  });
+
+  it('rejects a heat case without an issue', async () => {
+    const result = await json(`${base}/api/heat-cases`, {
+      method: 'POST',
+      body: JSON.stringify({ customer: 'No Issue' })
+    });
+    assert.equal(result.status, 400);
+  });
+});

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <base target="_top" />
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: Arial, sans-serif; margin: 0; background: #0e1624; color: #eef3fb; }
+    .wrap { padding: 16px 18px 20px; }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .sub, .meta { color: #9aadc8; font-size: 12px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+    .card, .panel { background: #162236; border: 1px solid #2d3f5c; border-radius: 10px; padding: 10px; }
+    .value { font-size: 20px; font-weight: 700; }
+    label { display: block; font-size: 12px; margin: 6px 0; }
+    input, select, textarea, button { font: inherit; }
+    input, select, textarea { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #2d3f5c; background: #0e1624; color: #eef3fb; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+    button { border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: #f0b429; color: #1b1403; font-weight: 700; }
+    button.secondary { background: #1c2b44; color: #eef3fb; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 5px 4px; border-bottom: 1px solid #2d3f5c; vertical-align: top; }
+    .notice { color: #4cc9c0; font-size: 12px; }
+    .error { color: #ef6b6b; font-size: 12px; }
+    .pill { padding: 1px 6px; border-radius: 999px; background: #5a4314; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Service Manager Report</h1>
+    <p class="sub">Writes only to SMR_* tabs. Existing sheet tools are not changed.</p>
+    <label>Report date <input id="reportDate" type="date" /></label>
+    <div class="kpis">
+      <div class="card"><div class="meta">Sold / clock</div><div class="value" id="kpiHours">—</div></div>
+      <div class="card"><div class="meta">Daily / MTD gross</div><div class="value" id="kpiGross">—</div></div>
+      <div class="card"><div class="meta">Open / closed / written</div><div class="value" id="kpiRos">—</div></div>
+      <div class="card"><div class="meta">Open heat cases</div><div class="value" id="kpiHeat">—</div></div>
+    </div>
+    <div class="panel">
+      <strong>Daily entry</strong>
+      <div id="techRows"></div>
+      <div class="actions"><button class="secondary" type="button" onclick="addTechRow()">Add tech</button></div>
+      <div class="row">
+        <label>Labor <input id="laborGross" type="number" /></label>
+        <label>Parts <input id="partsGross" type="number" /></label>
+        <label>Other <input id="otherGross" type="number" /></label>
+        <label>Period
+          <select id="grossPeriod">
+            <option value="daily">Daily</option>
+            <option value="monthly">Monthly override</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label>Open ROs <input id="openCount" type="number" /></label>
+        <label>Closed today <input id="closedCount" type="number" /></label>
+        <label>Written today <input id="writtenCount" type="number" /></label>
+      </div>
+      <div class="actions">
+        <button type="button" onclick="recallDay()">Recall day</button>
+        <button type="button" onclick="saveDay()">Save daily report</button>
+        <span class="notice" id="status"></span>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:10px">
+      <strong>Heat cases</strong>
+      <div class="row">
+        <label>Customer <input id="heatCustomer" /></label>
+        <label>RO <input id="heatRo" /></label>
+        <label>Severity
+          <select id="heatSeverity">
+            <option>medium</option><option>low</option><option>high</option><option>critical</option>
+          </select>
+        </label>
+        <label>Issue <input id="heatIssue" /></label>
+      </div>
+      <div class="actions">
+        <button type="button" onclick="addHeat()">Add heat case</button>
+      </div>
+      <table>
+        <thead><tr><th>ID</th><th>Issue</th><th>Status</th><th>Resolved</th><th></th></tr></thead>
+        <tbody id="heatTable"></tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+    function today() {
+      var now = new Date();
+      return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    }
+    function run(name, args, ok) {
+      var runner = google.script.run.withFailureHandler(function (err) {
+        document.getElementById('status').className = 'error';
+        document.getElementById('status').textContent = err.message || String(err);
+      }).withSuccessHandler(ok);
+      runner[name].apply(runner, args || []);
+    }
+    function addTechRow(row) {
+      row = row || {};
+      var host = document.getElementById('techRows');
+      var wrap = document.createElement('div');
+      wrap.className = 'row tech-row';
+      wrap.innerHTML = '<label>Tech <input class="tech-name" value="' + (row.techName || '') + '"></label>' +
+        '<label>Clock <input class="tech-clock" type="number" value="' + (row.clockHours || '') + '"></label>' +
+        '<label>Sold <input class="tech-sold" type="number" value="' + (row.soldHours || '') + '"></label>' +
+        '<label><button class="secondary" type="button">Remove</button></label>';
+      wrap.querySelector('button').onclick = function () { wrap.remove(); };
+      host.appendChild(wrap);
+    }
+    function readTechRows() {
+      return Array.prototype.map.call(document.querySelectorAll('.tech-row'), function (row) {
+        return {
+          techName: row.querySelector('.tech-name').value,
+          clockHours: row.querySelector('.tech-clock').value,
+          soldHours: row.querySelector('.tech-sold').value
+        };
+      });
+    }
+    function render(summary) {
+      document.getElementById('kpiHours').textContent = summary.techHours.soldHours + ' / ' + summary.techHours.clockHours;
+      document.getElementById('kpiGross').textContent = summary.gross.daily.totalGross + ' / ' + summary.gross.monthly.totalGross;
+      document.getElementById('kpiRos').textContent = summary.repairOrders.openCount + ' / ' + summary.repairOrders.closedCount + ' / ' + summary.repairOrders.writtenCount;
+      document.getElementById('kpiHeat').textContent = String(summary.heatCases.openCount);
+      document.getElementById('techRows').innerHTML = '';
+      if (summary.techHours.rows.length) {
+        summary.techHours.rows.forEach(addTechRow);
+      } else {
+        addTechRow();
+      }
+      document.getElementById('laborGross').value = summary.gross.daily.laborGross || '';
+      document.getElementById('partsGross').value = summary.gross.daily.partsGross || '';
+      document.getElementById('otherGross').value = summary.gross.daily.otherGross || '';
+      document.getElementById('openCount').value = summary.repairOrders.reported ? summary.repairOrders.openCount : '';
+      document.getElementById('closedCount').value = summary.repairOrders.reported ? summary.repairOrders.closedCount : '';
+      document.getElementById('writtenCount').value = summary.repairOrders.reported ? summary.repairOrders.writtenCount : '';
+      document.getElementById('status').className = 'notice';
+      document.getElementById('status').textContent = 'Loaded ' + summary.date;
+    }
+    function renderHeat(rows) {
+      document.getElementById('heatTable').innerHTML = rows.map(function (row) {
+        return '<tr><td>' + row.id + '</td><td>' + row.issue + '</td><td><span class="pill">' + row.status + '</span></td><td>' +
+          (row.resolvedAt || '—') + (row.resolutionNotes ? '<br>' + row.resolutionNotes : '') +
+          '</td><td>' + (row.status === 'resolved'
+            ? '<button class="secondary" type="button" onclick="heatAction(\'' + row.id + '\',\'reopen\')">Reopen</button>'
+            : '<button class="secondary" type="button" onclick="heatAction(\'' + row.id + '\',\'brief\')">Briefed</button> ' +
+              '<button type="button" onclick="heatAction(\'' + row.id + '\',\'resolve\')">Resolve</button>') + '</td></tr>';
+      }).join('');
+    }
+    function recallDay() {
+      run('SMR_getSummary', [document.getElementById('reportDate').value], render);
+      run('SMR_listHeatCases', ['all'], renderHeat);
+    }
+    function saveDay() {
+      run('SMR_saveDailyReport', [{
+        date: document.getElementById('reportDate').value,
+        techHours: { rows: readTechRows() },
+        gross: {
+          period: document.getElementById('grossPeriod').value,
+          laborGross: document.getElementById('laborGross').value,
+          partsGross: document.getElementById('partsGross').value,
+          otherGross: document.getElementById('otherGross').value
+        },
+        repairOrders: {
+          openCount: document.getElementById('openCount').value,
+          closedCount: document.getElementById('closedCount').value,
+          writtenCount: document.getElementById('writtenCount').value
+        }
+      }], function (summary) {
+        render(summary);
+        document.getElementById('status').textContent = 'Saved ' + summary.date;
+      });
+    }
+    function addHeat() {
+      run('SMR_addHeatCase', [{
+        openedDate: document.getElementById('reportDate').value,
+        customer: document.getElementById('heatCustomer').value,
+        roNumber: document.getElementById('heatRo').value,
+        issue: document.getElementById('heatIssue').value,
+        severity: document.getElementById('heatSeverity').value
+      }], function () {
+        document.getElementById('heatIssue').value = '';
+        recallDay();
+      });
+    }
+    function heatAction(id, action) {
+      var notes = action === 'resolve' ? (prompt('Resolution notes') || '') : '';
+      run('SMR_updateHeatCase', [id, action, notes], function () { recallDay(); });
+    }
+    document.getElementById('reportDate').value = today();
+    document.getElementById('reportDate').onchange = recallDay;
+    run('SMR_getConfig', [], function (config) {
+      if (!document.querySelector('.tech-row')) {
+        (config.roster || []).forEach(function (name) { addTechRow({ techName: name, clockHours: 8 }); });
+      }
+      recallDay();
+    });
+  </script>
+</body>
+</html>
