@@ -14,7 +14,17 @@ import {
   toNumber
 } from './reporting.js';
 
-const DEFAULT_ROSTER = ['Alex Rivera', 'Jordan Hale', 'Sam Patel', 'Chris Nguyen', 'Taylor Brooks'];
+const DEFAULT_ROSTER = [
+  'BIG AL',
+  'ELECTRIC-T',
+  'DIESEL-E',
+  'INTERNAL-F',
+  'HEAVY-C',
+  'SPECIAL-K',
+  'LIL-J',
+  'EASY-E',
+  'DUEL FUEL-A'
+];
 
 export function emptyStore() {
   return {
@@ -246,11 +256,11 @@ export function seedStore() {
     {
       date: '2026-08-26',
       hours: [
-        ['Alex Rivera', 8, 7.5],
-        ['Jordan Hale', 8, 8.2],
-        ['Sam Patel', 8, 6.8],
-        ['Chris Nguyen', 8, 9.1],
-        ['Taylor Brooks', 8, 7.4]
+        ['BIG AL', 8, 2.4],
+        ['ELECTRIC-T', 8, 0],
+        ['DIESEL-E', 8, 0.7],
+        ['HEAVY-C', 8, 8.6],
+        ['SPECIAL-K', 8, 4.0]
       ],
       gross: [4120, 2860, 240],
       ro: [38, 19, 22]
@@ -258,11 +268,11 @@ export function seedStore() {
     {
       date: '2026-08-27',
       hours: [
-        ['Alex Rivera', 8, 8.6],
-        ['Jordan Hale', 8, 7.9],
-        ['Sam Patel', 8, 7.1],
-        ['Chris Nguyen', 8, 8.4],
-        ['Taylor Brooks', 8, 8.0]
+        ['BIG AL', 8, 3.6],
+        ['INTERNAL-F', 8, 7.6],
+        ['HEAVY-C', 8, 8.0],
+        ['DUEL FUEL-A', 8, 12.6],
+        ['LIL-J', 8, 2.6]
       ],
       gross: [4585, 3010, 180],
       ro: [36, 21, 24]
@@ -270,11 +280,11 @@ export function seedStore() {
     {
       date: '2026-08-28',
       hours: [
-        ['Alex Rivera', 8, 7.8],
-        ['Jordan Hale', 8, 8.8],
-        ['Sam Patel', 8, 7.3],
-        ['Chris Nguyen', 8, 9.4],
-        ['Taylor Brooks', 8, 6.9]
+        ['BIG AL', 8, 1.1],
+        ['DIESEL-E', 8, 4.0],
+        ['INTERNAL-F', 8, 3.4],
+        ['HEAVY-C', 8, 15.5],
+        ['SPECIAL-K', 8, 7.4]
       ],
       gross: [4390, 2745, 310],
       ro: [34, 23, 20]
@@ -282,11 +292,11 @@ export function seedStore() {
     {
       date: '2026-08-29',
       hours: [
-        ['Alex Rivera', 8, 8.1],
-        ['Jordan Hale', 8, 7.6],
-        ['Sam Patel', 8, 8.0],
-        ['Chris Nguyen', 8, 8.7],
-        ['Taylor Brooks', 8, 7.9]
+        ['ELECTRIC-T', 8, 19.2],
+        ['DIESEL-E', 8, 14.5],
+        ['INTERNAL-F', 8, 9.9],
+        ['HEAVY-C', 8, 13.0],
+        ['SPECIAL-K', 8, 13.1]
       ],
       gross: [4215, 2680, 195],
       ro: [33, 18, 21]

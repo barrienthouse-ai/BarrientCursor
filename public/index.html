@@ -12,7 +12,7 @@
       <div>
         <p class="eyebrow">BarrientCursor · Fixed operations</p>
         <h1>Service Manager Report</h1>
-        <p class="sub">Daily tech hours, department gross, open and closed ROs, and heat cases that need a briefing. Existing Google Sheet tabs stay untouched; this tool only uses SMR_ sheets and functions.</p>
+        <p class="sub">Daily briefing for Geaux Chevrolet service. Writes only to SMR_ tabs. SERVICE BOARD, SVC_RO, SUMMARY, HOME, and the rest of GEAUXCHEVROLETSALESLOG stay untouched.</p>
       </div>
       <div class="date-box">
         <label for="reportDate">Report date</label>
@@ -184,15 +184,15 @@
 
     <section id="compat" class="tab-page hidden">
       <article class="panel compat">
-        <h2>Will not interfere with current sheet tools</h2>
-        <p>The Google Sheet you shared is private, so this environment cannot read the live Apps Script project. The installer is written so it does not need that access to stay safe:</p>
+        <h2>GEAUXCHEVROLETSALESLOG stays intact</h2>
+        <p>The live workbook is readable. It already has 69 tabs, including a weekly <code>SERVICE BOARD</code> and hidden <code>SVC_RO</code> / <code>SVC_RO_LINES</code> tables. Apps Script source is not in a Sheet export, so install still avoids reserved trigger names.</p>
         <ul>
           <li><strong>No reserved triggers.</strong> This project never defines <code>onOpen</code>, <code>onEdit</code>, <code>doGet</code>, or <code>doPost</code>.</li>
           <li><strong>Namespaced only.</strong> Every function, menu handler, and ScriptProperty key starts with <code>SMR_</code>.</li>
           <li><strong>Dedicated tabs only.</strong> Writes go to <code>SMR_Dashboard</code>, <code>SMR_TechHours</code>, <code>SMR_Gross</code>, <code>SMR_HeatCases</code>, <code>SMR_RepairOrders</code>, <code>SMR_Roster</code>, and <code>SMR_Config</code>.</li>
-          <li><strong>Existing sheets stay put.</strong> Install never deletes, hides, or renames a tab that is not an SMR tab.</li>
+          <li><strong>Protected live tabs.</strong> <code>SERVICE BOARD</code>, <code>SVC_RO</code>, <code>SUMMARY</code>, <code>HOME</code>, parts/accounting JSON tabs, and AutoCrat are read-only to SMR.</li>
         </ul>
-        <p>In your current workbook, add one line to the existing <code>onOpen</code> function: <code>SMR_onOpen();</code>. Then run <code>SMR_install()</code> once. If you share the sheet as “Anyone with the link can view,” a follow-up pass can map your current script names against this namespace.</p>
+        <p>In Apps Script, add <code>SMR_onOpen();</code> to your existing <code>onOpen</code>, then run <code>SMR_install()</code>. Optional: <code>SMR_importRosterFromServiceBoard()</code> copies the shop nicknames into <code>SMR_Roster</code> only.</p>
       </article>
     </section>
   </div>

@@ -14,11 +14,11 @@ Reporting tool for the service manager to send daily numbers up to leadership, w
 1. **This web app** — run locally to enter and review the same briefing.
 2. **Google Apps Script** in `apps-script/` — paste into the existing workbook. It only creates `SMR_*` tabs and `SMR_*` functions, so current menus, triggers, and sheets stay intact.
 
-The live workbook is:
+The live workbook is GEAUXCHEVROLETSALESLOG:
 
 https://docs.google.com/spreadsheets/d/1UO5BzN7LmPovfpOWfbnfKwwtDVmUSM9y08mRSeNu46w/edit
 
-It is not publicly readable, so this environment could not inventory the current Apps Script project. Isolation rules are documented in `apps-script/INSTALL.md`.
+Inventory of its 69 tabs and the existing service tools is in `docs/GEAUXCHEVROLETSALESLOG.md`. Install rules are in `apps-script/INSTALL.md`.
 
 ## Local setup
 

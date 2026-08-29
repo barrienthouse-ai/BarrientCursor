@@ -17,6 +17,8 @@ function SMR_onOpen() {
     .addItem('Refresh dashboard sheet', 'SMR_refreshDashboard')
     .addSeparator()
     .addItem('Install / repair SMR sheets', 'SMR_install')
+    .addItem('Import roster from SERVICE BOARD', 'SMR_importRosterFromServiceBoard')
+    .addItem('Peek existing SVC_RO counts', 'SMR_showExistingServicePeek')
     .addItem('Compatibility audit', 'SMR_showCompatibilityAudit')
     .addToUi();
 }

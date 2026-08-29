@@ -121,4 +121,13 @@ describe('compatibility contract', () => {
     assert.deepEqual(audit.existingNonSmrSheets, ['Advisor Log', 'Hours']);
     assert.ok(audit.collisions.some((item) => item.name === 'onOpen' && item.severity === 'keep'));
   });
+
+  it('marks live Geaux service tabs as protected', () => {
+    const audit = auditWorkbook({
+      sheetNames: ['HOME', 'SERVICE BOARD', 'SVC_RO', 'SMR_TechHours']
+    });
+    assert.equal(audit.safeToInstall, true);
+    assert.deepEqual(audit.protectedHits, ['HOME', 'SERVICE BOARD', 'SVC_RO']);
+    assert.ok(audit.collisions.every((item) => item.severity !== 'block'));
+  });
 });

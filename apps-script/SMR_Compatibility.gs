@@ -29,10 +29,13 @@ function SMR_auditWorkbook() {
     otherSheets: otherSheets,
     triggers: triggers,
     safeToInstall: true,
+    doNotTouchHits: sheets.filter(function (name) {
+      return SMR_DO_NOT_TOUCH.indexOf(name) !== -1;
+    }),
     notes: [
       'SMR never defines onOpen, onEdit, doGet, or doPost.',
       'SMR writes only to SMR_* tabs.',
-      'SMR will not delete, hide, or rename the other sheets listed here.',
+      'SERVICE BOARD, SVC_RO, SVC_RO_LINES, SUMMARY, HOME, and the other live Geaux tabs are read-only to SMR.',
       'Add SMR_onOpen(); to your existing onOpen function if you already have a custom menu.'
     ]
   };

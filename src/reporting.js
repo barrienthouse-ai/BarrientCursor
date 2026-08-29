@@ -270,6 +270,21 @@ export function reservedSheetNames() {
   ];
 }
 
+export function geauxProtectedSheetNames() {
+  return [
+    'HOME',
+    'SUMMARY',
+    'SERVICE BOARD',
+    'SVC_RO',
+    'SVC_RO_LINES',
+    'SVC_PARTS_REQUESTS',
+    'ADMIN_EMPLOYEES',
+    'EMAIL_QUEUE',
+    'QUOTE_STORE',
+    'DO NOT DELETE - AutoCrat Job Se'
+  ];
+}
+
 export function reservedFunctionPrefixes() {
   return ['SMR_'];
 }
@@ -316,11 +331,21 @@ export function auditWorkbook({ sheetNames = [], functionNames = [] }) {
   }
 
   const existingNonSmrSheets = sheetNames.filter((name) => !name.startsWith('SMR_'));
+  const protectedHits = sheetNames.filter((name) => geauxProtectedSheetNames().includes(name));
+  protectedHits.forEach((name) => {
+    collisions.push({
+      type: 'protected-sheet',
+      name,
+      severity: 'keep',
+      message: `${name} is an existing Geaux Chevrolet tab. SMR will not write, rename, hide, or delete it.`
+    });
+  });
   return {
     reservedSheets,
     existingNonSmrSheets,
+    protectedHits,
     collisions,
-    safeToInstall: true,
+    safeToInstall: collisions.every((item) => item.severity !== 'block'),
     notes: [
       'SMR never defines onOpen, onEdit, doGet, or doPost.',
       'SMR never deletes, hides, or renames existing non-SMR sheets.',

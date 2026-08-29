@@ -117,7 +117,7 @@ export function createApp(store) {
   app.get('/api/compatibility', (_req, res) => {
     res.json(
       auditWorkbook({
-        sheetNames: ['Log', 'Daily Hours', 'SMR_Dashboard'],
+        sheetNames: ['HOME', 'SUMMARY', 'SERVICE BOARD', 'SVC_RO', 'SVC_RO_LINES', 'SMR_Dashboard'],
         functionNames: ['onOpen', 'syncHours', 'SMR_onOpen']
       })
     );

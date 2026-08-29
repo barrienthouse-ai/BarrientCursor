@@ -4,7 +4,7 @@ Target workbook:
 
 `https://docs.google.com/spreadsheets/d/1UO5BzN7LmPovfpOWfbnfKwwtDVmUSM9y08mRSeNu46w/edit`
 
-This project could not read that file from the Cloud Agent environment (Google redirected to sign-in). Install is therefore designed so a live script inventory is not required.
+The workbook is now readable. It already has 69 tabs, including `SERVICE BOARD` and hidden `SVC_RO` tables. Apps Script source is still not in a Sheet export, so install continues to avoid reserved trigger names. Full inventory: `docs/GEAUXCHEVROLETSALESLOG.md`.
 
 ## Safety contract
 

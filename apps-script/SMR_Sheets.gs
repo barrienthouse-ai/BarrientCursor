@@ -16,7 +16,14 @@ function SMR_ensureSheets() {
   return SMR_reservedSheetNames();
 }
 
+function SMR_assertWritable_(name) {
+  if (SMR_DO_NOT_TOUCH.indexOf(name) !== -1 || !SMR_isSmrSheetName_(name)) {
+    throw new Error('SMR refused to write to "' + name + '". Only SMR_* tabs are writable.');
+  }
+}
+
 function SMR_ensureSheet_(ss, name, headers, seedRows) {
+  SMR_assertWritable_(name);
   var sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
@@ -35,6 +42,7 @@ function SMR_ensureSheet_(ss, name, headers, seedRows) {
 }
 
 function SMR_ensureDashboard_(ss) {
+  SMR_assertWritable_(SMR_SHEETS.DASHBOARD);
   var sheet = ss.getSheetByName(SMR_SHEETS.DASHBOARD);
   if (!sheet) {
     sheet = ss.insertSheet(SMR_SHEETS.DASHBOARD);
