@@ -35,7 +35,10 @@ function SMR_install() {
 }
 
 function SMR_openBriefing() {
-  var html = HtmlService.createHtmlOutputFromFile('SMR_App')
+  var template = HtmlService.createTemplateFromFile('SMR_App');
+  var stored = SMR_briefStoreGet_(SMR_todayKey_());
+  template.seedJson = stored && stored.summary ? SMR_safeJson_(stored) : 'null';
+  var html = template.evaluate()
     .setWidth(1180)
     .setHeight(800)
     .setTitle('Service Manager Report');

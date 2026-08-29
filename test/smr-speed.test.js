@@ -1,0 +1,56 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'apps-script');
+
+function read(name) {
+  return readFileSync(path.join(root, name), 'utf8');
+}
+
+describe('SMR load-speed contract', () => {
+  it('opens the dialog from a cached snapshot instead of the workbook', () => {
+    const menu = read('SMR_Menu.gs');
+    assert.match(menu, /createTemplateFromFile\('SMR_App'\)/);
+    assert.match(menu, /SMR_briefStoreGet_/);
+    assert.match(menu, /seedJson/);
+
+    const html = read('SMR_App.html');
+    assert.match(html, /var SEED = <\?!= seedJson \?>;/);
+    assert.match(html, /function overlaySummary\(/);
+    assert.match(html, /Opened instantly from last save/);
+    assert.match(html, /if \(SEED && SEED\.summary\)/);
+    assert.doesNotMatch(html, /SMR_ensureSheets/);
+  });
+
+  it('loads a briefing from SMR_ properties before touching SMR sheets', () => {
+    const api = read('SMR_Api.gs');
+    assert.match(api, /function SMR_loadBriefing/);
+    const load = api.slice(api.indexOf('function SMR_loadBriefing'), api.indexOf('function SMR_sumHourRows_'));
+    assert.match(load, /SMR_briefStoreGet_/);
+    assert.match(load, /SMR_rosterStoreGet_/);
+    assert.doesNotMatch(load, /SMR_countOpenHeatFast_/);
+    assert.doesNotMatch(load, /SMR_ensureSheets/);
+    assert.doesNotMatch(load, /SMR_getSummary/);
+  });
+
+  it('keeps snapshot helpers on SMR_ keys only', () => {
+    const sheets = read('SMR_Sheets.gs');
+    assert.match(sheets, /SMR_BRIEF_PROP_PREFIX_ = 'SMR_b_'/);
+    assert.match(sheets, /SMR_ROSTER_PROP_KEY_ = 'SMR_roster'/);
+    assert.doesNotMatch(sheets, /dealerLogoDataUrl/);
+  });
+
+  it('overlays saved hours onto the already-painted roster', () => {
+    const rows = [
+      { techName: 'BIG AL', clockHours: 8, soldHours: 9, openCount: 2, closedCount: 1, writtenCount: 3 },
+      { techName: 'ELECTRIC-T', clockHours: 8, soldHours: 7, openCount: 1, closedCount: 0, writtenCount: 1 }
+    ];
+    const painted = ['BIG AL', 'ELECTRIC-T'];
+    const namesMatch = painted.length === rows.length && painted.every((name, i) => name === rows[i].techName);
+    assert.equal(namesMatch, true);
+    assert.equal(rows.reduce((sum, row) => sum + row.openCount + row.closedCount + row.writtenCount, 0), 8);
+  });
+});

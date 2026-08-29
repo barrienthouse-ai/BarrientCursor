@@ -35,6 +35,26 @@ The workbook is now readable. It already has 69 tabs, including `SERVICE BOARD` 
 6. Reload the spreadsheet. Use the **Service Manager Report** menu.
 7. Optional: run **Compatibility audit** to list every non-SMR sheet the tool will leave alone.
 
+## Speed update (replace these files)
+
+This workbook is large (~18MB, 69 tabs). Each spreadsheet read from Apps Script is slow, so the briefing now avoids those reads after the first save.
+
+Replace these four files with the latest copies — no need to re-run `SMR_install`:
+
+- `SMR_App.html`
+- `SMR_Api.gs`
+- `SMR_Sheets.gs`
+- `SMR_Menu.gs`
+
+What changes:
+
+- Technician rows still paint immediately from the SERVICE BOARD names.
+- After you **Save daily report** once, the next **Open briefing** for that date fills hours and gross from a small `SMR_` snapshot (Cache / Script Properties). It does not scan the workbook.
+- Changing dates or the first open of a new day only reads the small `SMR_TechHours` and `SMR_Gross` tabs — not `SERVICE BOARD`, `SVC_RO`, or the rest of the workbook.
+- Heat cases load in a second, lighter call so they do not block the hours form.
+
+`SMR_Menu.gs` must be replaced too. It now opens the dialog as a template so today’s saved snapshot can be injected before the form appears. If you leave the old menu file, the dialog will break on `seedJson`.
+
 ## Daily use
 
 - **Open briefing** — tech hours, daily/MTD gross, open/closed/written ROs, heat cases.

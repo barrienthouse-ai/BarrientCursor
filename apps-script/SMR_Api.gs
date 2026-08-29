@@ -3,10 +3,14 @@
  * These functions are safe to call from google.script.run.
  */
 function SMR_readRosterFast_() {
+  var stored = SMR_rosterStoreGet_();
+  if (stored && stored.length) {
+    return stored;
+  }
   var rosterSheet = SMR_existingSheet_(SMR_SHEETS.ROSTER);
   var roster = [];
   if (rosterSheet && rosterSheet.getLastRow() >= 2) {
-    var values = rosterSheet.getRange(2, 1, rosterSheet.getLastRow() - 1, 2).getDisplayValues();
+    var values = rosterSheet.getRange(2, 1, rosterSheet.getLastRow() - 1, 2).getValues();
     for (var i = 0; i < values.length; i++) {
       var name = String(values[i][0] || '').trim();
       var active = String(values[i][1] || 'Yes').toLowerCase();
@@ -15,10 +19,11 @@ function SMR_readRosterFast_() {
       }
     }
   }
-  if (roster.length) {
-    return roster;
+  if (!roster.length) {
+    roster = SMR_DEFAULT_ROSTER.slice();
   }
-  return SMR_DEFAULT_ROSTER.slice();
+  SMR_rosterStorePut_(roster);
+  return roster;
 }
 
 function SMR_getConfig() {
@@ -29,14 +34,163 @@ function SMR_getConfig() {
   };
 }
 
-function SMR_loadBriefing(dateKey) {
-  var roster = SMR_readRosterFast_();
-  var summary = SMR_getSummary(dateKey, roster);
+function SMR_buildBriefingPayload_(key, roster, hoursRows, gross, heat) {
+  var formRows = SMR_mergeHoursWithRoster_(hoursRows, roster);
+  var hourTotals = SMR_sumHourRows_(hoursRows);
+  var roTotals = SMR_sumRoRows_(hoursRows);
+  heat = heat || [];
+  var openHeat = 0;
+  for (var i = 0; i < heat.length; i++) {
+    if (String(heat[i].status || 'open').toLowerCase() !== 'resolved') {
+      openHeat += 1;
+    }
+  }
   return {
     roster: roster,
-    summary: summary,
-    heat: SMR_listHeatCases('all')
+    heat: heat,
+    summary: {
+      date: key,
+      month: key.slice(0, 7),
+      techHours: {
+        rows: hoursRows,
+        formRows: formRows,
+        clockHours: hourTotals.clockHours,
+        soldHours: hourTotals.soldHours,
+        lineCount: hoursRows.length,
+        efficiency: hourTotals.clockHours > 0 ? hourTotals.soldHours / hourTotals.clockHours : null
+      },
+      gross: gross,
+      repairOrders: {
+        openCount: roTotals.openCount,
+        closedCount: roTotals.closedCount,
+        writtenCount: roTotals.writtenCount,
+        reported: roTotals.openCount + roTotals.closedCount + roTotals.writtenCount > 0
+      },
+      heatCases: {
+        openCount: openHeat,
+        briefedCount: 0,
+        awaitingBriefing: openHeat,
+        criticalCount: 0,
+        resolvedTodayCount: 0,
+        open: [],
+        resolvedToday: []
+      }
+    }
   };
+}
+
+function SMR_loadBriefing(dateKey) {
+  var key = SMR_dateKeyFast_(dateKey) || SMR_toDateKey_(dateKey);
+  var stored = SMR_briefStoreGet_(key);
+  if (stored && stored.summary) {
+    return stored;
+  }
+
+  var roster = SMR_rosterStoreGet_() || SMR_DEFAULT_ROSTER.slice();
+  var hoursRows = SMR_recallTechHoursFast_(key);
+  var gross = SMR_recallGrossFast_(key);
+  var payload = SMR_buildBriefingPayload_(key, roster, hoursRows, gross, []);
+  SMR_briefStorePut_(key, payload);
+  return payload;
+}
+
+function SMR_sumHourRows_(rows) {
+  var clock = 0;
+  var sold = 0;
+  (rows || []).forEach(function (row) {
+    clock += SMR_toNumber_(row.clockHours);
+    sold += SMR_toNumber_(row.soldHours);
+  });
+  return { clockHours: Math.round(clock * 10) / 10, soldHours: Math.round(sold * 10) / 10 };
+}
+
+function SMR_sumRoRows_(rows) {
+  var totals = { openCount: 0, closedCount: 0, writtenCount: 0 };
+  (rows || []).forEach(function (row) {
+    totals.openCount += SMR_toNumber_(row.openCount);
+    totals.closedCount += SMR_toNumber_(row.closedCount);
+    totals.writtenCount += SMR_toNumber_(row.writtenCount);
+  });
+  return totals;
+}
+
+function SMR_recallTechHoursFast_(dateKey) {
+  var table = SMR_readTail_(SMR_SHEETS.TECH_HOURS, 300);
+  var dateIdx = SMR_col_(table.headers, 'Date');
+  var nameIdx = SMR_col_(table.headers, 'Tech name');
+  var clockIdx = SMR_col_(table.headers, 'Clock hours');
+  var soldIdx = SMR_col_(table.headers, 'Sold hours');
+  var openIdx = SMR_col_(table.headers, 'Open ROs');
+  var closedIdx = SMR_col_(table.headers, 'Closed today');
+  var writtenIdx = SMR_col_(table.headers, 'Written today');
+  if (dateIdx < 0 || nameIdx < 0) {
+    return [];
+  }
+  var rows = [];
+  for (var i = 0; i < table.values.length; i++) {
+    if (SMR_dateKeyFast_(table.values[i][dateIdx]) !== dateKey) {
+      continue;
+    }
+    rows.push({
+      date: dateKey,
+      techName: table.values[i][nameIdx],
+      clockHours: SMR_toNumber_(table.values[i][clockIdx]),
+      soldHours: SMR_toNumber_(table.values[i][soldIdx]),
+      openCount: SMR_toNumber_(table.values[i][openIdx]),
+      closedCount: SMR_toNumber_(table.values[i][closedIdx]),
+      writtenCount: SMR_toNumber_(table.values[i][writtenIdx]),
+      notes: ''
+    });
+  }
+  return rows;
+}
+
+function SMR_recallGrossFast_(dateKey) {
+  var table = SMR_readTail_(SMR_SHEETS.GROSS, 120);
+  var dateIdx = SMR_col_(table.headers, 'Date');
+  var periodIdx = SMR_col_(table.headers, 'Period');
+  var laborIdx = SMR_col_(table.headers, 'Labor gross');
+  var otherIdx = SMR_col_(table.headers, 'Other gross');
+  var month = dateKey.slice(0, 7);
+  var daily = { laborGross: 0, partsGross: 0, otherGross: 0, totalGross: 0 };
+  var monthly = { laborGross: 0, partsGross: 0, otherGross: 0, totalGross: 0, source: 'daily-sum' };
+  if (dateIdx < 0) {
+    return { daily: daily, monthly: monthly };
+  }
+  for (var i = 0; i < table.values.length; i++) {
+    var rowDate = SMR_dateKeyFast_(table.values[i][dateIdx]);
+    var period = String(table.values[i][periodIdx] || 'daily').toLowerCase();
+    var labor = SMR_toNumber_(table.values[i][laborIdx]);
+    var other = SMR_toNumber_(table.values[i][otherIdx]);
+    var total = labor + other;
+    if (period === 'daily' && rowDate === dateKey) {
+      daily = { laborGross: labor, partsGross: 0, otherGross: other, totalGross: total };
+    }
+    if (period === 'daily' && rowDate.indexOf(month) === 0) {
+      monthly.laborGross += labor;
+      monthly.otherGross += other;
+      monthly.totalGross += total;
+    }
+    if (period === 'monthly' && rowDate.indexOf(month) === 0) {
+      monthly = { laborGross: labor, partsGross: 0, otherGross: other, totalGross: total, source: 'override' };
+    }
+  }
+  return { daily: daily, monthly: monthly };
+}
+
+function SMR_countOpenHeatFast_() {
+  var table = SMR_readTail_(SMR_SHEETS.HEAT, 150);
+  var statusIdx = SMR_col_(table.headers, 'Status');
+  if (statusIdx < 0) {
+    return 0;
+  }
+  var open = 0;
+  for (var i = 0; i < table.values.length; i++) {
+    if (String(table.values[i][statusIdx] || 'open').toLowerCase() !== 'resolved') {
+      open += 1;
+    }
+  }
+  return open;
 }
 
 function SMR_recallTechHours(dateKey) {
@@ -79,7 +233,8 @@ function SMR_saveTechHours(payload) {
     ];
   });
   SMR_replaceDateRows_(SMR_sheet_(SMR_SHEETS.TECH_HOURS), 'Date', dateKey, rows, SMR_HEADERS.TECH_HOURS);
-  return SMR_getSummary(dateKey);
+  SMR_clearBriefCache_(dateKey);
+  return { date: dateKey };
 }
 
 function SMR_saveGross(payload) {
@@ -119,7 +274,8 @@ function SMR_saveGross(payload) {
   sheet.clearContents();
   sheet.getRange(1, 1, kept.length, SMR_HEADERS.GROSS.length).setValues(kept);
   sheet.setFrozenRows(1);
-  return SMR_getSummary(dateKey);
+  SMR_clearBriefCache_(dateKey);
+  return { date: dateKey };
 }
 
 function SMR_saveRepairOrders(payload) {
@@ -135,12 +291,18 @@ function SMR_saveRepairOrders(payload) {
     payload.submittedAt || SMR_nowIso_()
   ]];
   SMR_replaceDateRows_(SMR_sheet_(SMR_SHEETS.ROS), 'Date', dateKey, row, SMR_HEADERS.ROS);
-  return SMR_getSummary(dateKey);
+  SMR_clearBriefCache_(dateKey);
+  return { date: dateKey };
 }
 
 function SMR_saveDailyReport(payload) {
   payload = payload || {};
   var dateKey = SMR_toDateKey_(payload.date);
+  var previousHeat = [];
+  var previous = SMR_briefStoreGet_(dateKey);
+  if (previous && previous.heat) {
+    previousHeat = previous.heat;
+  }
   if (payload.techHours) {
     var hourRows = payload.techHours.rows || payload.techHours;
     SMR_saveTechHours({ date: dateKey, rows: hourRows, submittedBy: payload.submittedBy });
@@ -166,7 +328,18 @@ function SMR_saveDailyReport(payload) {
   if (payload.gross) {
     SMR_saveGross(Object.assign({ date: dateKey, period: 'daily' }, payload.gross, { submittedBy: payload.submittedBy }));
   }
-  return SMR_getSummary(dateKey);
+  var roster = SMR_rosterStoreGet_() || SMR_DEFAULT_ROSTER.slice();
+  var hourRows = (payload.techHours && (payload.techHours.rows || payload.techHours)) || [];
+  var labor = payload.gross ? SMR_toNumber_(payload.gross.laborGross) : 0;
+  var other = payload.gross ? SMR_toNumber_(payload.gross.otherGross) : 0;
+  var gross = SMR_recallGrossFast_(dateKey);
+  if (!gross.daily.totalGross && (labor || other)) {
+    gross.daily = { laborGross: labor, partsGross: 0, otherGross: other, totalGross: labor + other };
+  }
+  var briefing = SMR_buildBriefingPayload_(dateKey, roster, hourRows, gross, previousHeat);
+  briefing.summary.repairOrders.reported = true;
+  SMR_briefStorePut_(dateKey, briefing);
+  return briefing.summary;
 }
 
 function SMR_addHeatCase(payload) {
@@ -193,7 +366,23 @@ function SMR_addHeatCase(payload) {
     '',
     now
   ]);
-  return SMR_listHeatCases('all').filter(function (row) { return row.id === id; })[0];
+  var rec = {
+    id: id,
+    openedDate: openedDate,
+    customer: payload.customer || '',
+    roNumber: payload.roNumber || '',
+    vehicle: payload.vehicle || '',
+    issue: issue,
+    severity: String(payload.severity || 'medium').toLowerCase(),
+    owner: payload.owner || '',
+    status: 'open',
+    briefedAt: '',
+    resolvedAt: '',
+    resolutionNotes: '',
+    updatedAt: now
+  };
+  SMR_briefStorePatchHeat_(openedDate);
+  return rec;
 }
 
 function SMR_updateHeatCase(id, action, notes) {
@@ -228,24 +417,54 @@ function SMR_updateHeatCase(id, action, notes) {
     }
     values[i][12] = now;
     sheet.getRange(i + 1, 1, 1, values[i].length).setValues([values[i]]);
-    return SMR_rowToHeat_(values[0], values[i]);
+    var updated = SMR_rowToHeat_(values[0], values[i]);
+    SMR_briefStorePatchHeat_(SMR_toDateKey_(values[i][1]) || SMR_todayKey_());
+    return updated;
   }
   throw new Error('Heat case ' + id + ' was not found.');
 }
 
 function SMR_listHeatCases(status) {
   status = status || 'all';
-  return SMR_readObjects_(SMR_existingSheet_(SMR_SHEETS.HEAT)).map(function (row) {
-    return SMR_objectToHeat_(row);
-  }).filter(function (row) {
-    if (status === 'open') {
-      return row.status !== 'resolved';
+  var table = SMR_readTail_(SMR_SHEETS.HEAT, 150);
+  if (!table.headers.length) {
+    return [];
+  }
+  var objects = [];
+  for (var i = 0; i < table.values.length; i++) {
+    var rec = SMR_rowToHeat_(table.headers, table.values[i]);
+    if (!rec.id) {
+      continue;
     }
-    if (status === 'resolved') {
-      return row.status === 'resolved';
+    if (status === 'open' && rec.status === 'resolved') {
+      continue;
     }
-    return true;
-  });
+    if (status === 'resolved' && rec.status !== 'resolved') {
+      continue;
+    }
+    objects.push(rec);
+  }
+  return objects;
+}
+
+function SMR_briefStorePatchHeat_(dateKey) {
+  var stored = SMR_briefStoreGet_(dateKey);
+  if (!stored || !stored.summary) {
+    return;
+  }
+  var cases = SMR_listHeatCases('all');
+  stored.heat = cases;
+  stored.summary.heatCases = stored.summary.heatCases || {};
+  var open = 0;
+  for (var i = 0; i < cases.length; i++) {
+    if (cases[i].status !== 'resolved') {
+      open += 1;
+    }
+  }
+  stored.summary.heatCases.openCount = open;
+  stored.summary.heatCases.awaitingBriefing = open;
+  stored.cached = false;
+  SMR_briefStorePut_(dateKey, stored);
 }
 
 function SMR_getSummary(dateKey, roster) {
@@ -375,16 +594,21 @@ function SMR_mergeHoursWithRoster_(savedRows, roster) {
 
 function SMR_nextHeatId_(dateKey) {
   var prefix = 'HEAT-' + dateKey.replace(/-/g, '') + '-';
+  var table = SMR_readTail_(SMR_SHEETS.HEAT, 80);
+  var idIdx = SMR_col_(table.headers, 'Case ID');
   var maxSeq = 0;
-  SMR_listHeatCases('all').forEach(function (row) {
-    if (String(row.id).indexOf(prefix) !== 0) {
-      return;
+  if (idIdx >= 0) {
+    for (var i = 0; i < table.values.length; i++) {
+      var id = String(table.values[i][idIdx] || '');
+      if (id.indexOf(prefix) !== 0) {
+        continue;
+      }
+      var seq = Number(id.slice(prefix.length));
+      if (isFinite(seq) && seq > maxSeq) {
+        maxSeq = seq;
+      }
     }
-    var seq = Number(String(row.id).slice(prefix.length));
-    if (isFinite(seq) && seq > maxSeq) {
-      maxSeq = seq;
-    }
-  });
+  }
   var next = String(maxSeq + 1);
   while (next.length < 3) {
     next = '0' + next;

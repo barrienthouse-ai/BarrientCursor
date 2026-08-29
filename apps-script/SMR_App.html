@@ -82,6 +82,7 @@
     </div>
   </div>
   <script>
+    var SEED = <?!= seedJson ?>;
     var lastSummary = null;
     var DEFAULT_ROSTER = ['BIG AL', 'ELECTRIC-T', 'DIESEL-E', 'INTERNAL-F', 'HEAVY-C', 'SPECIAL-K', 'LIL-J', 'EASY-E', 'DUEL FUEL-A'];
     function today() {
@@ -154,16 +155,61 @@
       var mtd = lastSummary && lastSummary.gross ? lastSummary.gross.monthly.totalGross : 0;
       document.getElementById('kpiGross').textContent = (labor + other) + ' / ' + mtd;
     }
-    function render(summary) {
+    function overlaySummary(summary) {
       lastSummary = summary;
-      document.getElementById('kpiHeat').textContent = String(summary.heatCases.openCount);
-      document.getElementById('techRows').innerHTML = '';
-      (summary.techHours.formRows || summary.techHours.rows || []).forEach(addTechRow);
-      document.getElementById('laborGross').value = summary.gross.daily.laborGross || '';
-      document.getElementById('otherGross').value = summary.gross.daily.otherGross || '';
+      document.getElementById('kpiHeat').textContent = String((summary.heatCases && summary.heatCases.openCount) || 0);
+      var formRows = (summary.techHours && (summary.techHours.formRows || summary.techHours.rows)) || [];
+      var existing = document.querySelectorAll('.tech-row:not(.tech-head)');
+      var namesMatch = existing.length === formRows.length && formRows.length > 0;
+      if (namesMatch) {
+        existing.forEach(function (row, i) {
+          if (row.querySelector('.tech-name').value !== formRows[i].techName) {
+            namesMatch = false;
+          }
+        });
+      }
+      if (!namesMatch) {
+        document.getElementById('techRows').innerHTML = '';
+        formRows.forEach(addTechRow);
+      } else {
+        existing.forEach(function (row, i) {
+          var rec = formRows[i];
+          setIfIdle(row.querySelector('.tech-clock'), rec.clockHours != null && rec.clockHours !== '' ? rec.clockHours : 8);
+          setIfIdle(row.querySelector('.tech-sold'), rec.soldHours != null ? rec.soldHours : '');
+          setIfIdle(row.querySelector('.tech-open'), rec.openCount != null ? rec.openCount : '');
+          setIfIdle(row.querySelector('.tech-closed'), rec.closedCount != null ? rec.closedCount : '');
+          setIfIdle(row.querySelector('.tech-written'), rec.writtenCount != null ? rec.writtenCount : '');
+        });
+      }
+      if (summary.gross && summary.gross.daily) {
+        document.getElementById('laborGross').value = summary.gross.daily.laborGross || '';
+        document.getElementById('otherGross').value = summary.gross.daily.otherGross || '';
+      }
       liveTotals();
+    }
+    function setIfIdle(input, value) {
+      if (document.activeElement !== input) {
+        input.value = value;
+      }
+    }
+    function render(summary) {
+      overlaySummary(summary);
       document.getElementById('status').className = 'notice';
       document.getElementById('status').textContent = 'Loaded ' + summary.date;
+    }
+    function applyPayload(payload, fromSeed) {
+      if (payload && payload.summary) {
+        overlaySummary(payload.summary);
+        document.getElementById('status').className = 'notice';
+        document.getElementById('status').textContent = fromSeed || payload.cached
+          ? 'Opened instantly from last save.'
+          : 'Loaded ' + payload.summary.date;
+      }
+      if (payload && payload.heat && payload.heat.length) {
+        renderHeat(payload.heat);
+      } else {
+        loadHeat();
+      }
     }
     function renderHeat(rows) {
       document.getElementById('heatTable').innerHTML = rows.map(function (row) {
@@ -182,16 +228,22 @@
       });
       liveTotals();
     }
+    function loadHeat() {
+      run('SMR_listHeatCases', ['all'], function (rows) {
+        renderHeat(rows || []);
+        var open = (rows || []).filter(function (row) { return row.status !== 'resolved'; }).length;
+        document.getElementById('kpiHeat').textContent = String(open);
+        if (lastSummary) {
+          lastSummary.heatCases = lastSummary.heatCases || {};
+          lastSummary.heatCases.openCount = open;
+        }
+      });
+    }
     function recallDay() {
       document.getElementById('status').className = 'notice';
       document.getElementById('status').textContent = 'Loading saved numbers…';
       run('SMR_loadBriefing', [document.getElementById('reportDate').value], function (payload) {
-        if (payload && payload.summary) {
-          render(payload.summary);
-        }
-        if (payload && payload.heat) {
-          renderHeat(payload.heat);
-        }
+        applyPayload(payload, false);
         if (payload && payload.roster && payload.roster.length && !document.querySelector('.tech-row:not(.tech-head)')) {
           showRoster(payload.roster);
         }
@@ -207,8 +259,9 @@
           otherGross: document.getElementById('otherGross').value
         }
       }], function (summary) {
-        render(summary);
-        document.getElementById('status').textContent = 'Saved ' + summary.date;
+        overlaySummary(summary);
+        document.getElementById('status').className = 'notice';
+        document.getElementById('status').textContent = 'Saved ' + summary.date + '. Next open of this date will be instant.';
       });
     }
     function addHeat() {
@@ -220,17 +273,23 @@
         severity: document.getElementById('heatSeverity').value
       }], function () {
         document.getElementById('heatIssue').value = '';
-        recallDay();
+        document.getElementById('status').className = 'notice';
+        document.getElementById('status').textContent = 'Heat case added.';
+        loadHeat();
       });
     }
     function heatAction(id, action) {
       var notes = action === 'resolve' ? (prompt('Resolution notes') || '') : '';
-      run('SMR_updateHeatCase', [id, action, notes], function () { recallDay(); });
+      run('SMR_updateHeatCase', [id, action, notes], function () { loadHeat(); });
     }
     document.getElementById('reportDate').value = today();
     document.getElementById('reportDate').onchange = recallDay;
     showRoster(DEFAULT_ROSTER);
-    recallDay();
+    if (SEED && SEED.summary) {
+      applyPayload(SEED, true);
+    } else {
+      recallDay();
+    }
   </script>
 </body>
 </html>

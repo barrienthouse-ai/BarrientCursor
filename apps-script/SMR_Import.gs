@@ -55,6 +55,7 @@ function SMR_importRosterFromServiceBoard() {
     sheet.getRange(2, 1, rows.length, 2).setValues(rows);
   }
   sheet.setFrozenRows(1);
+  SMR_rosterStorePut_(names);
   return names;
 }
 
