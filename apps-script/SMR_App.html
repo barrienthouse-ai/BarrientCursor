@@ -83,6 +83,7 @@
   </div>
   <script>
     var lastSummary = null;
+    var DEFAULT_ROSTER = ['BIG AL', 'ELECTRIC-T', 'DIESEL-E', 'INTERNAL-F', 'HEAVY-C', 'SPECIAL-K', 'LIL-J', 'EASY-E', 'DUEL FUEL-A'];
     function today() {
       var now = new Date();
       return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -97,7 +98,7 @@
     function run(name, args, ok) {
       var runner = google.script.run.withFailureHandler(function (err) {
         document.getElementById('status').className = 'error';
-        document.getElementById('status').textContent = err.message || String(err);
+        document.getElementById('status').textContent = (err.message || String(err)) + ' Technician names stay on the form so you can still enter hours.';
       }).withSuccessHandler(ok);
       runner[name].apply(runner, args || []);
     }
@@ -174,9 +175,27 @@
               '<button type="button" onclick="heatAction(\'' + row.id + '\',\'resolve\')">Resolve</button>') + '</td></tr>';
       }).join('');
     }
+    function showRoster(names) {
+      document.getElementById('techRows').innerHTML = '';
+      (names || DEFAULT_ROSTER).forEach(function (name) {
+        addTechRow({ techName: name, clockHours: 8 });
+      });
+      liveTotals();
+    }
     function recallDay() {
-      run('SMR_getSummary', [document.getElementById('reportDate').value], render);
-      run('SMR_listHeatCases', ['all'], renderHeat);
+      document.getElementById('status').className = 'notice';
+      document.getElementById('status').textContent = 'Loading saved numbers…';
+      run('SMR_loadBriefing', [document.getElementById('reportDate').value], function (payload) {
+        if (payload && payload.summary) {
+          render(payload.summary);
+        }
+        if (payload && payload.heat) {
+          renderHeat(payload.heat);
+        }
+        if (payload && payload.roster && payload.roster.length && !document.querySelector('.tech-row:not(.tech-head)')) {
+          showRoster(payload.roster);
+        }
+      });
     }
     function saveDay() {
       run('SMR_saveDailyReport', [{
@@ -210,9 +229,8 @@
     }
     document.getElementById('reportDate').value = today();
     document.getElementById('reportDate').onchange = recallDay;
-    run('SMR_getConfig', [], function () {
-      recallDay();
-    });
+    showRoster(DEFAULT_ROSTER);
+    recallDay();
   </script>
 </body>
 </html>

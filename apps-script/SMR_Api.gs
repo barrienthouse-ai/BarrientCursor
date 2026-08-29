@@ -2,24 +2,46 @@
  * Data API used by the briefing dialog and dashboard refresh.
  * These functions are safe to call from google.script.run.
  */
+function SMR_readRosterFast_() {
+  var rosterSheet = SMR_existingSheet_(SMR_SHEETS.ROSTER);
+  var roster = [];
+  if (rosterSheet && rosterSheet.getLastRow() >= 2) {
+    var values = rosterSheet.getRange(2, 1, rosterSheet.getLastRow() - 1, 2).getDisplayValues();
+    for (var i = 0; i < values.length; i++) {
+      var name = String(values[i][0] || '').trim();
+      var active = String(values[i][1] || 'Yes').toLowerCase();
+      if (name && active !== 'no') {
+        roster.push(name);
+      }
+    }
+  }
+  if (roster.length) {
+    return roster;
+  }
+  return SMR_DEFAULT_ROSTER.slice();
+}
+
 function SMR_getConfig() {
-  SMR_ensureSheets();
-  var rosterRows = SMR_readObjects_(SMR_sheet_(SMR_SHEETS.ROSTER));
-  var roster = rosterRows.filter(function (row) {
-    return String(row.Active || 'Yes').toLowerCase() !== 'no';
-  }).map(function (row) {
-    return String(row['Tech name'] || '').trim();
-  }).filter(Boolean);
   return {
-    roster: roster,
+    roster: SMR_readRosterFast_(),
     timezone: Session.getScriptTimeZone(),
     submitter: 'Service Manager'
   };
 }
 
+function SMR_loadBriefing(dateKey) {
+  var roster = SMR_readRosterFast_();
+  var summary = SMR_getSummary(dateKey, roster);
+  return {
+    roster: roster,
+    summary: summary,
+    heat: SMR_listHeatCases('all')
+  };
+}
+
 function SMR_recallTechHours(dateKey) {
   var key = SMR_toDateKey_(dateKey);
-  return SMR_readObjects_(SMR_sheet_(SMR_SHEETS.TECH_HOURS)).filter(function (row) {
+  return SMR_readObjects_(SMR_existingSheet_(SMR_SHEETS.TECH_HOURS)).filter(function (row) {
     return SMR_toDateKey_(row.Date) === key;
   }).map(function (row) {
     return {
@@ -213,7 +235,7 @@ function SMR_updateHeatCase(id, action, notes) {
 
 function SMR_listHeatCases(status) {
   status = status || 'all';
-  return SMR_readObjects_(SMR_sheet_(SMR_SHEETS.HEAT)).map(function (row) {
+  return SMR_readObjects_(SMR_existingSheet_(SMR_SHEETS.HEAT)).map(function (row) {
     return SMR_objectToHeat_(row);
   }).filter(function (row) {
     if (status === 'open') {
@@ -226,12 +248,11 @@ function SMR_listHeatCases(status) {
   });
 }
 
-function SMR_getSummary(dateKey) {
-  SMR_ensureSheets();
+function SMR_getSummary(dateKey, roster) {
   var key = SMR_toDateKey_(dateKey);
   var month = SMR_monthKey_(key);
   var hoursRows = SMR_recallTechHours(key);
-  var formRows = SMR_mergeHoursWithRoster_(hoursRows);
+  var formRows = SMR_mergeHoursWithRoster_(hoursRows, roster || SMR_readRosterFast_());
   var clock = 0;
   var sold = 0;
   hoursRows.forEach(function (row) {
@@ -249,7 +270,7 @@ function SMR_getSummary(dateKey) {
     roWritten += SMR_toNumber_(row.writtenCount);
   });
   var hasTechRos = roOpen + roClosed + roWritten > 0;
-  var grossRows = SMR_readObjects_(SMR_sheet_(SMR_SHEETS.GROSS));
+  var grossRows = SMR_readObjects_(SMR_existingSheet_(SMR_SHEETS.GROSS));
   var dailyGross = { laborGross: 0, partsGross: 0, otherGross: 0, totalGross: 0 };
   var monthFromDailies = { laborGross: 0, partsGross: 0, otherGross: 0, totalGross: 0 };
   var monthlyOverride = null;
@@ -272,7 +293,7 @@ function SMR_getSummary(dateKey) {
       monthlyOverride = { laborGross: labor, partsGross: 0, otherGross: other, totalGross: total };
     }
   });
-  var roRows = SMR_readObjects_(SMR_sheet_(SMR_SHEETS.ROS)).filter(function (row) {
+  var roRows = SMR_readObjects_(SMR_existingSheet_(SMR_SHEETS.ROS)).filter(function (row) {
     return SMR_toDateKey_(row.Date) === key;
   });
   var ro = roRows.length ? roRows[roRows.length - 1] : null;
@@ -319,8 +340,8 @@ function SMR_getSummary(dateKey) {
   };
 }
 
-function SMR_mergeHoursWithRoster_(savedRows) {
-  var roster = SMR_getConfig().roster;
+function SMR_mergeHoursWithRoster_(savedRows, roster) {
+  roster = roster && roster.length ? roster : SMR_DEFAULT_ROSTER;
   var byName = {};
   (savedRows || []).forEach(function (row) {
     var key = String(row.techName || '').trim().toUpperCase();

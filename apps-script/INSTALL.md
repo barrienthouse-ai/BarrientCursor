@@ -31,7 +31,7 @@ The workbook is now readable. It already has 69 tabs, including `SERVICE BOARD` 
    SMR_onOpen();
    ```
 
-5. In the Apps Script editor, select `SMR_install` and click **Run**. Authorize when prompted.
+5. In the Apps Script editor, select `SMR_install` and click **Run**. Authorize when prompted. Run this once only. Opening the briefing no longer creates sheets, so it will not time out on this large workbook.
 6. Reload the spreadsheet. Use the **Service Manager Report** menu.
 7. Optional: run **Compatibility audit** to list every non-SMR sheet the tool will leave alone.
 

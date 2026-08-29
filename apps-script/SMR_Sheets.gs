@@ -55,16 +55,36 @@ function SMR_ensureDashboard_(ss) {
   return sheet;
 }
 
+function SMR_existingSheet_(name) {
+  return SpreadsheetApp.getActive().getSheetByName(name);
+}
+
+function SMR_headersFor_(name) {
+  if (name === SMR_SHEETS.TECH_HOURS) return SMR_HEADERS.TECH_HOURS;
+  if (name === SMR_SHEETS.GROSS) return SMR_HEADERS.GROSS;
+  if (name === SMR_SHEETS.HEAT) return SMR_HEADERS.HEAT;
+  if (name === SMR_SHEETS.ROS) return SMR_HEADERS.ROS;
+  if (name === SMR_SHEETS.ROSTER) return SMR_HEADERS.ROSTER;
+  if (name === SMR_SHEETS.CONFIG) return SMR_HEADERS.CONFIG;
+  return [];
+}
+
 function SMR_sheet_(name) {
-  var sheet = SpreadsheetApp.getActive().getSheetByName(name);
+  var ss = SpreadsheetApp.getActive();
+  var sheet = ss.getSheetByName(name);
   if (!sheet) {
-    SMR_ensureSheets();
-    sheet = SpreadsheetApp.getActive().getSheetByName(name);
+    var seed = name === SMR_SHEETS.ROSTER
+      ? SMR_DEFAULT_ROSTER.map(function (techName) { return [techName, 'Yes']; })
+      : [];
+    sheet = SMR_ensureSheet_(ss, name, SMR_headersFor_(name), seed);
   }
   return sheet;
 }
 
 function SMR_readObjects_(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) {
+    return [];
+  }
   var values = sheet.getDataRange().getValues();
   if (values.length < 2) {
     return [];
