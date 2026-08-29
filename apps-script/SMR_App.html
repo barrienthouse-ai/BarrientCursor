@@ -15,7 +15,10 @@
     label { display: block; font-size: 12px; margin: 6px 0; }
     input, select, textarea, button { font: inherit; }
     input, select, textarea { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #2d3f5c; background: #0e1624; color: #eef3fb; }
-    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .tech-row { display: grid; grid-template-columns: 1.3fr 0.7fr 0.7fr 0.7fr 0.7fr 0.7fr; gap: 6px; align-items: end; margin-bottom: 6px; }
+    .tech-head { color: #9aadc8; font-size: 11px; text-transform: uppercase; }
+    .tech-list { max-height: 280px; overflow: auto; padding-right: 4px; margin: 8px 0; }
     .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
     button { border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: #f0b429; color: #1b1403; font-weight: 700; }
     button.secondary { background: #1c2b44; color: #eef3fb; }
@@ -33,17 +36,16 @@
     <label>Report date <input id="reportDate" type="date" /></label>
     <div class="kpis">
       <div class="card"><div class="meta">Sold / clock</div><div class="value" id="kpiHours">—</div></div>
-      <div class="card"><div class="meta">Daily / MTD gross</div><div class="value" id="kpiGross">—</div></div>
-      <div class="card"><div class="meta">Open / closed / written</div><div class="value" id="kpiRos">—</div></div>
+      <div class="card"><div class="meta">Daily / MTD service gross</div><div class="value" id="kpiGross">—</div></div>
+      <div class="card"><div class="meta">Open / closed / written ROs</div><div class="value" id="kpiRos">—</div></div>
       <div class="card"><div class="meta">Open heat cases</div><div class="value" id="kpiHeat">—</div></div>
     </div>
     <div class="panel">
       <strong>Daily entry</strong>
-      <p class="meta">Tech names come from SMR_Roster. Service gross only — parts are tracked separately.</p>
-      <div id="techRows"></div>
+      <p class="meta">Enter clock, sold, and RO counts per technician. The header totals those RO counts as you type. Service gross only — parts are separate.</p>
       <div class="row">
-        <label>Service labor <input id="laborGross" type="number" /></label>
-        <label>Other service <input id="otherGross" type="number" /></label>
+        <label>Service labor <input id="laborGross" type="number" oninput="liveTotals()" /></label>
+        <label>Other service <input id="otherGross" type="number" oninput="liveTotals()" /></label>
         <label>Period
           <select id="grossPeriod">
             <option value="daily">Daily</option>
@@ -51,11 +53,7 @@
           </select>
         </label>
       </div>
-      <div class="row">
-        <label>Open ROs <input id="openCount" type="number" /></label>
-        <label>Closed today <input id="closedCount" type="number" /></label>
-        <label>Written today <input id="writtenCount" type="number" /></label>
-      </div>
+      <div class="tech-list" id="techRows"></div>
       <div class="actions">
         <button type="button" onclick="recallDay()">Recall day</button>
         <button type="button" onclick="saveDay()">Save daily report</button>
@@ -84,9 +82,17 @@
     </div>
   </div>
   <script>
+    var lastSummary = null;
     function today() {
       var now = new Date();
       return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    }
+    function num(value) {
+      var n = Number(value);
+      return isFinite(n) ? n : 0;
+    }
+    function round1(value) {
+      return Math.round(num(value) * 10) / 10;
     }
     function run(name, args, ok) {
       var runner = google.script.run.withFailureHandler(function (err) {
@@ -98,35 +104,63 @@
     function addTechRow(row) {
       row = row || {};
       var host = document.getElementById('techRows');
+      if (!host.querySelector('.tech-head')) {
+        var head = document.createElement('div');
+        head.className = 'tech-row tech-head';
+        head.innerHTML = '<div>Tech</div><div>Clock</div><div>Sold</div><div>Open ROs</div><div>Closed</div><div>Written</div>';
+        host.appendChild(head);
+      }
       var wrap = document.createElement('div');
-      wrap.className = 'row tech-row';
-      wrap.innerHTML = '<label>Tech<br><strong>' + (row.techName || '') + '</strong>' +
+      wrap.className = 'tech-row';
+      wrap.innerHTML = '<label><strong>' + (row.techName || '') + '</strong>' +
         '<input class="tech-name" type="hidden" value="' + (row.techName || '') + '"></label>' +
-        '<label>Clock <input class="tech-clock" type="number" value="' + (row.clockHours || 8) + '"></label>' +
-        '<label>Sold <input class="tech-sold" type="number" value="' + (row.soldHours || '') + '"></label>';
+        '<input class="tech-clock" type="number" step="0.1" value="' + (row.clockHours || 8) + '" oninput="liveTotals()">' +
+        '<input class="tech-sold" type="number" step="0.1" value="' + (row.soldHours || '') + '" oninput="liveTotals()">' +
+        '<input class="tech-open" type="number" value="' + (row.openCount || '') + '" oninput="liveTotals()">' +
+        '<input class="tech-closed" type="number" value="' + (row.closedCount || '') + '" oninput="liveTotals()">' +
+        '<input class="tech-written" type="number" value="' + (row.writtenCount || '') + '" oninput="liveTotals()">';
       host.appendChild(wrap);
     }
     function readTechRows() {
-      return Array.prototype.map.call(document.querySelectorAll('.tech-row'), function (row) {
+      return Array.prototype.map.call(document.querySelectorAll('.tech-row:not(.tech-head)'), function (row) {
         return {
           techName: row.querySelector('.tech-name').value,
           clockHours: row.querySelector('.tech-clock').value,
-          soldHours: row.querySelector('.tech-sold').value
+          soldHours: row.querySelector('.tech-sold').value,
+          openCount: row.querySelector('.tech-open').value,
+          closedCount: row.querySelector('.tech-closed').value,
+          writtenCount: row.querySelector('.tech-written').value
         };
       });
     }
+    function liveTotals() {
+      var clock = 0;
+      var sold = 0;
+      var open = 0;
+      var closed = 0;
+      var written = 0;
+      readTechRows().forEach(function (row) {
+        clock += num(row.clockHours);
+        sold += num(row.soldHours);
+        open += num(row.openCount);
+        closed += num(row.closedCount);
+        written += num(row.writtenCount);
+      });
+      document.getElementById('kpiHours').textContent = round1(sold) + ' / ' + round1(clock);
+      document.getElementById('kpiRos').textContent = open + ' / ' + closed + ' / ' + written;
+      var labor = num(document.getElementById('laborGross').value);
+      var other = num(document.getElementById('otherGross').value);
+      var mtd = lastSummary && lastSummary.gross ? lastSummary.gross.monthly.totalGross : 0;
+      document.getElementById('kpiGross').textContent = (labor + other) + ' / ' + mtd;
+    }
     function render(summary) {
-      document.getElementById('kpiHours').textContent = summary.techHours.soldHours + ' / ' + summary.techHours.clockHours;
-      document.getElementById('kpiGross').textContent = summary.gross.daily.totalGross + ' / ' + summary.gross.monthly.totalGross;
-      document.getElementById('kpiRos').textContent = summary.repairOrders.openCount + ' / ' + summary.repairOrders.closedCount + ' / ' + summary.repairOrders.writtenCount;
+      lastSummary = summary;
       document.getElementById('kpiHeat').textContent = String(summary.heatCases.openCount);
       document.getElementById('techRows').innerHTML = '';
       (summary.techHours.formRows || summary.techHours.rows || []).forEach(addTechRow);
       document.getElementById('laborGross').value = summary.gross.daily.laborGross || '';
       document.getElementById('otherGross').value = summary.gross.daily.otherGross || '';
-      document.getElementById('openCount').value = summary.repairOrders.reported ? summary.repairOrders.openCount : '';
-      document.getElementById('closedCount').value = summary.repairOrders.reported ? summary.repairOrders.closedCount : '';
-      document.getElementById('writtenCount').value = summary.repairOrders.reported ? summary.repairOrders.writtenCount : '';
+      liveTotals();
       document.getElementById('status').className = 'notice';
       document.getElementById('status').textContent = 'Loaded ' + summary.date;
     }
@@ -152,11 +186,6 @@
           period: document.getElementById('grossPeriod').value,
           laborGross: document.getElementById('laborGross').value,
           otherGross: document.getElementById('otherGross').value
-        },
-        repairOrders: {
-          openCount: document.getElementById('openCount').value,
-          closedCount: document.getElementById('closedCount').value,
-          writtenCount: document.getElementById('writtenCount').value
         }
       }], function (summary) {
         render(summary);

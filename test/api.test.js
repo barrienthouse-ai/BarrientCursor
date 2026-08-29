@@ -50,17 +50,18 @@ describe('API', () => {
         date: '2026-08-29',
         techHours: {
           rows: [
-            { techName: 'Alex Rivera', clockHours: 8, soldHours: 8.5 },
-            { techName: 'Jordan Hale', clockHours: 8, soldHours: 7 }
+            { techName: 'Alex Rivera', clockHours: 8, soldHours: 8.5, openCount: 4, closedCount: 2, writtenCount: 3 },
+            { techName: 'Jordan Hale', clockHours: 8, soldHours: 7, openCount: 5, closedCount: 1, writtenCount: 2 }
           ]
         },
-        gross: { laborGross: 3000, otherGross: 100 },
-        repairOrders: { openCount: 30, closedCount: 16, writtenCount: 19 }
+        gross: { laborGross: 3000, otherGross: 100 }
       })
     });
     assert.equal(saved.status, 201);
     assert.equal(saved.body.techHours.soldHours, 15.5);
-    assert.equal(saved.body.repairOrders.closedCount, 16);
+    assert.equal(saved.body.repairOrders.openCount, 9);
+    assert.equal(saved.body.repairOrders.closedCount, 3);
+    assert.equal(saved.body.repairOrders.writtenCount, 5);
 
     const recalled = await json(`${base}/api/daily-report/2026-08-29`);
     assert.equal(recalled.body.techHours.rows.length, 2);

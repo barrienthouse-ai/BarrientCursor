@@ -64,15 +64,31 @@ export function formatPercent(ratio) {
   return `${(ratio * 100).toFixed(1)}%`;
 }
 
+export function roundHours(value) {
+  return Math.round(toNumber(value) * 10) / 10;
+}
+
 export function sumTechHours(rows = []) {
   return rows.reduce(
     (acc, row) => {
-      acc.clockHours += toNumber(row.clockHours);
-      acc.soldHours += toNumber(row.soldHours);
+      acc.clockHours = roundHours(acc.clockHours + toNumber(row.clockHours));
+      acc.soldHours = roundHours(acc.soldHours + toNumber(row.soldHours));
       acc.lineCount += 1;
       return acc;
     },
     { clockHours: 0, soldHours: 0, lineCount: 0 }
+  );
+}
+
+export function sumRepairOrders(rows = []) {
+  return rows.reduce(
+    (acc, row) => {
+      acc.openCount += toNumber(row.openCount);
+      acc.closedCount += toNumber(row.closedCount);
+      acc.writtenCount += toNumber(row.writtenCount);
+      return acc;
+    },
+    { openCount: 0, closedCount: 0, writtenCount: 0 }
   );
 }
 
@@ -100,6 +116,9 @@ export function mergeHoursWithRoster(savedRows = [], roster = []) {
       techName: name,
       clockHours: existing ? existing.clockHours : 8,
       soldHours: existing ? existing.soldHours : '',
+      openCount: existing ? existing.openCount : '',
+      closedCount: existing ? existing.closedCount : '',
+      writtenCount: existing ? existing.writtenCount : '',
       notes: existing ? existing.notes || '' : ''
     };
   });
@@ -259,6 +278,8 @@ export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [],
   const hoursRows = filterByDate(techHours, key);
   const hours = sumTechHours(hoursRows);
   const gross = rollupGross(grossEntries, key);
+  const roFromTechs = sumRepairOrders(hoursRows);
+  const hasTechRos = hoursRows.some((row) => toNumber(row.openCount) || toNumber(row.closedCount) || toNumber(row.writtenCount));
   const ro = findDailyRo(repairOrders, key);
   const heat = heatCaseSummary(heatCases, key);
 
@@ -275,10 +296,10 @@ export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [],
     },
     gross,
     repairOrders: {
-      openCount: ro ? toNumber(ro.openCount) : 0,
-      closedCount: ro ? toNumber(ro.closedCount) : 0,
-      writtenCount: ro ? toNumber(ro.writtenCount) : 0,
-      reported: Boolean(ro),
+      openCount: hasTechRos ? roFromTechs.openCount : (ro ? toNumber(ro.openCount) : 0),
+      closedCount: hasTechRos ? roFromTechs.closedCount : (ro ? toNumber(ro.closedCount) : 0),
+      writtenCount: hasTechRos ? roFromTechs.writtenCount : (ro ? toNumber(ro.writtenCount) : 0),
+      reported: hasTechRos || Boolean(ro),
       row: ro
     },
     heatCases: heat

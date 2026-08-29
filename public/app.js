@@ -65,8 +65,11 @@ function techRow(row = {}) {
     </div>
     <label>Clock <input class="tech-clock" type="number" step="0.1" value="${row.clockHours ?? 8}" /></label>
     <label>Sold <input class="tech-sold" type="number" step="0.1" value="${row.soldHours ?? ''}" /></label>
-    <label>Notes <input class="tech-notes" value="${escapeAttr(row.notes || '')}" /></label>
+    <label>Open ROs <input class="tech-open" type="number" value="${row.openCount ?? ''}" /></label>
+    <label>Closed <input class="tech-closed" type="number" value="${row.closedCount ?? ''}" /></label>
+    <label>Written <input class="tech-written" type="number" value="${row.writtenCount ?? ''}" /></label>
   `;
+  wrap.querySelectorAll('input').forEach((input) => input.addEventListener('input', liveTotals));
   return wrap;
 }
 
@@ -75,8 +78,34 @@ function readTechRows() {
     techName: row.querySelector('.tech-name').value,
     clockHours: row.querySelector('.tech-clock').value,
     soldHours: row.querySelector('.tech-sold').value,
-    notes: row.querySelector('.tech-notes').value
+    openCount: row.querySelector('.tech-open').value,
+    closedCount: row.querySelector('.tech-closed').value,
+    writtenCount: row.querySelector('.tech-written').value
   }));
+}
+
+function liveTotals() {
+  const rows = readTechRows();
+  let clock = 0;
+  let sold = 0;
+  let open = 0;
+  let closed = 0;
+  let written = 0;
+  for (const row of rows) {
+    clock += Number(row.clockHours) || 0;
+    sold += Number(row.soldHours) || 0;
+    open += Number(row.openCount) || 0;
+    closed += Number(row.closedCount) || 0;
+    written += Number(row.writtenCount) || 0;
+  }
+  $('kpiHours').textContent = `${qty.format(sold)} / ${qty.format(clock)}`;
+  $('kpiRos').textContent = `${open} / ${closed} / ${written}`;
+  $('kpiRoNote').textContent = 'Open / closed today / written today — sum of technician lines';
+  if ($('openCount')) {
+    $('openCount').value = open;
+    $('closedCount').value = closed;
+    $('writtenCount').value = written;
+  }
 }
 
 function escapeAttr(value) {
@@ -127,10 +156,7 @@ function fillDailyForm(snapshot) {
   $('otherGross').value = daily.otherGross || '';
   $('grossNotes').value = '';
   $('grossPeriod').value = 'daily';
-  $('openCount').value = snapshot.repairOrders.reported ? snapshot.repairOrders.openCount : '';
-  $('closedCount').value = snapshot.repairOrders.reported ? snapshot.repairOrders.closedCount : '';
-  $('writtenCount').value = snapshot.repairOrders.reported ? snapshot.repairOrders.writtenCount : '';
-  $('roNotes').value = snapshot.repairOrders.row?.notes || '';
+  liveTotals();
 }
 
 async function loadDay() {
@@ -224,12 +250,6 @@ async function init() {
             laborGross: $('laborGross').value,
             otherGross: $('otherGross').value,
             notes: $('grossNotes').value
-          },
-          repairOrders: {
-            openCount: $('openCount').value,
-            closedCount: $('closedCount').value,
-            writtenCount: $('writtenCount').value,
-            notes: $('roNotes').value
           }
         })
       });

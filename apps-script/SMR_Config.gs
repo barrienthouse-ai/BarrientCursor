@@ -14,7 +14,7 @@ var SMR_SHEETS = {
 };
 
 var SMR_HEADERS = {
-  TECH_HOURS: ['Date', 'Tech name', 'Clock hours', 'Sold hours', 'Notes', 'Submitted by', 'Submitted at'],
+  TECH_HOURS: ['Date', 'Tech name', 'Clock hours', 'Sold hours', 'Open ROs', 'Closed today', 'Written today', 'Notes', 'Submitted by', 'Submitted at'],
   GROSS: ['Date', 'Month', 'Period', 'Labor gross', 'Parts gross', 'Other gross', 'Total gross', 'Notes', 'Submitted by', 'Submitted at'],
   HEAT: ['Case ID', 'Opened date', 'Customer', 'RO number', 'Vehicle', 'Issue', 'Severity', 'Owner', 'Status', 'Briefed at', 'Resolved at', 'Resolution notes', 'Updated at'],
   ROS: ['Date', 'Open ROs', 'Closed today', 'Written today', 'Notes', 'Submitted by', 'Submitted at'],

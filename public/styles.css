@@ -76,7 +76,7 @@ th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line
 th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 .row { display: grid; gap: 10px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 10px; }
-.row.five { grid-template-columns: 1.3fr 0.7fr 0.7fr 1fr; }
+.row.five { grid-template-columns: 1.2fr 0.6fr 0.6fr 0.6fr 0.6fr 0.6fr; }
 .tech-name-label { display: block; padding: 10px 0 0; font-weight: 700; }
 .notice { color: var(--accent-2); font-size: 13px; margin-top: 8px; }
 .error { color: var(--danger); font-size: 13px; margin-top: 8px; }

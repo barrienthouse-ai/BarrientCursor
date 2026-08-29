@@ -27,6 +27,9 @@ function SMR_recallTechHours(dateKey) {
       techName: row['Tech name'],
       clockHours: SMR_toNumber_(row['Clock hours']),
       soldHours: SMR_toNumber_(row['Sold hours']),
+      openCount: SMR_toNumber_(row['Open ROs']),
+      closedCount: SMR_toNumber_(row['Closed today']),
+      writtenCount: SMR_toNumber_(row['Written today']),
       notes: row.Notes || ''
     };
   });
@@ -45,6 +48,9 @@ function SMR_saveTechHours(payload) {
       String(row.techName).trim(),
       SMR_toNumber_(row.clockHours),
       SMR_toNumber_(row.soldHours),
+      SMR_toNumber_(row.openCount),
+      SMR_toNumber_(row.closedCount),
+      SMR_toNumber_(row.writtenCount),
       row.notes || '',
       submittedBy,
       submittedAt
@@ -114,13 +120,29 @@ function SMR_saveDailyReport(payload) {
   payload = payload || {};
   var dateKey = SMR_toDateKey_(payload.date);
   if (payload.techHours) {
-    SMR_saveTechHours({ date: dateKey, rows: payload.techHours.rows || payload.techHours, submittedBy: payload.submittedBy });
+    var hourRows = payload.techHours.rows || payload.techHours;
+    SMR_saveTechHours({ date: dateKey, rows: hourRows, submittedBy: payload.submittedBy });
+    var open = 0;
+    var closed = 0;
+    var written = 0;
+    (hourRows || []).forEach(function (row) {
+      open += SMR_toNumber_(row.openCount);
+      closed += SMR_toNumber_(row.closedCount);
+      written += SMR_toNumber_(row.writtenCount);
+    });
+    SMR_saveRepairOrders({
+      date: dateKey,
+      openCount: open,
+      closedCount: closed,
+      writtenCount: written,
+      notes: payload.repairOrders ? payload.repairOrders.notes : '',
+      submittedBy: payload.submittedBy
+    });
+  } else if (payload.repairOrders) {
+    SMR_saveRepairOrders(Object.assign({ date: dateKey }, payload.repairOrders, { submittedBy: payload.submittedBy }));
   }
   if (payload.gross) {
     SMR_saveGross(Object.assign({ date: dateKey, period: 'daily' }, payload.gross, { submittedBy: payload.submittedBy }));
-  }
-  if (payload.repairOrders) {
-    SMR_saveRepairOrders(Object.assign({ date: dateKey }, payload.repairOrders, { submittedBy: payload.submittedBy }));
   }
   return SMR_getSummary(dateKey);
 }
@@ -216,6 +238,17 @@ function SMR_getSummary(dateKey) {
     clock += SMR_toNumber_(row.clockHours);
     sold += SMR_toNumber_(row.soldHours);
   });
+  clock = Math.round(clock * 10) / 10;
+  sold = Math.round(sold * 10) / 10;
+  var roOpen = 0;
+  var roClosed = 0;
+  var roWritten = 0;
+  hoursRows.forEach(function (row) {
+    roOpen += SMR_toNumber_(row.openCount);
+    roClosed += SMR_toNumber_(row.closedCount);
+    roWritten += SMR_toNumber_(row.writtenCount);
+  });
+  var hasTechRos = roOpen + roClosed + roWritten > 0;
   var grossRows = SMR_readObjects_(SMR_sheet_(SMR_SHEETS.GROSS));
   var dailyGross = { laborGross: 0, partsGross: 0, otherGross: 0, totalGross: 0 };
   var monthFromDailies = { laborGross: 0, partsGross: 0, otherGross: 0, totalGross: 0 };
@@ -268,10 +301,10 @@ function SMR_getSummary(dateKey) {
       monthFromDailies: monthFromDailies
     },
     repairOrders: {
-      openCount: ro ? SMR_toNumber_(ro['Open ROs']) : 0,
-      closedCount: ro ? SMR_toNumber_(ro['Closed today']) : 0,
-      writtenCount: ro ? SMR_toNumber_(ro['Written today']) : 0,
-      reported: !!ro,
+      openCount: hasTechRos ? roOpen : (ro ? SMR_toNumber_(ro['Open ROs']) : 0),
+      closedCount: hasTechRos ? roClosed : (ro ? SMR_toNumber_(ro['Closed today']) : 0),
+      writtenCount: hasTechRos ? roWritten : (ro ? SMR_toNumber_(ro['Written today']) : 0),
+      reported: hasTechRos || !!ro,
       row: ro
     },
     heatCases: {
@@ -304,6 +337,9 @@ function SMR_mergeHoursWithRoster_(savedRows) {
       techName: name,
       clockHours: existing ? existing.clockHours : 8,
       soldHours: existing ? existing.soldHours : '',
+      openCount: existing ? existing.openCount : '',
+      closedCount: existing ? existing.closedCount : '',
+      writtenCount: existing ? existing.writtenCount : '',
       notes: existing ? existing.notes || '' : ''
     };
   });

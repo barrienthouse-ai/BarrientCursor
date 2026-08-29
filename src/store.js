@@ -10,6 +10,7 @@ import {
   nextHeatCaseId,
   normalizeHeatStatus,
   normalizeSeverity,
+  sumRepairOrders,
   toDateKey,
   toNumber
 } from './reporting.js';
@@ -86,6 +87,9 @@ export function createStore(filePath) {
           techName: String(row.techName).trim(),
           clockHours: toNumber(row.clockHours),
           soldHours: toNumber(row.soldHours),
+          openCount: toNumber(row.openCount),
+          closedCount: toNumber(row.closedCount),
+          writtenCount: toNumber(row.writtenCount),
           notes: row.notes || '',
           submittedBy,
           submittedAt
@@ -204,12 +208,18 @@ export function createStore(filePath) {
       const date = toDateKey(payload.date);
       if (payload.techHours) {
         this.saveTechHours({ date, ...payload.techHours, submittedBy: payload.submittedBy });
+        const summed = sumRepairOrders(payload.techHours.rows || payload.techHours || []);
+        this.saveRepairOrders({
+          date,
+          ...summed,
+          notes: payload.repairOrders ? payload.repairOrders.notes : '',
+          submittedBy: payload.submittedBy
+        });
+      } else if (payload.repairOrders) {
+        this.saveRepairOrders({ date, ...payload.repairOrders, submittedBy: payload.submittedBy });
       }
       if (payload.gross) {
         this.saveGross({ date, period: 'daily', ...payload.gross, submittedBy: payload.submittedBy });
-      }
-      if (payload.repairOrders) {
-        this.saveRepairOrders({ date, ...payload.repairOrders, submittedBy: payload.submittedBy });
       }
       return snapshot(date);
     },

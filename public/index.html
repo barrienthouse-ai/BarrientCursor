@@ -80,8 +80,8 @@
 
     <section id="daily" class="tab-page hidden">
       <article class="panel">
-        <h2>Technician hours</h2>
-        <p class="meta">Names come from the service roster. Enter clock and sold hours only. Add or remove a tech on the SMR_Roster tab, not here.</p>
+        <h2>Technician hours and RO counts</h2>
+        <p class="meta">Names come from the service roster. Enter clock, sold, and that tech’s open / closed / written ROs. The header totals those counts as you type.</p>
         <div id="techHourRows"></div>
       </article>
       <div class="grid two" style="margin-top:14px">
@@ -101,13 +101,13 @@
           <label>Gross notes <textarea id="grossNotes"></textarea></label>
         </article>
         <article class="panel">
-          <h2>Repair orders</h2>
+          <h2>Repair order totals</h2>
+          <p class="meta">These numbers are the sum of the per-technician RO counts above. They update in the header as you type.</p>
           <div class="row">
-            <label>Open ROs <input id="openCount" type="number" /></label>
-            <label>Closed today <input id="closedCount" type="number" /></label>
-            <label>Written today <input id="writtenCount" type="number" /></label>
+            <label>Open ROs <input id="openCount" type="number" readonly /></label>
+            <label>Closed today <input id="closedCount" type="number" readonly /></label>
+            <label>Written today <input id="writtenCount" type="number" readonly /></label>
           </div>
-          <label>RO notes <textarea id="roNotes"></textarea></label>
         </article>
       </div>
       <div class="actions">

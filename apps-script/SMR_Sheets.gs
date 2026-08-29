@@ -9,6 +9,7 @@ function SMR_ensureSheets() {
     return [name, 'Yes'];
   }));
   SMR_ensureSheet_(ss, SMR_SHEETS.TECH_HOURS, SMR_HEADERS.TECH_HOURS, []);
+  SMR_upgradeTechHoursHeader_(ss.getSheetByName(SMR_SHEETS.TECH_HOURS));
   SMR_ensureSheet_(ss, SMR_SHEETS.GROSS, SMR_HEADERS.GROSS, []);
   SMR_ensureSheet_(ss, SMR_SHEETS.HEAT, SMR_HEADERS.HEAT, []);
   SMR_ensureSheet_(ss, SMR_SHEETS.ROS, SMR_HEADERS.ROS, []);
@@ -86,6 +87,23 @@ function SMR_readObjects_(sheet) {
   return rows;
 }
 
+function SMR_upgradeTechHoursHeader_(sheet) {
+  if (!sheet) {
+    return;
+  }
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+  if (headers.indexOf('Open ROs') !== -1) {
+    return;
+  }
+  if (headers[0] === 'Date' && headers[4] === 'Notes') {
+    sheet.insertColumnsAfter(4, 3);
+    sheet.getRange(1, 5, 1, 3).setValues([['Open ROs', 'Closed today', 'Written today']]);
+    return;
+  }
+  sheet.getRange(1, 1, 1, SMR_HEADERS.TECH_HOURS.length).setValues([SMR_HEADERS.TECH_HOURS]);
+}
+
 function SMR_replaceDateRows_(sheet, dateColumnName, dateKey, newRows, headers) {
   var values = sheet.getDataRange().getValues();
   var kept = [headers];
@@ -95,7 +113,11 @@ function SMR_replaceDateRows_(sheet, dateColumnName, dateKey, newRows, headers) 
     for (var i = 1; i < values.length; i++) {
       var existingDate = SMR_toDateKey_(values[i][dateIdx]);
       if (existingDate !== dateKey) {
-        kept.push(values[i]);
+        var padded = values[i].slice();
+        while (padded.length < headers.length) {
+          padded.push('');
+        }
+        kept.push(padded.slice(0, headers.length));
       }
     }
   }

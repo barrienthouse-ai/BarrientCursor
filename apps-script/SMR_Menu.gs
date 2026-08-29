@@ -36,8 +36,8 @@ function SMR_install() {
 
 function SMR_openBriefing() {
   var html = HtmlService.createHtmlOutputFromFile('SMR_App')
-    .setWidth(1100)
-    .setHeight(740)
+    .setWidth(1180)
+    .setHeight(800)
     .setTitle('Service Manager Report');
   SpreadsheetApp.getUi().showModalDialog(html, 'Service Manager Report');
 }

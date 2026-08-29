@@ -9,6 +9,8 @@ import {
   mergeHoursWithRoster,
   monthKey,
   nextHeatCaseId,
+  roundHours,
+  sumRepairOrders,
   reservedSheetNames,
   reservedSimpleTriggers,
   rollupGross,
@@ -34,6 +36,19 @@ describe('tech hours', () => {
     assert.equal(computeEfficiency(16.2, 16), 1.0125);
     assert.equal(formatPercent(1), '100.0%');
     assert.equal(computeEfficiency(5, 0), null);
+    assert.equal(roundHours(3.9 + 3.7 + 1 + 11.4 + 8.6 + 8.2 + 4.8), 41.6);
+  });
+});
+
+describe('RO totals', () => {
+  it('sums open, closed, and written counts from technician lines', () => {
+    const totals = sumRepairOrders([
+      { openCount: 2, closedCount: 1, writtenCount: 3 },
+      { openCount: 4, closedCount: 2, writtenCount: 1 }
+    ]);
+    assert.equal(totals.openCount, 6);
+    assert.equal(totals.closedCount, 3);
+    assert.equal(totals.writtenCount, 4);
   });
 });
 
@@ -101,18 +116,20 @@ describe('daily snapshot', () => {
     const snapshot = buildDailySnapshot({
       dateKey: '2026-08-29',
       techHours: [
-        { date: '2026-08-29', techName: 'Alex', clockHours: 8, soldHours: 8 },
+        { date: '2026-08-29', techName: 'Alex', clockHours: 8, soldHours: 8, openCount: 3, closedCount: 2, writtenCount: 1 },
         { date: '2026-08-28', techName: 'Alex', clockHours: 8, soldHours: 9 }
       ],
       grossEntries: [{ period: 'daily', date: '2026-08-29', laborGross: 100, partsGross: 50, otherGross: 0 }],
-      repairOrders: [{ date: '2026-08-29', openCount: 33, closedCount: 18, writtenCount: 21 }],
+      repairOrders: [{ date: '2026-08-29', openCount: 99, closedCount: 99, writtenCount: 99 }],
       heatCases: [
         { openedDate: '2026-08-28', status: 'open', severity: 'critical' },
         { openedDate: '2026-08-25', status: 'resolved', severity: 'low', resolvedAt: '2026-08-29T11:00:00.000Z' }
       ]
     });
     assert.equal(snapshot.techHours.lineCount, 1);
-    assert.equal(snapshot.repairOrders.openCount, 33);
+    assert.equal(snapshot.repairOrders.openCount, 3);
+    assert.equal(snapshot.repairOrders.closedCount, 2);
+    assert.equal(snapshot.repairOrders.writtenCount, 1);
     assert.equal(snapshot.heatCases.openCount, 1);
     assert.equal(snapshot.heatCases.resolvedTodayCount, 1);
     assert.equal(snapshot.heatCases.criticalCount, 1);
