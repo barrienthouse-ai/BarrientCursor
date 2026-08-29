@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { auditWorkbook } from './reporting.js';
+import { auditWorkbook, DEFAULT_ADVISORS } from './reporting.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
@@ -19,6 +19,7 @@ export function createApp(store) {
     const data = store.read();
     res.json({
       roster: store.roster(),
+      advisors: data.config.advisors || DEFAULT_ADVISORS,
       timezone: data.config.timezone,
       submitter: data.config.submitter
     });

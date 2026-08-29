@@ -12,6 +12,7 @@ function SMR_ensureSheets() {
   SMR_upgradeTechHoursHeader_(ss.getSheetByName(SMR_SHEETS.TECH_HOURS));
   SMR_ensureSheet_(ss, SMR_SHEETS.GROSS, SMR_HEADERS.GROSS, []);
   SMR_ensureSheet_(ss, SMR_SHEETS.HEAT, SMR_HEADERS.HEAT, []);
+  SMR_upgradeHeatHeader_(ss.getSheetByName(SMR_SHEETS.HEAT));
   SMR_ensureSheet_(ss, SMR_SHEETS.ROS, SMR_HEADERS.ROS, []);
   SMR_ensureDashboard_(ss);
   return SMR_reservedSheetNames();
@@ -90,7 +91,7 @@ function SMR_readTail_(name, tailRows) {
     return { headers: [], values: [] };
   }
   var lastRow = sheet.getLastRow();
-  var lastCol = Math.min(Math.max(sheet.getLastColumn(), 1), 16);
+  var lastCol = Math.min(Math.max(sheet.getLastColumn(), 1), 18);
   if (lastRow < 1) {
     return { headers: [], values: [] };
   }
@@ -297,6 +298,27 @@ function SMR_upgradeTechHoursHeader_(sheet) {
     return;
   }
   sheet.getRange(1, 1, 1, SMR_HEADERS.TECH_HOURS.length).setValues([SMR_HEADERS.TECH_HOURS]);
+}
+
+function SMR_upgradeHeatHeader_(sheet) {
+  if (!sheet) {
+    return;
+  }
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+  var haveAdvisor = headers.indexOf('Advisor') !== -1;
+  var haveTech = headers.indexOf('Technician') !== -1;
+  if (haveAdvisor && haveTech) {
+    return;
+  }
+  var extras = [];
+  if (!haveAdvisor) {
+    extras.push('Advisor');
+  }
+  if (!haveTech) {
+    extras.push('Technician');
+  }
+  sheet.getRange(1, lastCol + 1, 1, extras.length).setValues([extras]);
 }
 
 function SMR_replaceDateRows_(sheet, dateColumnName, dateKey, newRows, headers) {

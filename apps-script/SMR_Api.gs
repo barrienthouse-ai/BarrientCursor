@@ -351,7 +351,11 @@ function SMR_addHeatCase(payload) {
   var openedDate = SMR_toDateKey_(payload.openedDate || payload.date);
   var id = payload.id || SMR_nextHeatId_(openedDate);
   var now = SMR_nowIso_();
-  SMR_sheet_(SMR_SHEETS.HEAT).appendRow([
+  var advisor = String(payload.advisor || payload.owner || '').trim();
+  var technician = String(payload.technician || '').trim();
+  var heatSheet = SMR_sheet_(SMR_SHEETS.HEAT);
+  SMR_upgradeHeatHeader_(heatSheet);
+  heatSheet.appendRow([
     id,
     openedDate,
     payload.customer || '',
@@ -359,12 +363,14 @@ function SMR_addHeatCase(payload) {
     payload.vehicle || '',
     issue,
     String(payload.severity || 'medium').toLowerCase(),
-    payload.owner || '',
+    advisor,
     'open',
     '',
     '',
     '',
-    now
+    now,
+    advisor,
+    technician
   ]);
   var rec = {
     id: id,
@@ -374,7 +380,9 @@ function SMR_addHeatCase(payload) {
     vehicle: payload.vehicle || '',
     issue: issue,
     severity: String(payload.severity || 'medium').toLowerCase(),
-    owner: payload.owner || '',
+    owner: advisor,
+    advisor: advisor,
+    technician: technician,
     status: 'open',
     briefedAt: '',
     resolvedAt: '',
@@ -617,6 +625,7 @@ function SMR_nextHeatId_(dateKey) {
 }
 
 function SMR_objectToHeat_(row) {
+  var advisor = String(row.Advisor || row.Owner || '').trim();
   return {
     id: String(row['Case ID'] || ''),
     openedDate: SMR_toDateKey_(row['Opened date']),
@@ -625,7 +634,9 @@ function SMR_objectToHeat_(row) {
     vehicle: row.Vehicle || '',
     issue: row.Issue || '',
     severity: String(row.Severity || 'medium').toLowerCase(),
-    owner: row.Owner || '',
+    owner: advisor,
+    advisor: advisor,
+    technician: String(row.Technician || '').trim(),
     status: String(row.Status || 'open').toLowerCase(),
     briefedAt: row['Briefed at'] || '',
     resolvedAt: row['Resolved at'] || '',

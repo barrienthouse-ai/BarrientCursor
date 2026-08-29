@@ -6,6 +6,7 @@ import {
   buildDailySnapshot,
   computeEfficiency,
   formatPercent,
+  heatAssignment,
   mergeHoursWithRoster,
   monthKey,
   nextHeatCaseId,
@@ -108,6 +109,16 @@ describe('heat cases', () => {
 
   it('refuses to mark a resolved case as briefed', () => {
     assert.throws(() => applyHeatTransition({ status: 'resolved' }, 'brief', 't'));
+  });
+
+  it('stores assigned advisor and technician, keeping owner as the advisor', () => {
+    const assigned = heatAssignment({ advisor: 'Cody Raffary', technician: 'BIG AL', owner: 'ignored' });
+    assert.equal(assigned.advisor, 'Cody Raffary');
+    assert.equal(assigned.technician, 'BIG AL');
+    assert.equal(assigned.owner, 'Cody Raffary');
+    const fromOwner = heatAssignment({ owner: 'Cody Raffary' });
+    assert.equal(fromOwner.advisor, 'Cody Raffary');
+    assert.equal(fromOwner.technician, '');
   });
 });
 

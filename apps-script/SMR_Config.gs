@@ -16,7 +16,7 @@ var SMR_SHEETS = {
 var SMR_HEADERS = {
   TECH_HOURS: ['Date', 'Tech name', 'Clock hours', 'Sold hours', 'Open ROs', 'Closed today', 'Written today', 'Notes', 'Submitted by', 'Submitted at'],
   GROSS: ['Date', 'Month', 'Period', 'Labor gross', 'Parts gross', 'Other gross', 'Total gross', 'Notes', 'Submitted by', 'Submitted at'],
-  HEAT: ['Case ID', 'Opened date', 'Customer', 'RO number', 'Vehicle', 'Issue', 'Severity', 'Owner', 'Status', 'Briefed at', 'Resolved at', 'Resolution notes', 'Updated at'],
+  HEAT: ['Case ID', 'Opened date', 'Customer', 'RO number', 'Vehicle', 'Issue', 'Severity', 'Owner', 'Status', 'Briefed at', 'Resolved at', 'Resolution notes', 'Updated at', 'Advisor', 'Technician'],
   ROS: ['Date', 'Open ROs', 'Closed today', 'Written today', 'Notes', 'Submitted by', 'Submitted at'],
   ROSTER: ['Tech name', 'Active'],
   CONFIG: ['Key', 'Value']
@@ -32,6 +32,10 @@ var SMR_DEFAULT_ROSTER = [
   'LIL-J',
   'EASY-E',
   'DUEL FUEL-A'
+];
+
+var SMR_DEFAULT_ADVISORS = [
+  'Cody Raffary'
 ];
 
 /** Existing Geaux Chevrolet tabs SMR must never create, rename, hide, or write. */

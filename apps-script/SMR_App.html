@@ -64,6 +64,15 @@
       <strong>Heat cases</strong>
       <div class="row">
         <label>Customer <input id="heatCustomer" /></label>
+        <label>Assigned advisor
+          <input id="heatAdvisor" list="advisorList" placeholder="Cody Raffary" />
+          <datalist id="advisorList"></datalist>
+        </label>
+        <label>Assigned technician
+          <select id="heatTechnician"></select>
+        </label>
+      </div>
+      <div class="row">
         <label>RO <input id="heatRo" /></label>
         <label>Severity
           <select id="heatSeverity">
@@ -76,7 +85,7 @@
         <button type="button" onclick="addHeat()">Add heat case</button>
       </div>
       <table>
-        <thead><tr><th>ID</th><th>Issue</th><th>Status</th><th>Resolved</th><th></th></tr></thead>
+        <thead><tr><th>Customer</th><th>Advisor</th><th>Tech</th><th>Issue</th><th>Status</th><th>Resolved</th><th></th></tr></thead>
         <tbody id="heatTable"></tbody>
       </table>
     </div>
@@ -85,6 +94,12 @@
     var SEED = <?!= seedJson ?>;
     var lastSummary = null;
     var DEFAULT_ROSTER = ['BIG AL', 'ELECTRIC-T', 'DIESEL-E', 'INTERNAL-F', 'HEAVY-C', 'SPECIAL-K', 'LIL-J', 'EASY-E', 'DUEL FUEL-A'];
+    var DEFAULT_ADVISORS = ['Cody Raffary'];
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    }
     function today() {
       var now = new Date();
       return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -198,6 +213,9 @@
       document.getElementById('status').textContent = 'Loaded ' + summary.date;
     }
     function applyPayload(payload, fromSeed) {
+      if (payload && payload.roster && payload.roster.length) {
+        fillHeatLookups(payload.roster);
+      }
       if (payload && payload.summary) {
         overlaySummary(payload.summary);
         document.getElementById('status').className = 'notice';
@@ -213,12 +231,32 @@
     }
     function renderHeat(rows) {
       document.getElementById('heatTable').innerHTML = rows.map(function (row) {
-        return '<tr><td>' + row.id + '</td><td>' + row.issue + '</td><td><span class="pill">' + row.status + '</span></td><td>' +
-          (row.resolvedAt || '—') + (row.resolutionNotes ? '<br>' + row.resolutionNotes : '') +
+        var customer = row.customer ? escapeHtml(row.customer) : '<span class="meta">No customer name</span>';
+        var advisor = escapeHtml(row.advisor || row.owner || '—');
+        var tech = escapeHtml(row.technician || '—');
+        return '<tr><td><strong>' + customer + '</strong><div class="meta">' + escapeHtml(row.id || '') +
+          (row.roNumber ? ' · ' + escapeHtml(row.roNumber) : '') + '</div></td><td>' + advisor + '</td><td>' + tech +
+          '</td><td>' + escapeHtml(row.issue || '') + '</td><td><span class="pill">' + escapeHtml(row.status) + '</span></td><td>' +
+          escapeHtml(row.resolvedAt || '—') + (row.resolutionNotes ? '<br>' + escapeHtml(row.resolutionNotes) : '') +
           '</td><td>' + (row.status === 'resolved'
-            ? '<button class="secondary" type="button" onclick="heatAction(\'' + row.id + '\',\'reopen\')">Reopen</button>'
-            : '<button class="secondary" type="button" onclick="heatAction(\'' + row.id + '\',\'brief\')">Briefed</button> ' +
-              '<button type="button" onclick="heatAction(\'' + row.id + '\',\'resolve\')">Resolve</button>') + '</td></tr>';
+            ? '<button class="secondary" type="button" onclick="heatAction(\'' + escapeHtml(row.id) + '\',\'reopen\')">Reopen</button>'
+            : '<button class="secondary" type="button" onclick="heatAction(\'' + escapeHtml(row.id) + '\',\'brief\')">Briefed</button> ' +
+              '<button type="button" onclick="heatAction(\'' + escapeHtml(row.id) + '\',\'resolve\')">Resolve</button>') + '</td></tr>';
+      }).join('');
+    }
+    function fillHeatLookups(roster) {
+      var names = roster && roster.length ? roster : DEFAULT_ROSTER;
+      var tech = document.getElementById('heatTechnician');
+      var current = tech.value;
+      tech.innerHTML = '<option value="">Select technician</option>' + names.map(function (name) {
+        return '<option value="' + escapeHtml(name) + '">' + escapeHtml(name) + '</option>';
+      }).join('');
+      if (current) {
+        tech.value = current;
+      }
+      var list = document.getElementById('advisorList');
+      list.innerHTML = DEFAULT_ADVISORS.map(function (name) {
+        return '<option value="' + escapeHtml(name) + '"></option>';
       }).join('');
     }
     function showRoster(names) {
@@ -268,6 +306,8 @@
       run('SMR_addHeatCase', [{
         openedDate: document.getElementById('reportDate').value,
         customer: document.getElementById('heatCustomer').value,
+        advisor: document.getElementById('heatAdvisor').value,
+        technician: document.getElementById('heatTechnician').value,
         roNumber: document.getElementById('heatRo').value,
         issue: document.getElementById('heatIssue').value,
         severity: document.getElementById('heatSeverity').value
@@ -284,6 +324,7 @@
     }
     document.getElementById('reportDate').value = today();
     document.getElementById('reportDate').onchange = recallDay;
+    fillHeatLookups(DEFAULT_ROSTER);
     showRoster(DEFAULT_ROSTER);
     if (SEED && SEED.summary) {
       applyPayload(SEED, true);

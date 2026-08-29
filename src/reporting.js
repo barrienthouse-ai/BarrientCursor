@@ -12,6 +12,18 @@ export const HEAT_RESOLVED = 'resolved';
 
 export const SEVERITIES = ['low', 'medium', 'high', 'critical'];
 
+export const DEFAULT_ADVISORS = ['Cody Raffary'];
+
+export function heatAssignment(payload = {}) {
+  const advisor = String(payload.advisor || payload.owner || '').trim();
+  const technician = String(payload.technician || '').trim();
+  return {
+    advisor,
+    technician,
+    owner: advisor
+  };
+}
+
 export function toDateKey(input, now = new Date()) {
   if (input instanceof Date && !Number.isNaN(input.getTime())) {
     return formatDateKey(input);

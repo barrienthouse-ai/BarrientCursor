@@ -121,7 +121,16 @@
         <h2>Log a heat case</h2>
         <div class="row">
           <label>Customer <input id="heatCustomer" /></label>
+          <label>Assigned advisor
+            <input id="heatAdvisor" list="advisorList" placeholder="Cody Raffary" />
+            <datalist id="advisorList"></datalist>
+          </label>
+          <label>Assigned technician
+            <select id="heatTechnician"></select>
+          </label>
           <label>RO number <input id="heatRo" /></label>
+        </div>
+        <div class="row">
           <label>Vehicle <input id="heatVehicle" /></label>
           <label>Severity
             <select id="heatSeverity">
@@ -131,10 +140,7 @@
               <option value="critical">Critical</option>
             </select>
           </label>
-        </div>
-        <div class="row">
-          <label>Owner <input id="heatOwner" /></label>
-          <label style="grid-column: span 3">Issue <input id="heatIssue" /></label>
+          <label style="grid-column: span 2">Issue <input id="heatIssue" /></label>
         </div>
         <div class="actions">
           <button class="btn primary" id="addHeat" type="button">Add heat case</button>
@@ -147,7 +153,7 @@
           <table>
             <thead>
               <tr>
-                <th>ID</th><th>Opened</th><th>Customer / RO</th><th>Issue</th><th>Severity</th><th>Status</th><th>Resolved</th><th></th>
+                <th>Customer</th><th>Advisor</th><th>Tech</th><th>Issue</th><th>Severity</th><th>Status</th><th>Resolved</th><th></th>
               </tr>
             </thead>
             <tbody id="heatTable"></tbody>

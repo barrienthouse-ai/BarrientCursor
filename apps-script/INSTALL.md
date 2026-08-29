@@ -39,12 +39,14 @@ The workbook is now readable. It already has 69 tabs, including `SERVICE BOARD` 
 
 This workbook is large (~18MB, 69 tabs). Each spreadsheet read from Apps Script is slow, so the briefing now avoids those reads after the first save.
 
-Replace these four files with the latest copies — no need to re-run `SMR_install`:
+Replace these files with the latest copies — no need to re-run `SMR_install` unless `SMR_HeatCases` is missing:
 
 - `SMR_App.html`
 - `SMR_Api.gs`
 - `SMR_Sheets.gs`
 - `SMR_Menu.gs`
+- `SMR_Config.gs`
+- `SMR_Dashboard.gs`
 
 What changes:
 
@@ -61,6 +63,7 @@ What changes:
 - **Recall day** — reloads a previously saved date into the form.
 - **Save daily report** — upserts that date in `SMR_TechHours`, `SMR_Gross`, and `SMR_RepairOrders`.
 - Heat cases stay on the briefing until **Resolve**. The resolved timestamp and notes are stored on `SMR_HeatCases`.
+- Each heat case now has a customer name, assigned service advisor, and assigned technician. Those show on the heat list. Adding a case appends `Advisor` and `Technician` columns on `SMR_HeatCases` if they are missing; existing rows are not rewritten.
 
 ## If you want a script-level review
 

@@ -78,6 +78,8 @@ describe('API', () => {
       body: JSON.stringify({
         openedDate: '2026-08-29',
         customer: 'Test Customer',
+        advisor: 'Cody Raffary',
+        technician: 'BIG AL',
         roNumber: 'RO-100',
         issue: 'Comeback on brakes',
         severity: 'high'
@@ -86,6 +88,15 @@ describe('API', () => {
     assert.equal(created.status, 201);
     assert.match(created.body.id, /^HEAT-20260829-001$/);
     assert.equal(created.body.status, 'open');
+    assert.equal(created.body.customer, 'Test Customer');
+    assert.equal(created.body.advisor, 'Cody Raffary');
+    assert.equal(created.body.technician, 'BIG AL');
+
+    const listed = await json(`${base}/api/heat-cases`);
+    const saved = listed.body.rows.find((row) => row.id === created.body.id);
+    assert.equal(saved.customer, 'Test Customer');
+    assert.equal(saved.advisor, 'Cody Raffary');
+    assert.equal(saved.technician, 'BIG AL');
 
     const briefed = await json(`${base}/api/heat-cases/${created.body.id}`, {
       method: 'PATCH',

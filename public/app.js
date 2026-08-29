@@ -3,6 +3,7 @@ const qty = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
 
 const state = {
   roster: [],
+  advisors: ['Cody Raffary'],
   snapshot: null
 };
 
@@ -138,13 +139,13 @@ function renderBriefing(snapshot) {
 
   $('openHeatList').innerHTML = snapshot.heatCases.open.length
     ? snapshot.heatCases.open.map((item) => (
-      `<p><strong>${escapeAttr(item.id)}</strong> ${heatPill(item.severity)} ${heatPill(item.status)}<br>${escapeAttr(item.customer || 'Customer n/a')} · ${escapeAttr(item.roNumber || 'RO n/a')}<br>${escapeAttr(item.issue)}</p>`
+      `<p><strong>${escapeAttr(item.customer || 'No customer name')}</strong> ${heatPill(item.severity)} ${heatPill(item.status)}<br>${escapeAttr(item.advisor || item.owner || 'Advisor n/a')} · ${escapeAttr(item.technician || 'Tech n/a')} · ${escapeAttr(item.roNumber || 'RO n/a')}<br>${escapeAttr(item.issue)}</p>`
     )).join('')
     : '<p class="meta">No open heat cases.</p>';
 
   $('resolvedHeatList').innerHTML = snapshot.heatCases.resolvedToday.length
     ? snapshot.heatCases.resolvedToday.map((item) => (
-      `<p><strong>${escapeAttr(item.id)}</strong> resolved ${escapeAttr(item.resolvedAt || '')}<br>${escapeAttr(item.resolutionNotes || 'No resolution notes')}</p>`
+      `<p><strong>${escapeAttr(item.customer || item.id)}</strong> resolved ${escapeAttr(item.resolvedAt || '')}<br>${escapeAttr(item.advisor || item.owner || '')}${item.technician ? ` · ${escapeAttr(item.technician)}` : ''}<br>${escapeAttr(item.resolutionNotes || 'No resolution notes')}</p>`
     )).join('')
     : '<p class="meta">No heat cases were marked resolved on this date.</p>';
 }
@@ -195,9 +196,9 @@ async function loadHeatBoard() {
   const { rows } = await api('/api/heat-cases');
   $('heatTable').innerHTML = rows.sort((a, b) => b.openedDate.localeCompare(a.openedDate)).map((item) => `
     <tr>
-      <td>${escapeAttr(item.id)}</td>
-      <td>${escapeAttr(item.openedDate)}</td>
-      <td>${escapeAttr(item.customer || '—')}<br>${escapeAttr(item.roNumber || '')}</td>
+      <td><strong>${escapeAttr(item.customer || 'No customer name')}</strong><br><span class="meta">${escapeAttr(item.id)}${item.roNumber ? ` · ${escapeAttr(item.roNumber)}` : ''}</span></td>
+      <td>${escapeAttr(item.advisor || item.owner || '—')}</td>
+      <td>${escapeAttr(item.technician || '—')}</td>
       <td>${escapeAttr(item.issue)}</td>
       <td>${heatPill(item.severity)}</td>
       <td>${heatPill(item.status)}</td>
@@ -208,6 +209,20 @@ async function loadHeatBoard() {
       </td>
     </tr>
   `).join('');
+}
+
+function fillHeatLookups() {
+  const tech = $('heatTechnician');
+  const current = tech.value;
+  tech.innerHTML = '<option value="">Select technician</option>' + state.roster.map((name) => (
+    `<option value="${escapeAttr(name)}">${escapeAttr(name)}</option>`
+  )).join('');
+  if (current) {
+    tech.value = current;
+  }
+  $('advisorList').innerHTML = state.advisors.map((name) => (
+    `<option value="${escapeAttr(name)}"></option>`
+  )).join('');
 }
 
 async function init() {
@@ -226,6 +241,8 @@ async function init() {
 
   const config = await api('/api/config');
   state.roster = config.roster;
+  state.advisors = config.advisors || state.advisors;
+  fillHeatLookups();
   await loadDay();
   await loadHeatBoard();
 
@@ -269,11 +286,12 @@ async function init() {
         body: JSON.stringify({
           openedDate: $('reportDate').value,
           customer: $('heatCustomer').value,
+          advisor: $('heatAdvisor').value,
+          technician: $('heatTechnician').value,
           roNumber: $('heatRo').value,
           vehicle: $('heatVehicle').value,
           issue: $('heatIssue').value,
-          severity: $('heatSeverity').value,
-          owner: $('heatOwner').value
+          severity: $('heatSeverity').value
         })
       });
       $('heatCustomer').value = '';

@@ -23,6 +23,9 @@ describe('SMR load-speed contract', () => {
     assert.match(html, /Opened instantly from last save/);
     assert.match(html, /if \(SEED && SEED\.summary\)/);
     assert.doesNotMatch(html, /SMR_ensureSheets/);
+    assert.match(html, /id="heatAdvisor"/);
+    assert.match(html, /id="heatTechnician"/);
+    assert.match(html, /<th>Customer<\/th>/);
   });
 
   it('loads a briefing from SMR_ properties before touching SMR sheets', () => {

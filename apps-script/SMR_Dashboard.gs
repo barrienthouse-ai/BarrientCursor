@@ -38,12 +38,12 @@ function SMR_refreshDashboard() {
   }
 
   sheet.getRange('A32').setValue('Open heat cases');
-  sheet.getRange('A33:F33').setValues([['Case ID', 'Customer', 'RO', 'Severity', 'Status', 'Issue']]);
+  sheet.getRange('A33:H33').setValues([['Case ID', 'Customer', 'Advisor', 'Technician', 'RO', 'Severity', 'Status', 'Issue']]);
   if (summary.heatCases.open.length) {
     var heatRows = summary.heatCases.open.map(function (row) {
-      return [row.id, row.customer, row.roNumber, row.severity, row.status, row.issue];
+      return [row.id, row.customer, row.advisor || row.owner || '', row.technician || '', row.roNumber, row.severity, row.status, row.issue];
     });
-    sheet.getRange(34, 1, heatRows.length, 6).setValues(heatRows);
+    sheet.getRange(34, 1, heatRows.length, 8).setValues(heatRows);
   } else {
     sheet.getRange('A34').setValue('No open heat cases.');
   }
@@ -60,6 +60,6 @@ function SMR_refreshDashboard() {
   }
 
   sheet.setFrozenRows(2);
-  sheet.autoResizeColumns(1, 6);
+  sheet.autoResizeColumns(1, 8);
   return summary.date;
 }
