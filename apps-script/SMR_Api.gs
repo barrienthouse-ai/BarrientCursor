@@ -60,16 +60,15 @@ function SMR_saveGross(payload) {
   var dateKey = SMR_toDateKey_(payload.date);
   var month = payload.month || SMR_monthKey_(dateKey);
   var labor = SMR_toNumber_(payload.laborGross);
-  var parts = SMR_toNumber_(payload.partsGross);
   var other = SMR_toNumber_(payload.otherGross);
   var row = [[
     period === 'monthly' ? month + '-01' : dateKey,
     month,
     period,
     labor,
-    parts,
+    0,
     other,
-    labor + parts + other,
+    labor + other,
     payload.notes || '',
     payload.submittedBy || 'Service Manager',
     payload.submittedAt || SMR_nowIso_()
@@ -210,6 +209,7 @@ function SMR_getSummary(dateKey) {
   var key = SMR_toDateKey_(dateKey);
   var month = SMR_monthKey_(key);
   var hoursRows = SMR_recallTechHours(key);
+  var formRows = SMR_mergeHoursWithRoster_(hoursRows);
   var clock = 0;
   var sold = 0;
   hoursRows.forEach(function (row) {
@@ -225,20 +225,18 @@ function SMR_getSummary(dateKey) {
     var date = SMR_toDateKey_(row.Date);
     var rowMonth = String(row.Month || SMR_monthKey_(date));
     var labor = SMR_toNumber_(row['Labor gross']);
-    var parts = SMR_toNumber_(row['Parts gross']);
     var other = SMR_toNumber_(row['Other gross']);
-    var total = labor + parts + other;
+    var total = labor + other;
     if (period === 'daily' && date === key) {
-      dailyGross = { laborGross: labor, partsGross: parts, otherGross: other, totalGross: total };
+      dailyGross = { laborGross: labor, partsGross: 0, otherGross: other, totalGross: total };
     }
     if (period === 'daily' && date.indexOf(month) === 0) {
       monthFromDailies.laborGross += labor;
-      monthFromDailies.partsGross += parts;
       monthFromDailies.otherGross += other;
       monthFromDailies.totalGross += total;
     }
     if (period === 'monthly' && rowMonth === month) {
-      monthlyOverride = { laborGross: labor, partsGross: parts, otherGross: other, totalGross: total };
+      monthlyOverride = { laborGross: labor, partsGross: 0, otherGross: other, totalGross: total };
     }
   });
   var roRows = SMR_readObjects_(SMR_sheet_(SMR_SHEETS.ROS)).filter(function (row) {
@@ -256,6 +254,7 @@ function SMR_getSummary(dateKey) {
     month: month,
     techHours: {
       rows: hoursRows,
+      formRows: formRows,
       clockHours: clock,
       soldHours: sold,
       lineCount: hoursRows.length,
@@ -285,6 +284,36 @@ function SMR_getSummary(dateKey) {
       resolvedToday: resolvedToday
     }
   };
+}
+
+function SMR_mergeHoursWithRoster_(savedRows) {
+  var roster = SMR_getConfig().roster;
+  var byName = {};
+  (savedRows || []).forEach(function (row) {
+    var key = String(row.techName || '').trim().toUpperCase();
+    if (key) {
+      byName[key] = row;
+    }
+  });
+  var used = {};
+  var merged = roster.map(function (name) {
+    var key = String(name).trim().toUpperCase();
+    used[key] = true;
+    var existing = byName[key];
+    return {
+      techName: name,
+      clockHours: existing ? existing.clockHours : 8,
+      soldHours: existing ? existing.soldHours : '',
+      notes: existing ? existing.notes || '' : ''
+    };
+  });
+  (savedRows || []).forEach(function (row) {
+    var key = String(row.techName || '').trim().toUpperCase();
+    if (key && !used[key]) {
+      merged.push(row);
+    }
+  });
+  return merged;
 }
 
 function SMR_nextHeatId_(dateKey) {

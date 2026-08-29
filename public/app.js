@@ -49,9 +49,6 @@ function renderHoursRows(rows) {
   const host = $('techHourRows');
   host.innerHTML = '';
   const list = rows.length ? rows : state.roster.map((techName) => ({ techName, clockHours: 8, soldHours: '', notes: '' }));
-  if (!list.length) {
-    list.push({ techName: '', clockHours: 8, soldHours: '', notes: '' });
-  }
   for (const row of list) {
     host.appendChild(techRow(row));
   }
@@ -61,13 +58,15 @@ function techRow(row = {}) {
   const wrap = document.createElement('div');
   wrap.className = 'row five tech-row';
   wrap.innerHTML = `
-    <label>Tech <input class="tech-name" value="${escapeAttr(row.techName || '')}" /></label>
-    <label>Clock <input class="tech-clock" type="number" step="0.1" value="${row.clockHours ?? ''}" /></label>
+    <div>
+      <div class="label">Tech</div>
+      <span class="tech-name-label">${escapeAttr(row.techName || '')}</span>
+      <input class="tech-name" type="hidden" value="${escapeAttr(row.techName || '')}" />
+    </div>
+    <label>Clock <input class="tech-clock" type="number" step="0.1" value="${row.clockHours ?? 8}" /></label>
     <label>Sold <input class="tech-sold" type="number" step="0.1" value="${row.soldHours ?? ''}" /></label>
     <label>Notes <input class="tech-notes" value="${escapeAttr(row.notes || '')}" /></label>
-    <button class="btn ghost remove-row" type="button">Remove</button>
   `;
-  wrap.querySelector('.remove-row').addEventListener('click', () => wrap.remove());
   return wrap;
 }
 
@@ -122,10 +121,9 @@ function renderBriefing(snapshot) {
 }
 
 function fillDailyForm(snapshot) {
-  renderHoursRows(snapshot.techHours.rows);
+  renderHoursRows(snapshot.techHours.formRows || snapshot.techHours.rows);
   const daily = snapshot.gross.daily;
   $('laborGross').value = daily.laborGross || '';
-  $('partsGross').value = daily.partsGross || '';
   $('otherGross').value = daily.otherGross || '';
   $('grossNotes').value = '';
   $('grossPeriod').value = 'daily';
@@ -153,7 +151,7 @@ async function loadHistory() {
   )).join('');
   const byDate = new Map();
   for (const row of gross.rows) {
-    byDate.set(row.date, { date: row.date, gross: row.laborGross + row.partsGross + row.otherGross, open: '—', closed: '—', written: '—' });
+    byDate.set(row.date, { date: row.date, gross: (row.laborGross || 0) + (row.otherGross || 0), open: '—', closed: '—', written: '—' });
   }
   for (const row of ros.rows) {
     const current = byDate.get(row.date) || { date: row.date, gross: 0, open: 0, closed: 0, written: 0 };
@@ -211,7 +209,6 @@ async function init() {
     $('dailyStatus').textContent = `Recalled ${$('reportDate').value}.`;
   });
   $('reportDate').addEventListener('change', loadDay);
-  $('addTechRow').addEventListener('click', () => $('techHourRows').appendChild(techRow()));
 
   $('saveDaily').addEventListener('click', async () => {
     $('dailyStatus').textContent = 'Saving…';
@@ -225,7 +222,6 @@ async function init() {
           gross: {
             period: $('grossPeriod').value,
             laborGross: $('laborGross').value,
-            partsGross: $('partsGross').value,
             otherGross: $('otherGross').value,
             notes: $('grossNotes').value
           },

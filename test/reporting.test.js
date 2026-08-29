@@ -6,6 +6,7 @@ import {
   buildDailySnapshot,
   computeEfficiency,
   formatPercent,
+  mergeHoursWithRoster,
   monthKey,
   nextHeatCaseId,
   reservedSheetNames,
@@ -44,8 +45,8 @@ describe('gross rollup', () => {
 
   it('sums daily entries for the month when no override exists', () => {
     const rollup = rollupGross(entries, '2026-08-29');
-    assert.equal(rollup.daily.totalGross, 2900);
-    assert.equal(rollup.monthly.totalGross, 4350);
+    assert.equal(rollup.daily.totalGross, 2100);
+    assert.equal(rollup.monthly.totalGross, 3150);
     assert.equal(rollup.monthly.source, 'daily-sum');
   });
 
@@ -54,8 +55,22 @@ describe('gross rollup', () => {
       [...entries, { period: 'monthly', month: '2026-08', date: '2026-08-01', laborGross: 50000, partsGross: 20000, otherGross: 0 }],
       '2026-08-29'
     );
-    assert.equal(rollup.monthly.totalGross, 70000);
+    assert.equal(rollup.monthly.totalGross, 50000);
     assert.equal(rollup.monthly.source, 'override');
+  });
+});
+
+describe('roster hours', () => {
+  it('fills every roster tech without asking for a name', () => {
+    const merged = mergeHoursWithRoster(
+      [{ techName: 'HEAVY-C', clockHours: 8, soldHours: 13 }],
+      ['BIG AL', 'HEAVY-C', 'LIL-J']
+    );
+    assert.equal(merged.length, 3);
+    assert.equal(merged[0].techName, 'BIG AL');
+    assert.equal(merged[0].clockHours, 8);
+    assert.equal(merged[1].soldHours, 13);
+    assert.equal(merged[2].techName, 'LIL-J');
   });
 });
 

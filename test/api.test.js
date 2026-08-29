@@ -54,7 +54,7 @@ describe('API', () => {
             { techName: 'Jordan Hale', clockHours: 8, soldHours: 7 }
           ]
         },
-        gross: { laborGross: 3000, partsGross: 1200, otherGross: 100 },
+        gross: { laborGross: 3000, otherGross: 100 },
         repairOrders: { openCount: 30, closedCount: 16, writtenCount: 19 }
       })
     });
@@ -64,7 +64,8 @@ describe('API', () => {
 
     const recalled = await json(`${base}/api/daily-report/2026-08-29`);
     assert.equal(recalled.body.techHours.rows.length, 2);
-    assert.equal(recalled.body.gross.daily.totalGross, 4300);
+    assert.equal(recalled.body.gross.daily.totalGross, 3100);
+    assert.equal(recalled.body.gross.daily.partsGross, 0);
 
     const hours = await json(`${base}/api/tech-hours?date=2026-08-29`);
     assert.equal(hours.body.rows[0].techName, 'Alex Rivera');

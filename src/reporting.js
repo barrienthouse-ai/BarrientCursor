@@ -80,10 +80,36 @@ export function totalGrossAmount(entry) {
   if (!entry) {
     return 0;
   }
-  if (entry.totalGross !== undefined && entry.totalGross !== null && entry.totalGross !== '') {
-    return toNumber(entry.totalGross);
+  return toNumber(entry.laborGross) + toNumber(entry.otherGross);
+}
+
+export function mergeHoursWithRoster(savedRows = [], roster = []) {
+  const byName = new Map();
+  for (const row of savedRows) {
+    const key = String(row.techName || '').trim().toUpperCase();
+    if (key) {
+      byName.set(key, row);
+    }
   }
-  return toNumber(entry.laborGross) + toNumber(entry.partsGross) + toNumber(entry.otherGross);
+  const used = new Set();
+  const merged = roster.filter(Boolean).map((name) => {
+    const key = String(name).trim().toUpperCase();
+    used.add(key);
+    const existing = byName.get(key);
+    return {
+      techName: name,
+      clockHours: existing ? existing.clockHours : 8,
+      soldHours: existing ? existing.soldHours : '',
+      notes: existing ? existing.notes || '' : ''
+    };
+  });
+  for (const row of savedRows) {
+    const key = String(row.techName || '').trim().toUpperCase();
+    if (key && !used.has(key)) {
+      merged.push(row);
+    }
+  }
+  return merged;
 }
 
 export function sumGross(rows = []) {
@@ -228,7 +254,7 @@ export function findDailyRo(rows = [], dateKey) {
   return matches.length ? matches[matches.length - 1] : null;
 }
 
-export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [], repairOrders = [], heatCases = [] }) {
+export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [], repairOrders = [], heatCases = [], roster = [] }) {
   const key = toDateKey(dateKey);
   const hoursRows = filterByDate(techHours, key);
   const hours = sumTechHours(hoursRows);
@@ -241,6 +267,7 @@ export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [],
     month: monthKey(key),
     techHours: {
       rows: hoursRows,
+      formRows: mergeHoursWithRoster(hoursRows, roster),
       clockHours: hours.clockHours,
       soldHours: hours.soldHours,
       lineCount: hours.lineCount,

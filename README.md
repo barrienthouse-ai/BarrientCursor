@@ -4,8 +4,9 @@ Reporting tool for the service manager to send daily numbers up to leadership, w
 
 ## What it tracks
 
-- Daily technician clock and sold hours, with recall of any previously saved day
-- Service department gross, daily or as a monthly override / month-to-date rollup
+- Daily technician clock and sold hours, with names filled from the service roster
+- Service department gross only (labor and other service). Parts is out of scope
+- Recall of any previously saved day
 - Open ROs, ROs written, and ROs closed that day
 - Heat cases that need a briefing, including who owns them and when they were resolved
 

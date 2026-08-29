@@ -39,12 +39,11 @@
     </div>
     <div class="panel">
       <strong>Daily entry</strong>
+      <p class="meta">Tech names come from SMR_Roster. Service gross only — parts are tracked separately.</p>
       <div id="techRows"></div>
-      <div class="actions"><button class="secondary" type="button" onclick="addTechRow()">Add tech</button></div>
       <div class="row">
-        <label>Labor <input id="laborGross" type="number" /></label>
-        <label>Parts <input id="partsGross" type="number" /></label>
-        <label>Other <input id="otherGross" type="number" /></label>
+        <label>Service labor <input id="laborGross" type="number" /></label>
+        <label>Other service <input id="otherGross" type="number" /></label>
         <label>Period
           <select id="grossPeriod">
             <option value="daily">Daily</option>
@@ -101,11 +100,10 @@
       var host = document.getElementById('techRows');
       var wrap = document.createElement('div');
       wrap.className = 'row tech-row';
-      wrap.innerHTML = '<label>Tech <input class="tech-name" value="' + (row.techName || '') + '"></label>' +
-        '<label>Clock <input class="tech-clock" type="number" value="' + (row.clockHours || '') + '"></label>' +
-        '<label>Sold <input class="tech-sold" type="number" value="' + (row.soldHours || '') + '"></label>' +
-        '<label><button class="secondary" type="button">Remove</button></label>';
-      wrap.querySelector('button').onclick = function () { wrap.remove(); };
+      wrap.innerHTML = '<label>Tech<br><strong>' + (row.techName || '') + '</strong>' +
+        '<input class="tech-name" type="hidden" value="' + (row.techName || '') + '"></label>' +
+        '<label>Clock <input class="tech-clock" type="number" value="' + (row.clockHours || 8) + '"></label>' +
+        '<label>Sold <input class="tech-sold" type="number" value="' + (row.soldHours || '') + '"></label>';
       host.appendChild(wrap);
     }
     function readTechRows() {
@@ -123,13 +121,8 @@
       document.getElementById('kpiRos').textContent = summary.repairOrders.openCount + ' / ' + summary.repairOrders.closedCount + ' / ' + summary.repairOrders.writtenCount;
       document.getElementById('kpiHeat').textContent = String(summary.heatCases.openCount);
       document.getElementById('techRows').innerHTML = '';
-      if (summary.techHours.rows.length) {
-        summary.techHours.rows.forEach(addTechRow);
-      } else {
-        addTechRow();
-      }
+      (summary.techHours.formRows || summary.techHours.rows || []).forEach(addTechRow);
       document.getElementById('laborGross').value = summary.gross.daily.laborGross || '';
-      document.getElementById('partsGross').value = summary.gross.daily.partsGross || '';
       document.getElementById('otherGross').value = summary.gross.daily.otherGross || '';
       document.getElementById('openCount').value = summary.repairOrders.reported ? summary.repairOrders.openCount : '';
       document.getElementById('closedCount').value = summary.repairOrders.reported ? summary.repairOrders.closedCount : '';
@@ -158,7 +151,6 @@
         gross: {
           period: document.getElementById('grossPeriod').value,
           laborGross: document.getElementById('laborGross').value,
-          partsGross: document.getElementById('partsGross').value,
           otherGross: document.getElementById('otherGross').value
         },
         repairOrders: {
@@ -189,10 +181,7 @@
     }
     document.getElementById('reportDate').value = today();
     document.getElementById('reportDate').onchange = recallDay;
-    run('SMR_getConfig', [], function (config) {
-      if (!document.querySelector('.tech-row')) {
-        (config.roster || []).forEach(function (name) { addTechRow({ techName: name, clockHours: 8 }); });
-      }
+    run('SMR_getConfig', [], function () {
       recallDay();
     });
   </script>

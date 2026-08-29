@@ -81,19 +81,16 @@
     <section id="daily" class="tab-page hidden">
       <article class="panel">
         <h2>Technician hours</h2>
-        <p class="meta">Enter daily hours. Recall loads the last saved report for the selected date.</p>
+        <p class="meta">Names come from the service roster. Enter clock and sold hours only. Add or remove a tech on the SMR_Roster tab, not here.</p>
         <div id="techHourRows"></div>
-        <div class="actions">
-          <button class="btn" id="addTechRow" type="button">Add tech line</button>
-        </div>
       </article>
       <div class="grid two" style="margin-top:14px">
         <article class="panel">
           <h2>Service department gross</h2>
+          <p class="meta">Service only. Parts gross is tracked in a separate tool.</p>
           <div class="row">
-            <label>Labor <input id="laborGross" type="number" step="0.01" /></label>
-            <label>Parts <input id="partsGross" type="number" step="0.01" /></label>
-            <label>Other <input id="otherGross" type="number" step="0.01" /></label>
+            <label>Service labor <input id="laborGross" type="number" step="0.01" /></label>
+            <label>Other service <input id="otherGross" type="number" step="0.01" /></label>
             <label>Period
               <select id="grossPeriod">
                 <option value="daily">Daily</option>

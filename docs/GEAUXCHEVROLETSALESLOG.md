@@ -41,6 +41,6 @@ Those hidden `FullJSON` tabs plus `EMAIL_QUEUE`, `QUOTE_STORE`, and the AutoCrat
 SMR adds only `SMR_Dashboard`, `SMR_TechHours`, `SMR_Gross`, `SMR_HeatCases`, `SMR_RepairOrders`, `SMR_Roster`, and `SMR_Config`.
 
 - Daily tech hours with date recall live on `SMR_TechHours`. That does not replace the weekly `SERVICE BOARD`.
-- Daily / monthly service gross live on `SMR_Gross`. `SUMMARY` Service MTD stays a sales-side formula.
+- Daily / monthly **service** gross live on `SMR_Gross` (labor + other service). Parts is not entered here. `SUMMARY` Service MTD stays a sales-side formula.
 - Open / closed / written RO counts the manager types each day live on `SMR_RepairOrders`. `SVC_RO` stays the operational RO file.
 - Heat cases are new on `SMR_HeatCases`.

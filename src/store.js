@@ -54,7 +54,8 @@ export function createStore(filePath) {
       techHours: state.techHours,
       grossEntries: state.gross,
       repairOrders: state.repairOrders,
-      heatCases: state.heatCases
+      heatCases: state.heatCases,
+      roster: state.roster
     });
   }
 
@@ -117,7 +118,7 @@ export function createStore(filePath) {
         month,
         period,
         laborGross: toNumber(payload.laborGross),
-        partsGross: toNumber(payload.partsGross),
+        partsGross: 0,
         otherGross: toNumber(payload.otherGross),
         notes: payload.notes || '',
         submittedBy,
@@ -262,7 +263,7 @@ export function seedStore() {
         ['HEAVY-C', 8, 8.6],
         ['SPECIAL-K', 8, 4.0]
       ],
-      gross: [4120, 2860, 240],
+      gross: [4120, 240],
       ro: [38, 19, 22]
     },
     {
@@ -274,7 +275,7 @@ export function seedStore() {
         ['DUEL FUEL-A', 8, 12.6],
         ['LIL-J', 8, 2.6]
       ],
-      gross: [4585, 3010, 180],
+      gross: [4585, 180],
       ro: [36, 21, 24]
     },
     {
@@ -286,7 +287,7 @@ export function seedStore() {
         ['HEAVY-C', 8, 15.5],
         ['SPECIAL-K', 8, 7.4]
       ],
-      gross: [4390, 2745, 310],
+      gross: [4390, 310],
       ro: [34, 23, 20]
     },
     {
@@ -298,7 +299,7 @@ export function seedStore() {
         ['HEAVY-C', 8, 13.0],
         ['SPECIAL-K', 8, 13.1]
       ],
-      gross: [4215, 2680, 195],
+      gross: [4215, 195],
       ro: [33, 18, 21]
     }
   ];
@@ -322,8 +323,8 @@ export function seedStore() {
       month: day.date.slice(0, 7),
       period: 'daily',
       laborGross: day.gross[0],
-      partsGross: day.gross[1],
-      otherGross: day.gross[2],
+      partsGross: 0,
+      otherGross: day.gross[1],
       notes: '',
       submittedBy: 'Service Manager',
       submittedAt: `${day.date}T17:15:00.000Z`
