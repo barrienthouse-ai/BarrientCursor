@@ -4,7 +4,8 @@ const qty = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
 const state = {
   roster: [],
   advisors: ['Cody Raffary'],
-  snapshot: null
+  snapshot: null,
+  weekMode: 'sold'
 };
 
 function $(id) {
@@ -64,11 +65,12 @@ function techRow(row = {}) {
       <span class="tech-name-label">${escapeAttr(row.techName || '')}</span>
       <input class="tech-name" type="hidden" value="${escapeAttr(row.techName || '')}" />
     </div>
-    <label>Clock <input class="tech-clock" type="number" step="0.1" value="${row.clockHours ?? 8}" /></label>
-    <label>Sold <input class="tech-sold" type="number" step="0.1" value="${row.soldHours ?? ''}" /></label>
-    <label>Open ROs <input class="tech-open" type="number" value="${row.openCount ?? ''}" /></label>
-    <label>Closed <input class="tech-closed" type="number" value="${row.closedCount ?? ''}" /></label>
-    <label>Written <input class="tech-written" type="number" value="${row.writtenCount ?? ''}" /></label>
+    <label>Clock today <input class="tech-clock" type="number" step="0.1" value="${row.clockHours ?? 8}" /></label>
+    <label>Sold today <input class="tech-sold" type="number" step="0.1" value="${row.soldHours ?? ''}" /></label>
+    <div>
+      <div class="label">${state.weekMode === 'payroll' ? 'Week payroll' : 'Week sold'}</div>
+      <div class="week-hours" data-tech="${escapeAttr(row.techName || '')}">—</div>
+    </div>
   `;
   wrap.querySelectorAll('input').forEach((input) => input.addEventListener('input', liveTotals));
   return wrap;
@@ -78,10 +80,7 @@ function readTechRows() {
   return [...document.querySelectorAll('.tech-row')].map((row) => ({
     techName: row.querySelector('.tech-name').value,
     clockHours: row.querySelector('.tech-clock').value,
-    soldHours: row.querySelector('.tech-sold').value,
-    openCount: row.querySelector('.tech-open').value,
-    closedCount: row.querySelector('.tech-closed').value,
-    writtenCount: row.querySelector('.tech-written').value
+    soldHours: row.querySelector('.tech-sold').value
   }));
 }
 
@@ -89,24 +88,12 @@ function liveTotals() {
   const rows = readTechRows();
   let clock = 0;
   let sold = 0;
-  let open = 0;
-  let closed = 0;
-  let written = 0;
   for (const row of rows) {
     clock += Number(row.clockHours) || 0;
     sold += Number(row.soldHours) || 0;
-    open += Number(row.openCount) || 0;
-    closed += Number(row.closedCount) || 0;
-    written += Number(row.writtenCount) || 0;
   }
   $('kpiHours').textContent = `${qty.format(sold)} / ${qty.format(clock)}`;
-  $('kpiRos').textContent = `${open} / ${closed} / ${written}`;
-  $('kpiRoNote').textContent = 'Open / closed today / written today — sum of technician lines';
-  if ($('openCount')) {
-    $('openCount').value = open;
-    $('closedCount').value = closed;
-    $('writtenCount').value = written;
-  }
+  applyWeekView();
 }
 
 function escapeAttr(value) {
@@ -124,10 +111,7 @@ function renderBriefing(snapshot) {
   $('kpiEfficiency').textContent = `Efficiency ${pct(snapshot.techHours.efficiency)} · ${snapshot.techHours.lineCount} tech lines`;
   $('kpiGross').textContent = money.format(snapshot.gross.daily.totalGross);
   $('kpiGrossMonth').textContent = `MTD ${money.format(snapshot.gross.monthly.totalGross)} (${snapshot.gross.monthly.source === 'override' ? 'monthly override' : 'sum of dailies'})`;
-  $('kpiRos').textContent = snapshot.repairOrders.reported
-    ? `${snapshot.repairOrders.openCount} / ${snapshot.repairOrders.closedCount} / ${snapshot.repairOrders.writtenCount}`
-    : '—';
-  $('kpiRoNote').textContent = snapshot.repairOrders.reported ? 'Open / closed today / written today' : 'No RO report saved for this date';
+  applyWeekView();
   $('kpiHeat').textContent = String(snapshot.heatCases.openCount);
   $('kpiHeatNote').textContent = `${snapshot.heatCases.awaitingBriefing} need briefing · ${snapshot.heatCases.resolvedTodayCount} resolved this day`;
   $('kpiHeatCard').classList.toggle('critical', snapshot.heatCases.criticalCount > 0);
@@ -150,6 +134,46 @@ function renderBriefing(snapshot) {
     : '<p class="meta">No heat cases were marked resolved on this date.</p>';
 }
 
+function currentWeek() {
+  const weeks = state.snapshot && state.snapshot.weekHours ? state.snapshot.weekHours : {};
+  return weeks[state.weekMode] || { rows: [], total: 0, start: '', end: '', label: state.weekMode === 'payroll' ? 'Payroll week (Tue–Mon)' : 'Sold week (Mon–Fri)' };
+}
+
+function setWeekMode(mode) {
+  state.weekMode = mode === 'payroll' ? 'payroll' : 'sold';
+  if ($('weekSoldBtn')) {
+    $('weekSoldBtn').className = state.weekMode === 'sold' ? 'btn primary' : 'btn ghost';
+    $('weekPayrollBtn').className = state.weekMode === 'payroll' ? 'btn primary' : 'btn ghost';
+  }
+  applyWeekView();
+}
+
+function applyWeekView() {
+  const week = currentWeek();
+  const byName = {};
+  (week.rows || []).forEach((row) => {
+    byName[String(row.techName || '').trim().toUpperCase()] = row.hours;
+  });
+  document.querySelectorAll('.week-hours').forEach((cell) => {
+    const key = String(cell.getAttribute('data-tech') || '').trim().toUpperCase();
+    cell.textContent = byName[key] != null ? qty.format(byName[key]) : '0';
+  });
+  if ($('kpiWeekLabel')) {
+    $('kpiWeekLabel').textContent = week.label || (state.weekMode === 'payroll' ? 'Payroll week (Tue–Mon)' : 'Sold week (Mon–Fri)');
+    $('kpiWeek').textContent = week.total != null ? qty.format(week.total) : '—';
+    $('kpiWeekNote').textContent = week.start && week.end ? `${week.start} to ${week.end}` : 'Save daily hours to build the week total.';
+  }
+  if ($('weekRangeLabel')) {
+    $('weekRangeLabel').textContent = week.start && week.end
+      ? `${week.label}: ${week.start} to ${week.end}`
+      : 'Save daily hours to build the week total.';
+  }
+  if ($('weekSoldTotal') && state.snapshot && state.snapshot.weekHours) {
+    $('weekSoldTotal').value = state.snapshot.weekHours.sold.total;
+    $('weekPayrollTotal').value = state.snapshot.weekHours.payroll.total;
+  }
+}
+
 function fillDailyForm(snapshot) {
   renderHoursRows(snapshot.techHours.formRows || snapshot.techHours.rows);
   const daily = snapshot.gross.daily;
@@ -166,6 +190,7 @@ async function loadDay() {
   state.snapshot = snapshot;
   renderBriefing(snapshot);
   fillDailyForm(snapshot);
+  applyWeekView();
   return snapshot;
 }
 
@@ -246,6 +271,10 @@ async function init() {
   await loadDay();
   await loadHeatBoard();
 
+  if ($('weekSoldBtn')) {
+    $('weekSoldBtn').addEventListener('click', () => setWeekMode('sold'));
+    $('weekPayrollBtn').addEventListener('click', () => setWeekMode('payroll'));
+  }
   $('recallBtn').addEventListener('click', async () => {
     await loadDay();
     setTab('daily');

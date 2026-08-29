@@ -11,7 +11,6 @@ import {
   nextHeatCaseId,
   normalizeHeatStatus,
   normalizeSeverity,
-  sumRepairOrders,
   toDateKey,
   toNumber
 } from './reporting.js';
@@ -209,14 +208,8 @@ export function createStore(filePath) {
       const date = toDateKey(payload.date);
       if (payload.techHours) {
         this.saveTechHours({ date, ...payload.techHours, submittedBy: payload.submittedBy });
-        const summed = sumRepairOrders(payload.techHours.rows || payload.techHours || []);
-        this.saveRepairOrders({
-          date,
-          ...summed,
-          notes: payload.repairOrders ? payload.repairOrders.notes : '',
-          submittedBy: payload.submittedBy
-        });
-      } else if (payload.repairOrders) {
+      }
+      if (payload.repairOrders) {
         this.saveRepairOrders({ date, ...payload.repairOrders, submittedBy: payload.submittedBy });
       }
       if (payload.gross) {
@@ -265,6 +258,26 @@ function load(filePath) {
 export function seedStore() {
   const store = emptyStore();
   const days = [
+    {
+      date: '2026-08-24',
+      hours: [
+        ['BIG AL', 8, 7.2],
+        ['ELECTRIC-T', 8, 6.0],
+        ['DIESEL-E', 8, 8.1]
+      ],
+      gross: [3180, 90],
+      ro: [30, 12, 14]
+    },
+    {
+      date: '2026-08-25',
+      hours: [
+        ['HEAVY-C', 8, 9.4],
+        ['SPECIAL-K', 8, 5.5],
+        ['LIL-J', 8, 4.2]
+      ],
+      gross: [2890, 110],
+      ro: [31, 14, 16]
+    },
     {
       date: '2026-08-26',
       hours: [

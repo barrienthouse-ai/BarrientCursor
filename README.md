@@ -5,10 +5,11 @@ Reporting tool for the service manager to send daily numbers up to leadership, w
 ## What it tracks
 
 - Daily technician clock and sold hours, with names filled from the service roster
+- Sold hours for the current week (Monday–Friday)
+- Payroll / clock hours for last Tuesday through the current week’s Monday
 - Service department gross only (labor and other service). Parts is out of scope
 - Recall of any previously saved day
-- Open ROs, ROs written, and ROs closed that day
-- Heat cases that need a briefing, including who owns them and when they were resolved
+- Heat cases that need a briefing, including assigned advisor, technician, and customer name
 
 ## Two ways to use it
 

@@ -16,9 +16,8 @@ function SMR_refreshDashboard() {
     ['Efficiency', summary.techHours.efficiency === null ? '—' : (summary.techHours.efficiency * 100).toFixed(1) + '%'],
     ['Daily gross', summary.gross.daily.totalGross],
     ['MTD gross', summary.gross.monthly.totalGross],
-    ['Open ROs', summary.repairOrders.openCount],
-    ['Closed ROs today', summary.repairOrders.closedCount],
-    ['Written ROs today', summary.repairOrders.writtenCount],
+    ['Sold week Mon–Fri', summary.weekHours && summary.weekHours.sold ? summary.weekHours.sold.total : 0],
+    ['Payroll week Tue–Mon', summary.weekHours && summary.weekHours.payroll ? summary.weekHours.payroll.total : 0],
     ['Open heat cases', summary.heatCases.openCount],
     ['Need briefing', summary.heatCases.awaitingBriefing],
     ['Resolved today', summary.heatCases.resolvedTodayCount]

@@ -8,8 +8,12 @@ import {
   formatPercent,
   heatAssignment,
   mergeHoursWithRoster,
+  mondayOfWeek,
   monthKey,
   nextHeatCaseId,
+  payrollWeekRange,
+  rollupWeekHours,
+  soldWeekRange,
   roundHours,
   sumRepairOrders,
   reservedSheetNames,
@@ -23,6 +27,45 @@ describe('date helpers', () => {
   it('keeps ISO date keys and derives months', () => {
     assert.equal(toDateKey('2026-08-29'), '2026-08-29');
     assert.equal(monthKey('2026-08-29'), '2026-08');
+  });
+
+  it('builds sold Mon–Fri and payroll last-Tuesday-through-Monday ranges', () => {
+    assert.equal(mondayOfWeek('2026-08-29'), '2026-08-24');
+    assert.deepEqual(soldWeekRange('2026-08-29'), {
+      start: '2026-08-24',
+      end: '2026-08-28',
+      mode: 'sold',
+      field: 'soldHours',
+      label: 'Sold week (Mon–Fri)'
+    });
+    assert.deepEqual(payrollWeekRange('2026-08-29'), {
+      start: '2026-08-18',
+      end: '2026-08-24',
+      mode: 'payroll',
+      field: 'clockHours',
+      label: 'Payroll week (Tue–Mon)'
+    });
+    assert.equal(mondayOfWeek('2026-08-24'), '2026-08-24');
+    assert.equal(mondayOfWeek('2026-08-23'), '2026-08-17');
+  });
+});
+
+describe('week hours', () => {
+  it('sums sold hours Mon–Fri and payroll clock hours Tue–Mon', () => {
+    const rows = [
+      { date: '2026-08-24', techName: 'BIG AL', clockHours: 8, soldHours: 10 },
+      { date: '2026-08-28', techName: 'BIG AL', clockHours: 8, soldHours: 5 },
+      { date: '2026-08-29', techName: 'BIG AL', clockHours: 8, soldHours: 9 },
+      { date: '2026-08-18', techName: 'BIG AL', clockHours: 8, soldHours: 1 },
+      { date: '2026-08-25', techName: 'BIG AL', clockHours: 8, soldHours: 4 }
+    ];
+    const sold = rollupWeekHours(rows, '2026-08-29', 'sold');
+    assert.equal(sold.total, 19);
+    assert.equal(sold.rows[0].hours, 19);
+    const payroll = rollupWeekHours(rows, '2026-08-29', 'payroll');
+    assert.equal(payroll.total, 16);
+    assert.equal(payroll.start, '2026-08-18');
+    assert.equal(payroll.end, '2026-08-24');
   });
 });
 
@@ -123,7 +166,7 @@ describe('heat cases', () => {
 });
 
 describe('daily snapshot', () => {
-  it('recalls hours, ROs, and open heat cases for one day', () => {
+  it('recalls hours, week hours, and open heat cases for one day', () => {
     const snapshot = buildDailySnapshot({
       dateKey: '2026-08-29',
       techHours: [
@@ -144,6 +187,8 @@ describe('daily snapshot', () => {
     assert.equal(snapshot.heatCases.openCount, 1);
     assert.equal(snapshot.heatCases.resolvedTodayCount, 1);
     assert.equal(snapshot.heatCases.criticalCount, 1);
+    assert.equal(snapshot.weekHours.sold.total, 9);
+    assert.equal(snapshot.weekHours.payroll.total, 0);
   });
 });
 

@@ -26,6 +26,9 @@ describe('SMR load-speed contract', () => {
     assert.match(html, /id="heatAdvisor"/);
     assert.match(html, /id="heatTechnician"/);
     assert.match(html, /<th>Customer<\/th>/);
+    assert.match(html, /Sold week Mon–Fri/);
+    assert.match(html, /Payroll Tue–Mon/);
+    assert.doesNotMatch(html, /Open ROs/);
   });
 
   it('loads a briefing from SMR_ properties before touching SMR sheets', () => {
@@ -48,12 +51,12 @@ describe('SMR load-speed contract', () => {
 
   it('overlays saved hours onto the already-painted roster', () => {
     const rows = [
-      { techName: 'BIG AL', clockHours: 8, soldHours: 9, openCount: 2, closedCount: 1, writtenCount: 3 },
-      { techName: 'ELECTRIC-T', clockHours: 8, soldHours: 7, openCount: 1, closedCount: 0, writtenCount: 1 }
+      { techName: 'BIG AL', clockHours: 8, soldHours: 9 },
+      { techName: 'ELECTRIC-T', clockHours: 8, soldHours: 7 }
     ];
     const painted = ['BIG AL', 'ELECTRIC-T'];
     const namesMatch = painted.length === rows.length && painted.every((name, i) => name === rows[i].techName);
     assert.equal(namesMatch, true);
-    assert.equal(rows.reduce((sum, row) => sum + row.openCount + row.closedCount + row.writtenCount, 0), 8);
+    assert.equal(rows.reduce((sum, row) => sum + row.soldHours, 0), 16);
   });
 });

@@ -16,7 +16,9 @@
     input, select, textarea, button { font: inherit; }
     input, select, textarea { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #2d3f5c; background: #0e1624; color: #eef3fb; }
     .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .tech-row { display: grid; grid-template-columns: 1.3fr 0.7fr 0.7fr 0.7fr 0.7fr 0.7fr; gap: 6px; align-items: end; margin-bottom: 6px; }
+    .tech-row { display: grid; grid-template-columns: 1.4fr 0.8fr 0.8fr 0.9fr; gap: 6px; align-items: end; margin-bottom: 6px; }
+    .week-toggle { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+    .week-hours { padding: 6px 0; font-weight: 700; }
     .tech-head { color: #9aadc8; font-size: 11px; text-transform: uppercase; }
     .tech-list { max-height: 280px; overflow: auto; padding-right: 4px; margin: 8px 0; }
     .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
@@ -37,12 +39,17 @@
     <div class="kpis">
       <div class="card"><div class="meta">Sold / clock</div><div class="value" id="kpiHours">—</div></div>
       <div class="card"><div class="meta">Daily / MTD service gross</div><div class="value" id="kpiGross">—</div></div>
-      <div class="card"><div class="meta">Open / closed / written ROs</div><div class="value" id="kpiRos">—</div></div>
+      <div class="card"><div class="meta" id="kpiWeekLabel">Sold week (Mon–Fri)</div><div class="value" id="kpiWeek">—</div></div>
       <div class="card"><div class="meta">Open heat cases</div><div class="value" id="kpiHeat">—</div></div>
     </div>
     <div class="panel">
       <strong>Daily entry</strong>
-      <p class="meta">Enter clock, sold, and RO counts per technician. The header totals those RO counts as you type. Service gross only — parts are separate.</p>
+      <p class="meta">Enter today’s clock and sold hours. Use the toggle to show sold hours for Monday–Friday, or payroll clock hours from last Tuesday through this Monday. Service gross only — parts are separate.</p>
+      <div class="week-toggle">
+        <button type="button" id="weekSoldBtn" onclick="setWeekMode('sold')">Sold week Mon–Fri</button>
+        <button type="button" class="secondary" id="weekPayrollBtn" onclick="setWeekMode('payroll')">Payroll Tue–Mon</button>
+      </div>
+      <p class="meta" id="weekRangeLabel"></p>
       <div class="row">
         <label>Service labor <input id="laborGross" type="number" oninput="liveTotals()" /></label>
         <label>Other service <input id="otherGross" type="number" oninput="liveTotals()" /></label>
@@ -93,6 +100,7 @@
   <script>
     var SEED = <?!= seedJson ?>;
     var lastSummary = null;
+    var weekMode = 'sold';
     var DEFAULT_ROSTER = ['BIG AL', 'ELECTRIC-T', 'DIESEL-E', 'INTERNAL-F', 'HEAVY-C', 'SPECIAL-K', 'LIL-J', 'EASY-E', 'DUEL FUEL-A'];
     var DEFAULT_ADVISORS = ['Cody Raffary'];
     function escapeHtml(value) {
@@ -124,7 +132,7 @@
       if (!host.querySelector('.tech-head')) {
         var head = document.createElement('div');
         head.className = 'tech-row tech-head';
-        head.innerHTML = '<div>Tech</div><div>Clock</div><div>Sold</div><div>Open ROs</div><div>Closed</div><div>Written</div>';
+        head.innerHTML = '<div>Tech</div><div>Clock today</div><div>Sold today</div><div id="weekColHead">Week sold</div>';
         host.appendChild(head);
       }
       var wrap = document.createElement('div');
@@ -133,9 +141,7 @@
         '<input class="tech-name" type="hidden" value="' + (row.techName || '') + '"></label>' +
         '<input class="tech-clock" type="number" step="0.1" value="' + (row.clockHours || 8) + '" oninput="liveTotals()">' +
         '<input class="tech-sold" type="number" step="0.1" value="' + (row.soldHours || '') + '" oninput="liveTotals()">' +
-        '<input class="tech-open" type="number" value="' + (row.openCount || '') + '" oninput="liveTotals()">' +
-        '<input class="tech-closed" type="number" value="' + (row.closedCount || '') + '" oninput="liveTotals()">' +
-        '<input class="tech-written" type="number" value="' + (row.writtenCount || '') + '" oninput="liveTotals()">';
+        '<div class="week-hours" data-tech="' + escapeHtml(row.techName || '') + '">—</div>';
       host.appendChild(wrap);
     }
     function readTechRows() {
@@ -143,32 +149,54 @@
         return {
           techName: row.querySelector('.tech-name').value,
           clockHours: row.querySelector('.tech-clock').value,
-          soldHours: row.querySelector('.tech-sold').value,
-          openCount: row.querySelector('.tech-open').value,
-          closedCount: row.querySelector('.tech-closed').value,
-          writtenCount: row.querySelector('.tech-written').value
+          soldHours: row.querySelector('.tech-sold').value
         };
       });
+    }
+    function currentWeek() {
+      var weeks = lastSummary && lastSummary.weekHours ? lastSummary.weekHours : {};
+      return weeks[weekMode] || { rows: [], total: 0, start: '', end: '', label: weekMode === 'payroll' ? 'Payroll week (Tue–Mon)' : 'Sold week (Mon–Fri)' };
+    }
+    function setWeekMode(mode) {
+      weekMode = mode === 'payroll' ? 'payroll' : 'sold';
+      document.getElementById('weekSoldBtn').className = weekMode === 'sold' ? '' : 'secondary';
+      document.getElementById('weekPayrollBtn').className = weekMode === 'payroll' ? '' : 'secondary';
+      applyWeekView();
+    }
+    function applyWeekView() {
+      var week = currentWeek();
+      var byName = {};
+      (week.rows || []).forEach(function (row) {
+        byName[String(row.techName || '').trim().toUpperCase()] = row.hours;
+      });
+      document.querySelectorAll('.week-hours').forEach(function (cell) {
+        var key = String(cell.getAttribute('data-tech') || '').trim().toUpperCase();
+        var hours = byName[key];
+        cell.textContent = hours != null ? round1(hours) : '0';
+      });
+      var head = document.getElementById('weekColHead');
+      if (head) {
+        head.textContent = weekMode === 'payroll' ? 'Week payroll' : 'Week sold';
+      }
+      document.getElementById('kpiWeekLabel').textContent = week.label || (weekMode === 'payroll' ? 'Payroll week (Tue–Mon)' : 'Sold week (Mon–Fri)');
+      document.getElementById('kpiWeek').textContent = week.total != null ? String(round1(week.total)) : '—';
+      document.getElementById('weekRangeLabel').textContent = week.start && week.end
+        ? week.label + ': ' + week.start + ' to ' + week.end
+        : 'Save daily hours to build the week total.';
     }
     function liveTotals() {
       var clock = 0;
       var sold = 0;
-      var open = 0;
-      var closed = 0;
-      var written = 0;
       readTechRows().forEach(function (row) {
         clock += num(row.clockHours);
         sold += num(row.soldHours);
-        open += num(row.openCount);
-        closed += num(row.closedCount);
-        written += num(row.writtenCount);
       });
       document.getElementById('kpiHours').textContent = round1(sold) + ' / ' + round1(clock);
-      document.getElementById('kpiRos').textContent = open + ' / ' + closed + ' / ' + written;
       var labor = num(document.getElementById('laborGross').value);
       var other = num(document.getElementById('otherGross').value);
       var mtd = lastSummary && lastSummary.gross ? lastSummary.gross.monthly.totalGross : 0;
       document.getElementById('kpiGross').textContent = (labor + other) + ' / ' + mtd;
+      applyWeekView();
     }
     function overlaySummary(summary) {
       lastSummary = summary;
@@ -191,9 +219,6 @@
           var rec = formRows[i];
           setIfIdle(row.querySelector('.tech-clock'), rec.clockHours != null && rec.clockHours !== '' ? rec.clockHours : 8);
           setIfIdle(row.querySelector('.tech-sold'), rec.soldHours != null ? rec.soldHours : '');
-          setIfIdle(row.querySelector('.tech-open'), rec.openCount != null ? rec.openCount : '');
-          setIfIdle(row.querySelector('.tech-closed'), rec.closedCount != null ? rec.closedCount : '');
-          setIfIdle(row.querySelector('.tech-written'), rec.writtenCount != null ? rec.writtenCount : '');
         });
       }
       if (summary.gross && summary.gross.daily) {

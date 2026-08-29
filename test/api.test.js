@@ -59,9 +59,12 @@ describe('API', () => {
     });
     assert.equal(saved.status, 201);
     assert.equal(saved.body.techHours.soldHours, 15.5);
-    assert.equal(saved.body.repairOrders.openCount, 9);
-    assert.equal(saved.body.repairOrders.closedCount, 3);
-    assert.equal(saved.body.repairOrders.writtenCount, 5);
+    assert.equal(saved.body.weekHours.sold.start, '2026-08-24');
+    assert.equal(saved.body.weekHours.sold.end, '2026-08-28');
+    assert.equal(saved.body.weekHours.sold.total, 0);
+    assert.equal(saved.body.weekHours.payroll.start, '2026-08-18');
+    assert.equal(saved.body.weekHours.payroll.end, '2026-08-24');
+    assert.equal(saved.body.weekHours.payroll.total, 0);
 
     const recalled = await json(`${base}/api/daily-report/2026-08-29`);
     assert.equal(recalled.body.techHours.rows.length, 2);

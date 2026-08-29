@@ -102,3 +102,29 @@ function SMR_toNumber_(value) {
 function SMR_monthKey_(dateKey) {
   return SMR_toDateKey_(dateKey).slice(0, 7);
 }
+
+function SMR_addDaysKey_(dateKey, days) {
+  var parts = String(dateKey || '').split('-');
+  var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  date.setDate(date.getDate() + Number(days || 0));
+  return SMR_dateKeyFast_(date);
+}
+
+function SMR_mondayOfWeek_(dateKey) {
+  var parts = String(dateKey || '').split('-');
+  var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  var day = date.getDay();
+  var diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  return SMR_dateKeyFast_(date);
+}
+
+function SMR_soldWeekRange_(dateKey) {
+  var start = SMR_mondayOfWeek_(dateKey);
+  return { start: start, end: SMR_addDaysKey_(start, 4), mode: 'sold', label: 'Sold week (Mon–Fri)' };
+}
+
+function SMR_payrollWeekRange_(dateKey) {
+  var monday = SMR_mondayOfWeek_(dateKey);
+  return { start: SMR_addDaysKey_(monday, -6), end: monday, mode: 'payroll', label: 'Payroll week (Tue–Mon)' };
+}

@@ -34,10 +34,9 @@ function SMR_getConfig() {
   };
 }
 
-function SMR_buildBriefingPayload_(key, roster, hoursRows, gross, heat) {
+function SMR_buildBriefingPayload_(key, roster, hoursRows, gross, heat, weekHours) {
   var formRows = SMR_mergeHoursWithRoster_(hoursRows, roster);
   var hourTotals = SMR_sumHourRows_(hoursRows);
-  var roTotals = SMR_sumRoRows_(hoursRows);
   heat = heat || [];
   var openHeat = 0;
   for (var i = 0; i < heat.length; i++) {
@@ -59,12 +58,13 @@ function SMR_buildBriefingPayload_(key, roster, hoursRows, gross, heat) {
         lineCount: hoursRows.length,
         efficiency: hourTotals.clockHours > 0 ? hourTotals.soldHours / hourTotals.clockHours : null
       },
+      weekHours: weekHours || SMR_weekHoursFromTable_({ headers: [], values: [] }, key),
       gross: gross,
       repairOrders: {
-        openCount: roTotals.openCount,
-        closedCount: roTotals.closedCount,
-        writtenCount: roTotals.writtenCount,
-        reported: roTotals.openCount + roTotals.closedCount + roTotals.writtenCount > 0
+        openCount: 0,
+        closedCount: 0,
+        writtenCount: 0,
+        reported: false
       },
       heatCases: {
         openCount: openHeat,
@@ -82,14 +82,20 @@ function SMR_buildBriefingPayload_(key, roster, hoursRows, gross, heat) {
 function SMR_loadBriefing(dateKey) {
   var key = SMR_dateKeyFast_(dateKey) || SMR_toDateKey_(dateKey);
   var stored = SMR_briefStoreGet_(key);
+  if (stored && stored.summary && stored.summary.weekHours) {
+    return stored;
+  }
+  var table = SMR_readTail_(SMR_SHEETS.TECH_HOURS, 300);
   if (stored && stored.summary) {
+    stored.summary.weekHours = SMR_weekHoursFromTable_(table, key);
     return stored;
   }
 
   var roster = SMR_rosterStoreGet_() || SMR_DEFAULT_ROSTER.slice();
-  var hoursRows = SMR_recallTechHoursFast_(key);
+  var hoursRows = SMR_hoursFromTable_(table, key, key);
+  var weekHours = SMR_weekHoursFromTable_(table, key);
   var gross = SMR_recallGrossFast_(key);
-  var payload = SMR_buildBriefingPayload_(key, roster, hoursRows, gross, []);
+  var payload = SMR_buildBriefingPayload_(key, roster, hoursRows, gross, [], weekHours);
   SMR_briefStorePut_(key, payload);
   return payload;
 }
@@ -114,35 +120,68 @@ function SMR_sumRoRows_(rows) {
   return totals;
 }
 
-function SMR_recallTechHoursFast_(dateKey) {
-  var table = SMR_readTail_(SMR_SHEETS.TECH_HOURS, 300);
+function SMR_hoursFromTable_(table, startKey, endKey) {
   var dateIdx = SMR_col_(table.headers, 'Date');
   var nameIdx = SMR_col_(table.headers, 'Tech name');
   var clockIdx = SMR_col_(table.headers, 'Clock hours');
   var soldIdx = SMR_col_(table.headers, 'Sold hours');
-  var openIdx = SMR_col_(table.headers, 'Open ROs');
-  var closedIdx = SMR_col_(table.headers, 'Closed today');
-  var writtenIdx = SMR_col_(table.headers, 'Written today');
   if (dateIdx < 0 || nameIdx < 0) {
     return [];
   }
   var rows = [];
   for (var i = 0; i < table.values.length; i++) {
-    if (SMR_dateKeyFast_(table.values[i][dateIdx]) !== dateKey) {
+    var rowDate = SMR_dateKeyFast_(table.values[i][dateIdx]);
+    if (!rowDate || rowDate < startKey || rowDate > endKey) {
       continue;
     }
     rows.push({
-      date: dateKey,
+      date: rowDate,
       techName: table.values[i][nameIdx],
       clockHours: SMR_toNumber_(table.values[i][clockIdx]),
       soldHours: SMR_toNumber_(table.values[i][soldIdx]),
-      openCount: SMR_toNumber_(table.values[i][openIdx]),
-      closedCount: SMR_toNumber_(table.values[i][closedIdx]),
-      writtenCount: SMR_toNumber_(table.values[i][writtenIdx]),
       notes: ''
     });
   }
   return rows;
+}
+
+function SMR_rollupWeekFromTable_(table, dateKey, mode) {
+  var range = mode === 'payroll' ? SMR_payrollWeekRange_(dateKey) : SMR_soldWeekRange_(dateKey);
+  var rows = SMR_hoursFromTable_(table, range.start, range.end);
+  var byName = {};
+  rows.forEach(function (row) {
+    var name = String(row.techName || '').trim();
+    if (!name) {
+      return;
+    }
+    var add = mode === 'payroll' ? row.clockHours : row.soldHours;
+    byName[name] = Math.round(((byName[name] || 0) + add) * 10) / 10;
+  });
+  var list = [];
+  var total = 0;
+  Object.keys(byName).forEach(function (name) {
+    list.push({ techName: name, hours: byName[name] });
+    total += byName[name];
+  });
+  return {
+    start: range.start,
+    end: range.end,
+    mode: mode,
+    label: range.label,
+    rows: list,
+    total: Math.round(total * 10) / 10
+  };
+}
+
+function SMR_weekHoursFromTable_(table, dateKey) {
+  return {
+    sold: SMR_rollupWeekFromTable_(table, dateKey, 'sold'),
+    payroll: SMR_rollupWeekFromTable_(table, dateKey, 'payroll')
+  };
+}
+
+function SMR_recallTechHoursFast_(dateKey) {
+  return SMR_hoursFromTable_(SMR_readTail_(SMR_SHEETS.TECH_HOURS, 300), dateKey, dateKey);
 }
 
 function SMR_recallGrossFast_(dateKey) {
@@ -306,23 +345,8 @@ function SMR_saveDailyReport(payload) {
   if (payload.techHours) {
     var hourRows = payload.techHours.rows || payload.techHours;
     SMR_saveTechHours({ date: dateKey, rows: hourRows, submittedBy: payload.submittedBy });
-    var open = 0;
-    var closed = 0;
-    var written = 0;
-    (hourRows || []).forEach(function (row) {
-      open += SMR_toNumber_(row.openCount);
-      closed += SMR_toNumber_(row.closedCount);
-      written += SMR_toNumber_(row.writtenCount);
-    });
-    SMR_saveRepairOrders({
-      date: dateKey,
-      openCount: open,
-      closedCount: closed,
-      writtenCount: written,
-      notes: payload.repairOrders ? payload.repairOrders.notes : '',
-      submittedBy: payload.submittedBy
-    });
-  } else if (payload.repairOrders) {
+  }
+  if (payload.repairOrders) {
     SMR_saveRepairOrders(Object.assign({ date: dateKey }, payload.repairOrders, { submittedBy: payload.submittedBy }));
   }
   if (payload.gross) {
@@ -336,8 +360,8 @@ function SMR_saveDailyReport(payload) {
   if (!gross.daily.totalGross && (labor || other)) {
     gross.daily = { laborGross: labor, partsGross: 0, otherGross: other, totalGross: labor + other };
   }
-  var briefing = SMR_buildBriefingPayload_(dateKey, roster, hourRows, gross, previousHeat);
-  briefing.summary.repairOrders.reported = true;
+  var weekHours = SMR_weekHoursFromTable_(SMR_readTail_(SMR_SHEETS.TECH_HOURS, 300), dateKey);
+  var briefing = SMR_buildBriefingPayload_(dateKey, roster, hourRows, gross, previousHeat, weekHours);
   SMR_briefStorePut_(dateKey, briefing);
   return briefing.summary;
 }
@@ -548,6 +572,7 @@ function SMR_getSummary(dateKey, roster) {
       monthly: monthlyOverride || Object.assign({ source: 'daily-sum' }, monthFromDailies),
       monthFromDailies: monthFromDailies
     },
+    weekHours: SMR_weekHoursFromTable_(SMR_readTail_(SMR_SHEETS.TECH_HOURS, 300), key),
     repairOrders: {
       openCount: hasTechRos ? roOpen : (ro ? SMR_toNumber_(ro['Open ROs']) : 0),
       closedCount: hasTechRos ? roClosed : (ro ? SMR_toNumber_(ro['Closed today']) : 0),

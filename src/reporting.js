@@ -52,6 +52,78 @@ export function monthKey(dateKey) {
   return key.slice(0, 7);
 }
 
+export function parseDateKey(dateKey) {
+  const key = toDateKey(dateKey);
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+export function addDays(dateKey, days) {
+  const date = parseDateKey(dateKey);
+  date.setDate(date.getDate() + Number(days || 0));
+  return formatDateKey(date);
+}
+
+export function mondayOfWeek(dateKey) {
+  const date = parseDateKey(dateKey);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  return formatDateKey(date);
+}
+
+export function soldWeekRange(dateKey) {
+  const start = mondayOfWeek(dateKey);
+  return {
+    start,
+    end: addDays(start, 4),
+    mode: 'sold',
+    field: 'soldHours',
+    label: 'Sold week (Mon–Fri)'
+  };
+}
+
+export function payrollWeekRange(dateKey) {
+  const monday = mondayOfWeek(dateKey);
+  return {
+    start: addDays(monday, -6),
+    end: monday,
+    mode: 'payroll',
+    field: 'clockHours',
+    label: 'Payroll week (Tue–Mon)'
+  };
+}
+
+export function inDateRange(dateKey, start, end) {
+  const key = toDateKey(dateKey);
+  return key >= start && key <= end;
+}
+
+export function rollupWeekHours(techHours = [], dateKey, mode = 'sold') {
+  const range = mode === 'payroll' ? payrollWeekRange(dateKey) : soldWeekRange(dateKey);
+  const byName = new Map();
+  for (const row of techHours) {
+    if (!row || !inDateRange(row.date, range.start, range.end)) {
+      continue;
+    }
+    const name = String(row.techName || '').trim();
+    if (!name) {
+      continue;
+    }
+    byName.set(name, roundHours((byName.get(name) || 0) + toNumber(row[range.field])));
+  }
+  const rows = [...byName.entries()].map(([techName, hours]) => ({ techName, hours }));
+  const total = roundHours(rows.reduce((sum, row) => sum + row.hours, 0));
+  return { ...range, rows, total };
+}
+
+export function weekHoursSnapshot(techHours = [], dateKey) {
+  return {
+    sold: rollupWeekHours(techHours, dateKey, 'sold'),
+    payroll: rollupWeekHours(techHours, dateKey, 'payroll')
+  };
+}
+
 export function toNumber(value, fallback = 0) {
   if (value === '' || value === null || value === undefined) {
     return fallback;
@@ -314,6 +386,7 @@ export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [],
       reported: hasTechRos || Boolean(ro),
       row: ro
     },
+    weekHours: weekHoursSnapshot(techHours, key),
     heatCases: heat
   };
 }
