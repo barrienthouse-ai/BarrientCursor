@@ -11,9 +11,10 @@ function SMR_refreshDashboard() {
   sheet.getRange('A3').setValue('This sheet is owned by the SMR tool. Other workbook tabs are not changed.');
 
   var kpis = [
-    ['Sold hours', summary.techHours.soldHours],
-    ['Clock hours', summary.techHours.clockHours],
-    ['Efficiency', summary.techHours.efficiency === null ? '—' : (summary.techHours.efficiency * 100).toFixed(1) + '%'],
+    ['Sold hours', summary.production ? summary.production.soldHours : summary.techHours.soldHours],
+    ['ELR', summary.production && summary.production.elr != null ? summary.production.elr : '—'],
+    ['Hours / RO', summary.production && summary.production.hoursPerRo != null ? summary.production.hoursPerRo : '—'],
+    ['Unapplied time', summary.production ? summary.production.unappliedHours : '—'],
     ['Daily gross', summary.gross.daily.totalGross],
     ['MTD gross', summary.gross.monthly.totalGross],
     ['Sold week Mon–Fri', summary.weekHours && summary.weekHours.sold ? summary.weekHours.sold.total : 0],
@@ -25,13 +26,14 @@ function SMR_refreshDashboard() {
   sheet.getRange(5, 1, kpis.length, 2).setValues(kpis);
 
   sheet.getRange('A18').setValue('Hours by technician');
-  sheet.getRange('A19:D19').setValues([['Tech', 'Clock', 'Sold', 'Efficiency']]);
+  sheet.getRange('A19:E19').setValues([['Tech', 'Clock', 'Sold', 'Unapplied', 'Efficiency']]);
   if (summary.techHours.rows.length) {
     var hourRows = summary.techHours.rows.map(function (row) {
       var eff = row.clockHours ? row.soldHours / row.clockHours : null;
-      return [row.techName, row.clockHours, row.soldHours, eff === null ? '—' : (eff * 100).toFixed(1) + '%'];
+      var unapplied = Math.round((SMR_toNumber_(row.clockHours) - SMR_toNumber_(row.soldHours)) * 10) / 10;
+      return [row.techName, row.clockHours, row.soldHours, unapplied, eff === null ? '—' : (eff * 100).toFixed(1) + '%'];
     });
-    sheet.getRange(20, 1, hourRows.length, 4).setValues(hourRows);
+    sheet.getRange(20, 1, hourRows.length, 5).setValues(hourRows);
   } else {
     sheet.getRange('A20').setValue('No hours reported for today.');
   }

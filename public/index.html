@@ -32,7 +32,29 @@
     </nav>
 
     <section id="briefing" class="tab-page">
-      <div class="grid kpis">
+      <div class="grid kpis prod-board">
+        <article class="card">
+          <div class="label">Sold hours</div>
+          <div class="value" id="prodSold">—</div>
+          <div class="meta">Shop sold labor hours today</div>
+        </article>
+        <article class="card">
+          <div class="label">ELR</div>
+          <div class="value" id="prodElr">—</div>
+          <div class="meta">Labor gross ÷ sold hours</div>
+        </article>
+        <article class="card">
+          <div class="label">Hours / RO</div>
+          <div class="value" id="prodHoursRo">—</div>
+          <div class="meta">Sold hours ÷ ROs closed</div>
+        </article>
+        <article class="card">
+          <div class="label">Unapplied time</div>
+          <div class="value" id="prodUnapplied">—</div>
+          <div class="meta">Clock − sold</div>
+        </article>
+      </div>
+      <div class="grid kpis" style="margin-top:14px">
         <article class="card">
           <div class="label">Sold / clock hours</div>
           <div class="value" id="kpiHours">—</div>
@@ -61,7 +83,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Tech</th><th>Clock</th><th>Sold</th><th>Eff.</th></tr>
+                <tr><th>Tech</th><th>Clock</th><th>Sold</th><th>Unapplied</th><th>Eff.</th></tr>
               </thead>
               <tbody id="hoursTable"></tbody>
             </table>
@@ -96,6 +118,7 @@
           <div class="row">
             <label>Service labor <input id="laborGross" type="number" step="0.01" /></label>
             <label>Other service <input id="otherGross" type="number" step="0.01" /></label>
+            <label>ROs closed today <input id="closedRos" type="number" min="0" step="1" /></label>
             <label>Period
               <select id="grossPeriod">
                 <option value="daily">Daily</option>

@@ -57,6 +57,8 @@ textarea { min-height: 84px; resize: vertical; }
 
 .grid { display: grid; gap: 14px; }
 .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.prod-board .value { font-size: 32px; color: var(--accent-2); }
+.prod-board .meta { margin-top: 4px; }
 .two { grid-template-columns: 1.3fr 0.7fr; }
 .three { grid-template-columns: 1fr 1fr 1fr; }
 .card { padding: 16px 18px; }

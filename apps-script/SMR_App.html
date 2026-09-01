@@ -9,7 +9,10 @@
     .wrap { padding: 16px 18px 20px; }
     h1 { margin: 0 0 6px; font-size: 22px; }
     .sub, .meta { color: #9aadc8; font-size: 12px; }
-    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+    .prod { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+    .prod .card { padding: 12px; }
+    .prod .value { font-size: 26px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 12px; }
     .card, .panel { background: #162236; border: 1px solid #2d3f5c; border-radius: 10px; padding: 10px; }
     .value { font-size: 20px; font-weight: 700; }
     label { display: block; font-size: 12px; margin: 6px 0; }
@@ -36,6 +39,12 @@
     <h1>Service Manager Report</h1>
     <p class="sub">Writes only to SMR_* tabs. Existing sheet tools are not changed.</p>
     <label>Report date <input id="reportDate" type="date" /></label>
+    <div class="prod">
+      <div class="card"><div class="meta">Sold hours</div><div class="value" id="prodSold">—</div></div>
+      <div class="card"><div class="meta">ELR</div><div class="value" id="prodElr">—</div><div class="meta">Labor gross ÷ sold hours</div></div>
+      <div class="card"><div class="meta">Hours / RO</div><div class="value" id="prodHoursRo">—</div><div class="meta">Sold hours ÷ ROs closed</div></div>
+      <div class="card"><div class="meta">Unapplied time</div><div class="value" id="prodUnapplied">—</div><div class="meta">Clock − sold</div></div>
+    </div>
     <div class="kpis">
       <div class="card"><div class="meta">Sold / clock</div><div class="value" id="kpiHours">—</div></div>
       <div class="card"><div class="meta">Daily / MTD service gross</div><div class="value" id="kpiGross">—</div></div>
@@ -50,9 +59,10 @@
         <button type="button" class="secondary" id="weekPayrollBtn" onclick="setWeekMode('payroll')">Payroll Tue–Mon</button>
       </div>
       <p class="meta" id="weekRangeLabel"></p>
-      <div class="row">
+      <div class="row" style="grid-template-columns: repeat(4, 1fr)">
         <label>Service labor <input id="laborGross" type="number" oninput="liveTotals()" /></label>
         <label>Other service <input id="otherGross" type="number" oninput="liveTotals()" /></label>
+        <label>ROs closed today <input id="closedRos" type="number" min="0" step="1" oninput="liveTotals()" /></label>
         <label>Period
           <select id="grossPeriod">
             <option value="daily">Daily</option>
@@ -184,6 +194,10 @@
         ? week.label + ': ' + week.start + ' to ' + week.end
         : 'Save daily hours to build the week total.';
     }
+    function money(value) {
+      var n = Math.round(num(value) * 100) / 100;
+      return '$' + n.toFixed(2);
+    }
     function liveTotals() {
       var clock = 0;
       var sold = 0;
@@ -191,9 +205,15 @@
         clock += num(row.clockHours);
         sold += num(row.soldHours);
       });
-      document.getElementById('kpiHours').textContent = round1(sold) + ' / ' + round1(clock);
       var labor = num(document.getElementById('laborGross').value);
       var other = num(document.getElementById('otherGross').value);
+      var closed = num(document.getElementById('closedRos').value);
+      var unapplied = round1(clock - sold);
+      document.getElementById('prodSold').textContent = String(round1(sold));
+      document.getElementById('prodElr').textContent = sold > 0 ? money(labor / sold) : '—';
+      document.getElementById('prodHoursRo').textContent = closed > 0 ? String(round1(sold / closed)) : '—';
+      document.getElementById('prodUnapplied').textContent = String(unapplied);
+      document.getElementById('kpiHours').textContent = round1(sold) + ' / ' + round1(clock);
       var mtd = lastSummary && lastSummary.gross ? lastSummary.gross.monthly.totalGross : 0;
       document.getElementById('kpiGross').textContent = (labor + other) + ' / ' + mtd;
       applyWeekView();
@@ -225,6 +245,10 @@
         document.getElementById('laborGross').value = summary.gross.daily.laborGross || '';
         document.getElementById('otherGross').value = summary.gross.daily.otherGross || '';
       }
+      var closed = summary.production && summary.production.closedCount != null
+        ? summary.production.closedCount
+        : (summary.repairOrders ? summary.repairOrders.closedCount : 0);
+      document.getElementById('closedRos').value = closed || '';
       liveTotals();
     }
     function setIfIdle(input, value) {
@@ -316,6 +340,9 @@
       run('SMR_saveDailyReport', [{
         date: document.getElementById('reportDate').value,
         techHours: { rows: readTechRows() },
+        repairOrders: {
+          closedCount: document.getElementById('closedRos').value
+        },
         gross: {
           period: document.getElementById('grossPeriod').value,
           laborGross: document.getElementById('laborGross').value,

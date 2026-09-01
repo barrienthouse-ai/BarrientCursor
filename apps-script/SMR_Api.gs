@@ -34,7 +34,7 @@ function SMR_getConfig() {
   };
 }
 
-function SMR_buildBriefingPayload_(key, roster, hoursRows, gross, heat, weekHours) {
+function SMR_buildBriefingPayload_(key, roster, hoursRows, gross, heat, weekHours, closedCount) {
   var formRows = SMR_mergeHoursWithRoster_(hoursRows, roster);
   var hourTotals = SMR_sumHourRows_(hoursRows);
   heat = heat || [];
@@ -44,7 +44,7 @@ function SMR_buildBriefingPayload_(key, roster, hoursRows, gross, heat, weekHour
       openHeat += 1;
     }
   }
-  return {
+  var payload = {
     roster: roster,
     heat: heat,
     summary: {
@@ -62,9 +62,9 @@ function SMR_buildBriefingPayload_(key, roster, hoursRows, gross, heat, weekHour
       gross: gross,
       repairOrders: {
         openCount: 0,
-        closedCount: 0,
+        closedCount: SMR_toNumber_(closedCount),
         writtenCount: 0,
-        reported: false
+        reported: SMR_toNumber_(closedCount) > 0
       },
       heatCases: {
         openCount: openHeat,
@@ -77,17 +77,64 @@ function SMR_buildBriefingPayload_(key, roster, hoursRows, gross, heat, weekHour
       }
     }
   };
+  SMR_attachProduction_(payload.summary);
+  return payload;
+}
+
+function SMR_production_(sold, clock, labor, closed) {
+  sold = Math.round(SMR_toNumber_(sold) * 10) / 10;
+  clock = Math.round(SMR_toNumber_(clock) * 10) / 10;
+  labor = Math.round(SMR_toNumber_(labor) * 100) / 100;
+  closed = SMR_toNumber_(closed);
+  return {
+    soldHours: sold,
+    clockHours: clock,
+    unappliedHours: Math.round((clock - sold) * 10) / 10,
+    laborGross: labor,
+    closedCount: closed,
+    elr: sold > 0 ? Math.round((labor / sold) * 100) / 100 : null,
+    hoursPerRo: closed > 0 ? Math.round((sold / closed) * 10) / 10 : null
+  };
+}
+
+function SMR_attachProduction_(summary) {
+  if (!summary) {
+    return;
+  }
+  var sold = summary.techHours ? summary.techHours.soldHours : 0;
+  var clock = summary.techHours ? summary.techHours.clockHours : 0;
+  var labor = summary.gross && summary.gross.daily ? summary.gross.daily.laborGross : 0;
+  var closed = summary.repairOrders ? summary.repairOrders.closedCount : 0;
+  summary.production = SMR_production_(sold, clock, labor, closed);
+}
+
+function SMR_recallClosedFast_(dateKey) {
+  var table = SMR_readTail_(SMR_SHEETS.ROS, 60);
+  var dateIdx = SMR_col_(table.headers, 'Date');
+  var closedIdx = SMR_col_(table.headers, 'Closed today');
+  if (dateIdx < 0 || closedIdx < 0) {
+    return 0;
+  }
+  var closed = 0;
+  for (var i = 0; i < table.values.length; i++) {
+    if (SMR_dateKeyFast_(table.values[i][dateIdx]) === dateKey) {
+      closed = SMR_toNumber_(table.values[i][closedIdx]);
+    }
+  }
+  return closed;
 }
 
 function SMR_loadBriefing(dateKey) {
   var key = SMR_dateKeyFast_(dateKey) || SMR_toDateKey_(dateKey);
   var stored = SMR_briefStoreGet_(key);
   if (stored && stored.summary && stored.summary.weekHours) {
+    SMR_attachProduction_(stored.summary);
     return stored;
   }
   var table = SMR_readTail_(SMR_SHEETS.TECH_HOURS, 300);
   if (stored && stored.summary) {
     stored.summary.weekHours = SMR_weekHoursFromTable_(table, key);
+    SMR_attachProduction_(stored.summary);
     return stored;
   }
 
@@ -95,7 +142,8 @@ function SMR_loadBriefing(dateKey) {
   var hoursRows = SMR_hoursFromTable_(table, key, key);
   var weekHours = SMR_weekHoursFromTable_(table, key);
   var gross = SMR_recallGrossFast_(key);
-  var payload = SMR_buildBriefingPayload_(key, roster, hoursRows, gross, [], weekHours);
+  var closed = SMR_recallClosedFast_(key);
+  var payload = SMR_buildBriefingPayload_(key, roster, hoursRows, gross, [], weekHours, closed);
   SMR_briefStorePut_(key, payload);
   return payload;
 }
@@ -361,7 +409,8 @@ function SMR_saveDailyReport(payload) {
     gross.daily = { laborGross: labor, partsGross: 0, otherGross: other, totalGross: labor + other };
   }
   var weekHours = SMR_weekHoursFromTable_(SMR_readTail_(SMR_SHEETS.TECH_HOURS, 300), dateKey);
-  var briefing = SMR_buildBriefingPayload_(dateKey, roster, hourRows, gross, previousHeat, weekHours);
+  var closed = payload.repairOrders ? SMR_toNumber_(payload.repairOrders.closedCount) : 0;
+  var briefing = SMR_buildBriefingPayload_(dateKey, roster, hourRows, gross, previousHeat, weekHours, closed);
   SMR_briefStorePut_(dateKey, briefing);
   return briefing.summary;
 }
@@ -554,7 +603,7 @@ function SMR_getSummary(dateKey, roster) {
   var resolvedToday = heat.filter(function (row) {
     return row.status === 'resolved' && String(row.resolvedAt || '').indexOf(key) === 0;
   });
-  return {
+  var summary = {
     date: key,
     month: month,
     techHours: {
@@ -574,10 +623,10 @@ function SMR_getSummary(dateKey, roster) {
     },
     weekHours: SMR_weekHoursFromTable_(SMR_readTail_(SMR_SHEETS.TECH_HOURS, 300), key),
     repairOrders: {
-      openCount: hasTechRos ? roOpen : (ro ? SMR_toNumber_(ro['Open ROs']) : 0),
-      closedCount: hasTechRos ? roClosed : (ro ? SMR_toNumber_(ro['Closed today']) : 0),
-      writtenCount: hasTechRos ? roWritten : (ro ? SMR_toNumber_(ro['Written today']) : 0),
-      reported: hasTechRos || !!ro,
+      openCount: ro ? SMR_toNumber_(ro['Open ROs']) : (hasTechRos ? roOpen : 0),
+      closedCount: ro ? SMR_toNumber_(ro['Closed today']) : (hasTechRos ? roClosed : 0),
+      writtenCount: ro ? SMR_toNumber_(ro['Written today']) : (hasTechRos ? roWritten : 0),
+      reported: !!ro || hasTechRos,
       row: ro
     },
     heatCases: {
@@ -590,6 +639,8 @@ function SMR_getSummary(dateKey, roster) {
       resolvedToday: resolvedToday
     }
   };
+  SMR_attachProduction_(summary);
+  return summary;
 }
 
 function SMR_mergeHoursWithRoster_(savedRows, roster) {

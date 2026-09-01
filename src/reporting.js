@@ -152,6 +152,27 @@ export function roundHours(value) {
   return Math.round(toNumber(value) * 10) / 10;
 }
 
+export function roundMoney(value) {
+  return Math.round(toNumber(value) * 100) / 100;
+}
+
+export function computeProduction({ soldHours, clockHours, laborGross, closedCount } = {}) {
+  const sold = roundHours(soldHours);
+  const clock = roundHours(clockHours);
+  const labor = roundMoney(laborGross);
+  const closed = toNumber(closedCount);
+  return {
+    soldHours: sold,
+    clockHours: clock,
+    unappliedHours: roundHours(clock - sold),
+    laborGross: labor,
+    closedCount: closed,
+    elr: sold > 0 ? roundMoney(labor / sold) : null,
+    hoursPerRo: closed > 0 ? roundHours(sold / closed) : null,
+    efficiency: computeEfficiency(sold, clock)
+  };
+}
+
 export function sumTechHours(rows = []) {
   return rows.reduce(
     (acc, row) => {
@@ -365,7 +386,14 @@ export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [],
   const roFromTechs = sumRepairOrders(hoursRows);
   const hasTechRos = hoursRows.some((row) => toNumber(row.openCount) || toNumber(row.closedCount) || toNumber(row.writtenCount));
   const ro = findDailyRo(repairOrders, key);
+  const closedCount = ro ? toNumber(ro.closedCount) : (hasTechRos ? roFromTechs.closedCount : 0);
   const heat = heatCaseSummary(heatCases, key);
+  const production = computeProduction({
+    soldHours: hours.soldHours,
+    clockHours: hours.clockHours,
+    laborGross: gross.daily.laborGross,
+    closedCount
+  });
 
   return {
     date: key,
@@ -380,12 +408,13 @@ export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [],
     },
     gross,
     repairOrders: {
-      openCount: hasTechRos ? roFromTechs.openCount : (ro ? toNumber(ro.openCount) : 0),
-      closedCount: hasTechRos ? roFromTechs.closedCount : (ro ? toNumber(ro.closedCount) : 0),
-      writtenCount: hasTechRos ? roFromTechs.writtenCount : (ro ? toNumber(ro.writtenCount) : 0),
-      reported: hasTechRos || Boolean(ro),
+      openCount: ro ? toNumber(ro.openCount) : (hasTechRos ? roFromTechs.openCount : 0),
+      closedCount,
+      writtenCount: ro ? toNumber(ro.writtenCount) : (hasTechRos ? roFromTechs.writtenCount : 0),
+      reported: Boolean(ro) || hasTechRos,
       row: ro
     },
+    production,
     weekHours: weekHoursSnapshot(techHours, key),
     heatCases: heat
   };

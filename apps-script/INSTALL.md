@@ -59,7 +59,8 @@ What changes:
 
 ## Daily use
 
-- **Open briefing** — daily clock/sold hours, sold week (Mon–Fri), payroll week (last Tuesday through this Monday), service gross, and heat cases.
+- **Open briefing** — daily production board (sold hours, ELR, hours/RO, unapplied time), clock/sold hours, sold week (Mon–Fri), payroll week (last Tuesday through this Monday), service gross, and heat cases.
+- **ROs closed today** is a shop-wide count used for Hours / RO. It is not entered per technician.
 - **Recall day** — reloads a previously saved date into the form.
 - **Save daily report** — upserts that date in `SMR_TechHours`, `SMR_Gross`, and `SMR_RepairOrders`.
 - Heat cases stay on the briefing until **Resolve**. The resolved timestamp and notes are stored on `SMR_HeatCases`.

@@ -5,6 +5,7 @@ import {
   auditWorkbook,
   buildDailySnapshot,
   computeEfficiency,
+  computeProduction,
   formatPercent,
   heatAssignment,
   mergeHoursWithRoster,
@@ -165,6 +166,23 @@ describe('heat cases', () => {
   });
 });
 
+describe('production board', () => {
+  it('computes sold hours, ELR, hours per RO, and unapplied time', () => {
+    const production = computeProduction({
+      soldHours: 40,
+      clockHours: 48,
+      laborGross: 6200,
+      closedCount: 16
+    });
+    assert.equal(production.soldHours, 40);
+    assert.equal(production.elr, 155);
+    assert.equal(production.hoursPerRo, 2.5);
+    assert.equal(production.unappliedHours, 8);
+    assert.equal(computeProduction({ soldHours: 10, clockHours: 8, laborGross: 0, closedCount: 0 }).hoursPerRo, null);
+    assert.equal(computeProduction({ soldHours: 0, clockHours: 8, laborGross: 100, closedCount: 4 }).elr, null);
+  });
+});
+
 describe('daily snapshot', () => {
   it('recalls hours, week hours, and open heat cases for one day', () => {
     const snapshot = buildDailySnapshot({
@@ -181,14 +199,31 @@ describe('daily snapshot', () => {
       ]
     });
     assert.equal(snapshot.techHours.lineCount, 1);
-    assert.equal(snapshot.repairOrders.openCount, 3);
-    assert.equal(snapshot.repairOrders.closedCount, 2);
-    assert.equal(snapshot.repairOrders.writtenCount, 1);
+    assert.equal(snapshot.repairOrders.openCount, 99);
+    assert.equal(snapshot.repairOrders.closedCount, 99);
+    assert.equal(snapshot.repairOrders.writtenCount, 99);
     assert.equal(snapshot.heatCases.openCount, 1);
     assert.equal(snapshot.heatCases.resolvedTodayCount, 1);
     assert.equal(snapshot.heatCases.criticalCount, 1);
     assert.equal(snapshot.weekHours.sold.total, 9);
     assert.equal(snapshot.weekHours.payroll.total, 0);
+  });
+
+  it('uses shop-wide closed ROs for Hours / RO on the production board', () => {
+    const snapshot = buildDailySnapshot({
+      dateKey: '2026-08-29',
+      techHours: [
+        { date: '2026-08-29', techName: 'BIG AL', clockHours: 8, soldHours: 10 },
+        { date: '2026-08-29', techName: 'LIL-J', clockHours: 8, soldHours: 6 }
+      ],
+      grossEntries: [{ period: 'daily', date: '2026-08-29', laborGross: 2480, partsGross: 0, otherGross: 50 }],
+      repairOrders: [{ date: '2026-08-29', closedCount: 8 }]
+    });
+    assert.equal(snapshot.production.soldHours, 16);
+    assert.equal(snapshot.production.elr, 155);
+    assert.equal(snapshot.production.hoursPerRo, 2);
+    assert.equal(snapshot.production.unappliedHours, 0);
+    assert.equal(snapshot.production.closedCount, 8);
   });
 });
 

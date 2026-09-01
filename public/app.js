@@ -1,4 +1,5 @@
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const moneyExact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const qty = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
 
 const state = {
@@ -84,6 +85,27 @@ function readTechRows() {
   }));
 }
 
+function roundHours(value) {
+  return Math.round((Number(value) || 0) * 10) / 10;
+}
+
+function applyProduction({ soldHours, clockHours, laborGross, closedCount }) {
+  const sold = roundHours(soldHours);
+  const clock = roundHours(clockHours);
+  const labor = Number(laborGross) || 0;
+  const closed = Number(closedCount) || 0;
+  const unapplied = roundHours(clock - sold);
+  if ($('prodSold')) {
+    $('prodSold').textContent = qty.format(sold);
+    $('prodElr').textContent = sold > 0 ? moneyExact.format(labor / sold) : '—';
+    $('prodHoursRo').textContent = closed > 0 ? qty.format(sold / closed) : '—';
+    $('prodUnapplied').textContent = qty.format(unapplied);
+  }
+  if ($('kpiHours')) {
+    $('kpiHours').textContent = `${qty.format(sold)} / ${qty.format(clock)}`;
+  }
+}
+
 function liveTotals() {
   const rows = readTechRows();
   let clock = 0;
@@ -92,7 +114,17 @@ function liveTotals() {
     clock += Number(row.clockHours) || 0;
     sold += Number(row.soldHours) || 0;
   }
-  $('kpiHours').textContent = `${qty.format(sold)} / ${qty.format(clock)}`;
+  const labor = Number($('laborGross')?.value || 0);
+  const other = Number($('otherGross')?.value || 0);
+  const closed = Number($('closedRos')?.value || 0);
+  applyProduction({ soldHours: sold, clockHours: clock, laborGross: labor, closedCount: closed });
+  if ($('kpiGross')) {
+    const mtd = state.snapshot?.gross?.monthly?.totalGross || 0;
+    $('kpiGross').textContent = money.format(labor + other);
+    if ($('kpiGrossMonth')) {
+      $('kpiGrossMonth').textContent = `MTD ${money.format(mtd)}`;
+    }
+  }
   applyWeekView();
 }
 
@@ -116,10 +148,19 @@ function renderBriefing(snapshot) {
   $('kpiHeatNote').textContent = `${snapshot.heatCases.awaitingBriefing} need briefing · ${snapshot.heatCases.resolvedTodayCount} resolved this day`;
   $('kpiHeatCard').classList.toggle('critical', snapshot.heatCases.criticalCount > 0);
 
+  const production = snapshot.production || {};
+  applyProduction({
+    soldHours: production.soldHours ?? snapshot.techHours.soldHours,
+    clockHours: production.clockHours ?? snapshot.techHours.clockHours,
+    laborGross: production.laborGross ?? snapshot.gross.daily.laborGross,
+    closedCount: production.closedCount ?? snapshot.repairOrders.closedCount
+  });
+
   $('hoursTable').innerHTML = snapshot.techHours.rows.map((row) => {
     const eff = row.clockHours ? row.soldHours / row.clockHours : null;
-    return `<tr><td>${escapeAttr(row.techName)}</td><td>${qty.format(row.clockHours)}</td><td>${qty.format(row.soldHours)}</td><td>${pct(eff)}</td></tr>`;
-  }).join('') || '<tr><td colspan="4">No hours reported for this date.</td></tr>';
+    const unapplied = roundHours((Number(row.clockHours) || 0) - (Number(row.soldHours) || 0));
+    return `<tr><td>${escapeAttr(row.techName)}</td><td>${qty.format(row.clockHours)}</td><td>${qty.format(row.soldHours)}</td><td>${qty.format(unapplied)}</td><td>${pct(eff)}</td></tr>`;
+  }).join('') || '<tr><td colspan="5">No hours reported for this date.</td></tr>';
 
   $('openHeatList').innerHTML = snapshot.heatCases.open.length
     ? snapshot.heatCases.open.map((item) => (
@@ -179,6 +220,7 @@ function fillDailyForm(snapshot) {
   const daily = snapshot.gross.daily;
   $('laborGross').value = daily.laborGross || '';
   $('otherGross').value = daily.otherGross || '';
+  $('closedRos').value = snapshot.production?.closedCount ?? snapshot.repairOrders?.closedCount ?? '';
   $('grossNotes').value = '';
   $('grossPeriod').value = 'daily';
   liveTotals();
@@ -281,6 +323,9 @@ async function init() {
     $('dailyStatus').textContent = `Recalled ${$('reportDate').value}.`;
   });
   $('reportDate').addEventListener('change', loadDay);
+  ['laborGross', 'otherGross', 'closedRos'].forEach((id) => {
+    $(id).addEventListener('input', liveTotals);
+  });
 
   $('saveDaily').addEventListener('click', async () => {
     $('dailyStatus').textContent = 'Saving…';
@@ -291,6 +336,9 @@ async function init() {
         body: JSON.stringify({
           date,
           techHours: { rows: readTechRows() },
+          repairOrders: {
+            closedCount: $('closedRos').value
+          },
           gross: {
             period: $('grossPeriod').value,
             laborGross: $('laborGross').value,

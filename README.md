@@ -5,6 +5,8 @@ Reporting tool for the service manager to send daily numbers up to leadership, w
 ## What it tracks
 
 - Daily technician clock and sold hours, with names filled from the service roster
+- Daily production board: sold hours, ELR (labor gross ÷ sold hours), hours per RO (sold hours ÷ ROs closed today), and unapplied time (clock − sold)
+- Sold hours for the current week (Monday–Friday)
 - Sold hours for the current week (Monday–Friday)
 - Payroll / clock hours for last Tuesday through the current week’s Monday
 - Service department gross only (labor and other service). Parts is out of scope

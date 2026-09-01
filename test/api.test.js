@@ -54,11 +54,17 @@ describe('API', () => {
             { techName: 'Jordan Hale', clockHours: 8, soldHours: 7, openCount: 5, closedCount: 1, writtenCount: 2 }
           ]
         },
-        gross: { laborGross: 3000, otherGross: 100 }
+        gross: { laborGross: 3000, otherGross: 100 },
+        repairOrders: { closedCount: 5 }
       })
     });
     assert.equal(saved.status, 201);
     assert.equal(saved.body.techHours.soldHours, 15.5);
+    assert.equal(saved.body.production.soldHours, 15.5);
+    assert.equal(saved.body.production.elr, 193.55);
+    assert.equal(saved.body.production.hoursPerRo, 3.1);
+    assert.equal(saved.body.production.unappliedHours, 0.5);
+    assert.equal(saved.body.production.closedCount, 5);
     assert.equal(saved.body.weekHours.sold.start, '2026-08-24');
     assert.equal(saved.body.weekHours.sold.end, '2026-08-28');
     assert.equal(saved.body.weekHours.sold.total, 0);
@@ -76,10 +82,11 @@ describe('API', () => {
   });
 
   it('tracks heat case briefing and resolution', async () => {
+    const openedDate = new Date().toISOString().slice(0, 10);
     const created = await json(`${base}/api/heat-cases`, {
       method: 'POST',
       body: JSON.stringify({
-        openedDate: '2026-08-29',
+        openedDate,
         customer: 'Test Customer',
         advisor: 'Cody Raffary',
         technician: 'BIG AL',
@@ -89,7 +96,7 @@ describe('API', () => {
       })
     });
     assert.equal(created.status, 201);
-    assert.match(created.body.id, /^HEAT-20260829-001$/);
+    assert.match(created.body.id, /^HEAT-\d{8}-001$/);
     assert.equal(created.body.status, 'open');
     assert.equal(created.body.customer, 'Test Customer');
     assert.equal(created.body.advisor, 'Cody Raffary');
@@ -116,7 +123,7 @@ describe('API', () => {
     assert.ok(resolved.body.resolvedAt);
     assert.match(resolved.body.resolutionNotes, /Replaced pads/);
 
-    const summary = await json(`${base}/api/summary?date=2026-08-29`);
+    const summary = await json(`${base}/api/summary?date=${openedDate}`);
     assert.equal(summary.body.heatCases.openCount, 0);
     assert.equal(summary.body.heatCases.resolvedTodayCount, 1);
   });
