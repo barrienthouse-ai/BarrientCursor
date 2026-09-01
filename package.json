@@ -1,0 +1,18 @@
+{
+  "name": "sales-manager-report",
+  "version": "1.0.0",
+  "private": true,
+  "description": "End-of-day sales manager recap for Geaux Chevrolet: retail units, front/back/total gross, and traffic.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

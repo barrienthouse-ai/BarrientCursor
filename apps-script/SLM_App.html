@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <base target="_top" />
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: Arial, sans-serif; margin: 0; background: #0e1624; color: #eef3fb; }
+    .wrap { padding: 16px 18px 20px; }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .sub, .meta { color: #9aadc8; font-size: 12px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+    .card, .panel { background: #162236; border: 1px solid #2d3f5c; border-radius: 10px; padding: 10px; }
+    .value { font-size: 20px; font-weight: 700; }
+    label { display: block; font-size: 12px; margin: 6px 0; }
+    input, textarea, button { font: inherit; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #2d3f5c; background: #0e1624; color: #eef3fb; }
+    input[readonly] { color: #4cc9c0; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button { border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: #f0b429; color: #1b1403; font-weight: 700; }
+    button.secondary { background: #1c2b44; color: #eef3fb; }
+    .notice { color: #4cc9c0; font-size: 12px; }
+    .error { color: #ef6b6b; font-size: 12px; }
+    textarea { min-height: 60px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Sales Manager Report</h1>
+    <p class="sub">End-of-day recap. Writes only to SLM_* tabs. DEALINPUT is read-only for retail totals. Traffic is typed by the manager.</p>
+    <label>Report date <input id="reportDate" type="date" /></label>
+    <div class="kpis">
+      <div class="card"><div class="meta">New / used</div><div class="value" id="kpiUnits">—</div></div>
+      <div class="card"><div class="meta">Total gross</div><div class="value" id="kpiGross">—</div></div>
+      <div class="card"><div class="meta">Show / close</div><div class="value" id="kpiRates">—</div></div>
+      <div class="card"><div class="meta">Next day appts</div><div class="value" id="kpiNext">—</div></div>
+    </div>
+    <div class="panel">
+      <strong>Units and gross</strong>
+      <p class="meta" id="dealHint">Deal log: —</p>
+      <div class="row">
+        <label>New cars sold <input id="newSold" type="number" oninput="liveTotals()" /></label>
+        <label>Used cars sold <input id="usedSold" type="number" oninput="liveTotals()" /></label>
+        <label>Front gross <input id="frontGross" type="number" step="0.01" oninput="liveTotals()" /></label>
+        <label>Back gross <input id="backGross" type="number" step="0.01" oninput="liveTotals()" /></label>
+      </div>
+      <div class="row">
+        <label>Total gross <input id="totalGross" type="number" readonly /></label>
+        <label>Total units <input id="totalSold" type="number" readonly /></label>
+      </div>
+      <strong>Traffic — enter by hand</strong>
+      <div class="row">
+        <label>Appts for the day <input id="appointments" type="number" oninput="liveTotals()" /></label>
+        <label>Shown appts <input id="shownAppointments" type="number" oninput="liveTotals()" /></label>
+        <label>Total showroom visits <input id="showroomVisits" type="number" oninput="liveTotals()" /></label>
+        <label>Appts next business day <input id="nextDayAppointments" type="number" oninput="liveTotals()" /></label>
+      </div>
+      <p class="meta" id="nextDayLabel"></p>
+      <label>Notes <textarea id="notes"></textarea></label>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="recallDay()">Recall day</button>
+        <button type="button" class="secondary" onclick="fillDealLog()">Fill from deal log</button>
+        <button type="button" onclick="saveDay()">Save daily report</button>
+        <span class="notice" id="status"></span>
+      </div>
+    </div>
+  </div>
+  <script>
+    var seed = <?!= seedJson ?>;
+    function $(id) { return document.getElementById(id); }
+    function money(n) {
+      var v = Number(n) || 0;
+      return (v < 0 ? '-' : '') + '$' + Math.abs(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    function pct(v) { return v === null || v === undefined ? '—' : (v * 100).toFixed(1) + '%'; }
+    function num(id) { var v = $(id).value; return v === '' ? 0 : Number(v); }
+    function today() {
+      var now = new Date();
+      var off = now.getTimezoneOffset();
+      return new Date(now.getTime() - off * 60000).toISOString().slice(0, 10);
+    }
+    function liveTotals() {
+      var neu = num('newSold');
+      var used = num('usedSold');
+      var front = num('frontGross');
+      var back = num('backGross');
+      var appts = num('appointments');
+      var shown = num('shownAppointments');
+      var visits = num('showroomVisits');
+      $('totalSold').value = String(neu + used);
+      $('totalGross').value = ((Math.round((front + back) * 100)) / 100).toFixed(2);
+      $('kpiUnits').textContent = neu + ' / ' + used;
+      $('kpiGross').textContent = money(front + back);
+      $('kpiRates').textContent = pct(appts ? shown / appts : null) + ' / ' + pct(visits ? (neu + used) / visits : null);
+      $('kpiNext').textContent = String(num('nextDayAppointments'));
+    }
+    function fillForm(report) {
+      report = report || {};
+      $('newSold').value = report.newSold ?? '';
+      $('usedSold').value = report.usedSold ?? '';
+      $('frontGross').value = report.frontGross ?? '';
+      $('backGross').value = report.backGross ?? '';
+      $('appointments').value = report.appointments ?? '';
+      $('shownAppointments').value = report.shownAppointments ?? '';
+      $('showroomVisits').value = report.showroomVisits ?? '';
+      $('nextDayAppointments').value = report.nextDayAppointments ?? '';
+      $('notes').value = report.notes || '';
+      liveTotals();
+    }
+    function readForm() {
+      return {
+        date: $('reportDate').value,
+        newSold: num('newSold'),
+        usedSold: num('usedSold'),
+        frontGross: num('frontGross'),
+        backGross: num('backGross'),
+        appointments: num('appointments'),
+        shownAppointments: num('shownAppointments'),
+        showroomVisits: num('showroomVisits'),
+        nextDayAppointments: num('nextDayAppointments'),
+        notes: $('notes').value
+      };
+    }
+    function renderSnapshot(snapshot) {
+      if (!snapshot) return;
+      fillForm(snapshot.report);
+      $('nextDayLabel').textContent = 'Next business day is ' + snapshot.nextBusinessDate + ' (Sunday closed).';
+      if (snapshot.dealLog && snapshot.dealLog.daily) {
+        var d = snapshot.dealLog.daily;
+        $('dealHint').textContent = 'DEALINPUT retail: ' + d.newSold + ' new / ' + d.usedSold + ' used · ' + money(d.frontGross) + ' front · ' + money(d.backGross) + ' back · ' + money(d.totalGross) + ' total';
+      }
+    }
+    function setStatus(msg, err) {
+      $('status').textContent = msg;
+      $('status').className = err ? 'error' : 'notice';
+    }
+    function recallDay() {
+      google.script.run.withSuccessHandler(function (snapshot) {
+        renderSnapshot(snapshot);
+        setStatus('Day recalled.');
+      }).withFailureHandler(function (error) {
+        setStatus(error.message || String(error), true);
+      }).SLM_getSummary($('reportDate').value);
+    }
+    function fillDealLog() {
+      google.script.run.withSuccessHandler(function (result) {
+        fillForm(result.report);
+        if (result.dealLog && result.dealLog.daily) {
+          var d = result.dealLog.daily;
+          $('dealHint').textContent = 'DEALINPUT retail: ' + d.newSold + ' new / ' + d.usedSold + ' used · ' + money(d.frontGross) + ' front · ' + money(d.backGross) + ' back · ' + money(d.totalGross) + ' total';
+        }
+        setStatus('Units and gross filled from DEALINPUT. Traffic was kept. Save to lock the recap.');
+      }).withFailureHandler(function (error) {
+        setStatus(error.message || String(error), true);
+      }).SLM_fillFromDealLog(readForm());
+    }
+    function saveDay() {
+      google.script.run.withSuccessHandler(function (snapshot) {
+        renderSnapshot(snapshot);
+        setStatus('Saved ' + snapshot.date + '. Total gross ' + money(snapshot.report.totalGross) + '.');
+      }).withFailureHandler(function (error) {
+        setStatus(error.message || String(error), true);
+      }).SLM_saveDailyReport(readForm());
+    }
+    $('reportDate').value = today();
+    if (seed && seed.report) {
+      renderSnapshot(seed);
+    } else {
+      recallDay();
+    }
+  </script>
+</body>
+</html>
