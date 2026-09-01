@@ -69,7 +69,13 @@ export function createStore(filePath) {
       const entry = { id: payload.id || randomUUID(), ...report };
       state.reports.push(entry);
       persist();
-      return snapshot(date, now);
+      const snap = snapshot(date, now);
+      snap.report = entry;
+      snap.metrics = entry.metrics;
+      snap.saved = true;
+      snap.fromDealLog = false;
+      snap.unitsSource = 'saved';
+      return snap;
     },
     fillFromDealLog(dateKey, traffic = {}, now = new Date()) {
       const hint = summarizeDealLog(state.dealLog, dateKey);

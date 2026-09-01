@@ -105,6 +105,7 @@ describe('snapshot', () => {
       ]
     });
     assert.equal(snapshot.saved, false);
+    assert.equal(snapshot.fromDealLog, true);
     assert.equal(snapshot.report.newSold, 0);
     assert.equal(snapshot.report.usedSold, 1);
     assert.equal(snapshot.report.totalGross, 1000);
@@ -112,7 +113,7 @@ describe('snapshot', () => {
     assert.equal(snapshot.source || snapshot.report.source, 'deal-log');
   });
 
-  it('keeps a saved recap even if the deal log later changes', () => {
+  it('fills units and gross from DEALINPUT when the date is selected, and keeps saved traffic', () => {
     const saved = normalizeDailyReport({
       date: '2026-08-31',
       newSold: 5,
@@ -127,13 +128,43 @@ describe('snapshot', () => {
     const snapshot = buildDailySnapshot({
       dateKey: '2026-08-31',
       reports: [saved],
-      dealLog: [{ date: '2026-08-31', type: 'RETAIL', dept: 'New', frontGross: 1, backGross: 1 }]
+      dealLog: [
+        { date: '2026-08-31', type: 'RETAIL', dept: 'New', frontGross: 100, backGross: 200 },
+        { date: '2026-08-31', type: 'RETAIL', dept: 'Used', frontGross: 50, backGross: 75 }
+      ]
     });
     assert.equal(snapshot.saved, true);
-    assert.equal(snapshot.report.newSold, 5);
-    assert.equal(snapshot.report.usedSold, 2);
+    assert.equal(snapshot.fromDealLog, true);
+    assert.equal(snapshot.report.newSold, 1);
+    assert.equal(snapshot.report.usedSold, 1);
+    assert.equal(snapshot.report.frontGross, 150);
+    assert.equal(snapshot.report.backGross, 275);
+    assert.equal(snapshot.report.totalGross, 425);
     assert.equal(snapshot.report.appointments, 14);
-    assert.equal(snapshot.dealLog.daily.newSold, 1);
+    assert.equal(snapshot.report.shownAppointments, 10);
+    assert.equal(snapshot.report.showroomVisits, 19);
+    assert.equal(snapshot.report.nextDayAppointments, 8);
+  });
+
+  it('keeps saved units when DEALINPUT has no retail deals for that date', () => {
+    const saved = normalizeDailyReport({
+      date: '2026-09-01',
+      newSold: 3,
+      usedSold: 2,
+      frontGross: 1500,
+      backGross: 3200,
+      appointments: 12
+    });
+    const snapshot = buildDailySnapshot({
+      dateKey: '2026-09-01',
+      reports: [saved],
+      dealLog: []
+    });
+    assert.equal(snapshot.fromDealLog, false);
+    assert.equal(snapshot.report.newSold, 3);
+    assert.equal(snapshot.report.usedSold, 2);
+    assert.equal(snapshot.report.totalGross, 4700);
+    assert.equal(snapshot.report.appointments, 12);
   });
 });
 

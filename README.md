@@ -39,9 +39,9 @@ Open http://localhost:3000
 
 ## Daily flow
 
-1. Open the recap at close.
-2. Optionally **Fill from deal log** to copy retail new/used units and gross from `DEALINPUT`.
-3. Confirm or override those totals.
+1. Open the recap at close and set the report date.
+2. Retail new/used units and front/back/total gross fill from `DEALINPUT` for that date automatically.
+3. Override any pulled total if a deal is still being logged. Use **Refresh from deal log** if deals were added after the date was already selected.
 4. Type appointments, shown, showroom visits, and next-day appointments.
 5. Save. The same date can be recalled tomorrow.
 

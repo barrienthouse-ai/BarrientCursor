@@ -81,7 +81,7 @@
     <section id="daily" class="tab-page hidden">
       <article class="panel">
         <h2>Units and gross</h2>
-        <p class="meta">Retail new and used only — same buckets as SUMMARY’s single-day recap. Total gross is front plus back. Use <strong>Fill from deal log</strong> to pull today’s <code>DEALINPUT</code> retail totals, then confirm or override them.</p>
+        <p class="meta">Retail new and used only — same buckets as SUMMARY’s single-day recap. Total gross is front plus back. <strong>Choosing a report date fills units and gross from DEALINPUT automatically.</strong> Override if a deal is still being logged, then type traffic and save.</p>
         <div class="row">
           <label>New cars sold <input id="newSold" type="number" min="0" step="1" /></label>
           <label>Used cars sold <input id="usedSold" type="number" min="0" step="1" /></label>
@@ -109,7 +109,7 @@
       </article>
 
       <div class="actions">
-        <button class="btn ghost" id="fillDealLog" type="button">Fill from deal log</button>
+        <button class="btn ghost" id="fillDealLog" type="button">Refresh from deal log</button>
         <button class="btn primary" id="saveDaily" type="button">Save daily report</button>
         <span class="notice" id="dailyStatus"></span>
       </div>

@@ -339,17 +339,41 @@ export function prefillsFromDealLog(dealSummary, traffic = {}) {
   });
 }
 
+export function applyDealLogUnits(base = {}, dealSummary = {}, dateKey, now = new Date(), options = {}) {
+  const daily = dealSummary?.daily || emptySalesTotals();
+  const fromDealLog = toNumber(daily.dealCount) > 0;
+  const saved = Boolean(options.saved);
+  const report = normalizeDailyReport(
+    {
+      ...base,
+      date: dateKey || base.date || dealSummary?.date,
+      newSold: fromDealLog ? daily.newSold : base.newSold,
+      usedSold: fromDealLog ? daily.usedSold : base.usedSold,
+      frontGross: fromDealLog ? daily.frontGross : base.frontGross,
+      backGross: fromDealLog ? daily.backGross : base.backGross,
+      source: fromDealLog ? 'deal-log' : base.source || (saved ? 'manual' : 'unsaved')
+    },
+    now
+  );
+  return {
+    report,
+    fromDealLog,
+    unitsSource: fromDealLog ? 'deal-log' : saved ? 'saved' : 'unsaved'
+  };
+}
+
 export function buildDailySnapshot({ dateKey, reports = [], dealLog = [], now = new Date() }) {
   const key = toDateKey(dateKey, now);
   const saved = findDailyReport(reports, key);
   const dealHint = summarizeDealLog(dealLog, key);
-  const report = saved
-    ? normalizeDailyReport(saved, now)
-    : prefillsFromDealLog(dealHint, { date: key, source: 'unsaved' });
+  const merged = applyDealLogUnits(saved || { date: key }, dealHint, key, now, { saved: Boolean(saved) });
+  const report = merged.report;
   if (!saved) {
-    report.source = dealHint.daily.dealCount ? 'deal-log' : 'unsaved';
     report.submittedAt = '';
     report.submittedBy = '';
+    if (!merged.fromDealLog) {
+      report.source = 'unsaved';
+    }
   }
   const rollup = rollupReports(reports, key);
   return {
@@ -357,6 +381,8 @@ export function buildDailySnapshot({ dateKey, reports = [], dealLog = [], now = 
     month: monthKey(key),
     nextBusinessDate: nextBusinessDay(key),
     saved: Boolean(saved),
+    fromDealLog: merged.fromDealLog,
+    unitsSource: merged.unitsSource,
     report,
     metrics: report.metrics,
     monthly: rollup.monthly,

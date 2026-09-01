@@ -101,9 +101,11 @@ function renderRecap(snapshot) {
   const monthly = snapshot.monthly || {};
   const weekly = snapshot.weekly || {};
   $('kpiUnits').textContent = `${qty.format(report.newSold || 0)} / ${qty.format(report.usedSold || 0)}`;
-  $('kpiUnitsNote').textContent = snapshot.saved
-    ? `Saved recap · ${qty.format(report.totalSold || 0)} retail units`
-    : 'Not saved yet — numbers below are a draft';
+  $('kpiUnitsNote').textContent = snapshot.unitsSource === 'deal-log'
+    ? `Filled from DEALINPUT · ${qty.format(report.totalSold || 0)} retail units`
+    : snapshot.saved
+      ? `Saved recap · ${qty.format(report.totalSold || 0)} retail units`
+      : 'Not saved yet — numbers below are a draft';
   $('kpiGross').textContent = money.format(report.totalGross || 0);
   $('kpiGrossMonth').textContent = `Front ${money.format(report.frontGross || 0)} · Back ${money.format(report.backGross || 0)} · MTD ${money.format(monthly.totalGross || 0)}`;
   $('kpiRates').textContent = `${pct(snapshot.metrics?.showRate)} / ${pct(snapshot.metrics?.closeRate)}`;
@@ -152,6 +154,9 @@ function renderHistory(rows) {
 }
 
 async function loadDay(date) {
+  if (!date) {
+    return null;
+  }
   const snapshot = await api(`/api/summary?date=${encodeURIComponent(date)}`);
   state.snapshot = snapshot;
   fillForm(snapshot.report);
@@ -160,6 +165,17 @@ async function loadDay(date) {
   const history = await api('/api/history');
   renderHistory(history.rows || []);
   return snapshot;
+}
+
+function fillStatus(snapshot) {
+  const deals = snapshot?.dealLog?.daily?.dealCount || 0;
+  if (deals) {
+    setStatus(`Filled ${deals} retail deal${deals === 1 ? '' : 's'} from DEALINPUT. Enter traffic and save.`);
+    return;
+  }
+  setStatus(snapshot?.saved
+    ? 'No retail deals in DEALINPUT for this date. Showing the saved recap.'
+    : 'No retail deals in DEALINPUT for this date. Enter units, gross, and traffic.');
 }
 
 function setStatus(message, isError = false) {
@@ -178,8 +194,17 @@ document.querySelectorAll('.tabs button').forEach((button) => {
 
 $('recallBtn').addEventListener('click', async () => {
   try {
-    await loadDay($('reportDate').value);
-    setStatus('Day recalled.');
+    const snapshot = await loadDay($('reportDate').value);
+    fillStatus(snapshot);
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+});
+
+$('reportDate').addEventListener('change', async () => {
+  try {
+    const snapshot = await loadDay($('reportDate').value);
+    fillStatus(snapshot);
   } catch (error) {
     setStatus(error.message, true);
   }
@@ -193,7 +218,7 @@ $('fillDealLog').addEventListener('click', async () => {
     });
     fillForm(filled.report);
     renderDealHint(filled.dealLog);
-    setStatus('Units and gross filled from the retail deal log. Traffic was kept. Save to lock the recap.');
+    setStatus('Units and gross refreshed from DEALINPUT. Traffic was kept. Save to lock the recap.');
   } catch (error) {
     setStatus(error.message, true);
   }
@@ -219,4 +244,6 @@ $('saveDaily').addEventListener('click', async () => {
 });
 
 $('reportDate').value = todayInputValue();
-loadDay($('reportDate').value).catch((error) => setStatus(error.message, true));
+loadDay($('reportDate').value)
+  .then((snapshot) => fillStatus(snapshot))
+  .catch((error) => setStatus(error.message, true));

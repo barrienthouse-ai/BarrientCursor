@@ -35,8 +35,8 @@ function SLM_install() {
 
 function SLM_openRecap() {
   var template = HtmlService.createTemplateFromFile('SLM_App');
-  var stored = SLM_briefStoreGet_(SLM_todayKey_());
-  template.seedJson = stored && stored.report ? SLM_safeJson_(stored) : 'null';
+  var snapshot = SLM_getSummary(SLM_todayKey_());
+  template.seedJson = snapshot && snapshot.report ? SLM_safeJson_(snapshot) : 'null';
   var html = template.evaluate()
     .setWidth(1100)
     .setHeight(780)

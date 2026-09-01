@@ -72,6 +72,9 @@ describe('API', () => {
     });
     assert.equal(saved.status, 201);
     assert.equal(saved.body.saved, true);
+    assert.equal(saved.body.fromDealLog, false);
+    assert.equal(saved.body.report.newSold, 5);
+    assert.equal(saved.body.report.usedSold, 2);
     assert.equal(saved.body.report.totalSold, 7);
     assert.equal(saved.body.report.totalGross, 10698.92);
     assert.equal(saved.body.report.nextBusinessDate, '2026-09-01');
@@ -79,8 +82,10 @@ describe('API', () => {
     assert.equal(saved.body.metrics.closeRate, 7 / 19);
 
     const recalled = await json(`${base}/api/daily-report/2026-08-31`);
-    assert.equal(recalled.body.report.newSold, 5);
-    assert.equal(recalled.body.report.usedSold, 2);
+    assert.equal(recalled.body.fromDealLog, true);
+    assert.equal(recalled.body.report.newSold, 1);
+    assert.equal(recalled.body.report.usedSold, 1);
+    assert.equal(recalled.body.report.totalGross, 3365.41);
     assert.equal(recalled.body.report.appointments, 14);
     assert.equal(recalled.body.report.shownAppointments, 10);
     assert.equal(recalled.body.report.showroomVisits, 19);

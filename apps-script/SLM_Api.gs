@@ -100,22 +100,25 @@ function SLM_buildSnapshot_(dateKey, reports, dealLog) {
   var weekStart = SLM_monday_(key);
   var weekEnd = SLM_addDaysKey_(weekStart, 5);
   var saved = SLM_findDaily_(reports, key);
-  var report;
-  if (saved) {
-    report = SLM_normalizeReport_(saved);
-  } else {
-    var daily = (dealLog && dealLog.daily) || SLM_emptyTotals_();
-    report = SLM_normalizeReport_({
-      date: key,
-      newSold: daily.newSold,
-      usedSold: daily.usedSold,
-      frontGross: daily.frontGross,
-      backGross: daily.backGross,
-      source: daily.dealCount ? 'deal-log' : 'unsaved',
-      submittedBy: '',
-      submittedAt: ''
-    });
-  }
+  var daily = (dealLog && dealLog.daily) || SLM_emptyTotals_();
+  var fromDealLog = daily.dealCount > 0;
+  var base = saved || { date: key };
+  var report = SLM_normalizeReport_({
+    date: key,
+    newSold: fromDealLog ? daily.newSold : base.newSold,
+    usedSold: fromDealLog ? daily.usedSold : base.usedSold,
+    frontGross: fromDealLog ? daily.frontGross : base.frontGross,
+    backGross: fromDealLog ? daily.backGross : base.backGross,
+    appointments: base.appointments,
+    shownAppointments: base.shownAppointments,
+    showroomVisits: base.showroomVisits,
+    nextDayAppointments: base.nextDayAppointments,
+    nextBusinessDate: base.nextBusinessDate,
+    notes: base.notes,
+    submittedBy: saved ? base.submittedBy : '',
+    submittedAt: saved ? base.submittedAt : '',
+    source: fromDealLog ? 'deal-log' : (saved ? base.source : 'unsaved')
+  });
   var monthRows = (reports || []).filter(function (row) {
     return row.date && row.date.indexOf(month) === 0;
   });
@@ -129,6 +132,8 @@ function SLM_buildSnapshot_(dateKey, reports, dealLog) {
     month: month,
     nextBusinessDate: SLM_nextBusinessDay_(key),
     saved: Boolean(saved),
+    fromDealLog: fromDealLog,
+    unitsSource: fromDealLog ? 'deal-log' : (saved ? 'saved' : 'unsaved'),
     report: report,
     metrics: SLM_metrics_(report),
     monthly: monthly,
@@ -140,12 +145,8 @@ function SLM_buildSnapshot_(dateKey, reports, dealLog) {
 
 function SLM_getSummary(dateKey) {
   var key = SLM_dateKeyFast_(dateKey) || SLM_toDateKey_(dateKey);
-  var stored = SLM_briefStoreGet_(key);
-  if (stored && stored.report && stored.saved) {
-    return stored;
-  }
   var reports = SLM_reportsFromTable_(SLM_readDailyTable_());
-  var dealLog = stored && stored.dealLog ? stored.dealLog : SLM_peekDealInput_(key);
+  var dealLog = SLM_peekDealInput_(key);
   var snapshot = SLM_buildSnapshot_(key, reports, dealLog);
   SLM_briefStorePut_(key, snapshot);
   return snapshot;

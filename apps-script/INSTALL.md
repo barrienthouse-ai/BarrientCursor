@@ -37,12 +37,10 @@ GEAUXCHEVROLETSALESLOG already logs deals on `DEALINPUT` and rolls MTD on `SUMMA
 
 ## Daily use
 
-- Pick the date (defaults to today).
-- **Fill from deal log** copies retail new/used units and front/back/total gross from `DEALINPUT` for that date. Wholesale and dealer trades are skipped.
+- Pick the date (defaults to today). Retail new/used units and front/back/total gross fill from `DEALINPUT` automatically. Wholesale and dealer trades are skipped.
 - Type **appts for the day**, **shown appts**, **total showroom visits**, and **appts for the next business day**. Those are not in the deal log.
-- Override any pulled unit/gross number if a deal is still being logged.
+- Override any pulled unit/gross number if a deal is still being logged. Use **Refresh from deal log** if deals were added after the date was already selected.
 - **Save daily report** upserts that date on `SLM_Daily` and refreshes `SLM_Dashboard`.
-- **Recall day** reloads a previously saved date.
 
 Next business day skips Sunday. Saturday recaps set Monday as the next selling day.
 
