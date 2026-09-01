@@ -3,9 +3,20 @@
  * These functions never write DEALINPUT, SUMMARY, LOGDEAL, or any other existing tab.
  *
  * DEALINPUT is padded with formulas well past the last real deal (row ~800 of ~12,000).
- * Always walk column A from the bottom until a real date is found, then read that block.
+ * Column A formulas can still look like dates, so the last real deal is the last row
+ * that has a parseable date AND a TYPE or DEPT — not merely a date in A.
  */
-function SLM_lastDateRow_(sheet) {
+function SLM_rowLooksLikeDeal_(displayedRow, rawRow) {
+  var dateKey = SLM_parseSheetDate_(displayedRow[0]) || SLM_parseSheetDate_(rawRow[0]);
+  if (!dateKey) {
+    return '';
+  }
+  var type = String(displayedRow[3] || rawRow[3] || '').trim();
+  var dept = String(displayedRow[4] || rawRow[4] || '').trim();
+  return type || dept ? dateKey : '';
+}
+
+function SLM_lastDealRow_(sheet) {
   var last = sheet.getLastRow();
   if (last < 6) {
     return 5;
@@ -15,10 +26,10 @@ function SLM_lastDateRow_(sheet) {
   while (end >= 6) {
     var start = Math.max(6, end - chunk + 1);
     var height = end - start + 1;
-    var displayed = sheet.getRange(start, 1, height, 1).getDisplayValues();
-    var raw = sheet.getRange(start, 1, height, 1).getValues();
+    var displayed = sheet.getRange(start, 1, height, 5).getDisplayValues();
+    var raw = sheet.getRange(start, 1, height, 5).getValues();
     for (var i = height - 1; i >= 0; i--) {
-      if (SLM_parseSheetDate_(displayed[i][0]) || SLM_parseSheetDate_(raw[i][0])) {
+      if (SLM_rowLooksLikeDeal_(displayed[i], raw[i])) {
         return start + i;
       }
     }
@@ -34,15 +45,15 @@ function SLM_peekDealInput_(dateKey) {
   if (!sheet) {
     return { date: dateKey, month: String(dateKey || '').slice(0, 7), daily: daily, monthly: monthly, rows: 0, lastRetailDate: '', available: false };
   }
-  var lastDateRow = SLM_lastDateRow_(sheet);
-  if (lastDateRow < 6) {
+  var lastDealRow = SLM_lastDealRow_(sheet);
+  if (lastDealRow < 6) {
     return { date: dateKey, month: String(dateKey || '').slice(0, 7), daily: daily, monthly: monthly, rows: 0, lastRetailDate: '', available: true };
   }
   var start = 6;
-  if (lastDateRow - start + 1 > 2500) {
-    start = lastDateRow - 2499;
+  if (lastDealRow - start + 1 > 6000) {
+    start = lastDealRow - 5999;
   }
-  var height = lastDateRow - start + 1;
+  var height = lastDealRow - start + 1;
   var values = sheet.getRange(start, 1, height, 27).getValues();
   var displayed = sheet.getRange(start, 1, height, 5).getDisplayValues();
   var month = String(dateKey || '').slice(0, 7);
@@ -108,17 +119,28 @@ function SLM_addSale_(bucket, rec) {
 }
 
 function SLM_showDealLogPeek() {
-  var key = SLM_todayKey_();
+  var ui = SpreadsheetApp.getUi();
+  var today = SLM_todayKey_();
+  var asked = ui.prompt(
+    'Peek DEALINPUT',
+    'Which date? Examples: 8/31/2026 or 2026-08-31. Leave blank for today (' + today + ').',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (asked.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+  var key = SLM_dateKeyFast_(asked.getResponseText()) || today;
   var peek = SLM_peekDealInput_(key);
-  SpreadsheetApp.getUi().alert(
+  ui.alert(
     'Read-only peek of DEALINPUT (no existing tabs were changed)\n\n' +
-    'Date: ' + key + '\n' +
+    'Date searched: ' + key + '\n' +
+    'Retail deals that day: ' + peek.daily.dealCount + '\n' +
     'Retail new: ' + peek.daily.newSold + '\n' +
     'Retail used: ' + peek.daily.usedSold + '\n' +
     'Front: ' + peek.daily.frontGross + '\n' +
     'Back: ' + peek.daily.backGross + '\n' +
     'Total: ' + peek.daily.totalGross + '\n' +
     'Last retail day in DEALINPUT: ' + (peek.lastRetailDate || '(none)') + '\n\n' +
-    'Choosing a report date fills these numbers automatically. Traffic is still typed by the manager.'
+    'If this is still zero on a day you can see in DEALINPUT, replace SLM_Config.gs, SLM_Import.gs, SLM_Api.gs, and SLM_App.html from the latest source.'
   );
 }

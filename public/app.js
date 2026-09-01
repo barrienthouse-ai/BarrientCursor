@@ -88,6 +88,11 @@ function readForm() {
 }
 
 function renderDealHint(dealLog) {
+  const last = dealLog?.lastRetailDate || '';
+  state.lastRetailDate = last;
+  $('lastDealNote').textContent = last
+    ? `Last retail day in DEALINPUT: ${last}`
+    : 'Last retail day in DEALINPUT: (none found)';
   if (!dealLog || !dealLog.daily) {
     $('dealHint').textContent = 'Deal log: —';
     return;
@@ -246,7 +251,23 @@ $('saveDaily').addEventListener('click', async () => {
   }
 });
 
-$('reportDate').value = todayInputValue();
+$('lastDealDayBtn').addEventListener('click', async () => {
+  const last = state.lastRetailDate;
+  if (!last) {
+    setStatus('DEALINPUT scan did not find a retail date.', true);
+    return;
+  }
+  $('reportDate').value = last;
+  try {
+    const snapshot = await loadDay(last);
+    fillStatus(snapshot);
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+});
+
+const requestedDate = new URLSearchParams(window.location.search).get('date');
+$('reportDate').value = requestedDate || todayInputValue();
 loadDay($('reportDate').value)
   .then((snapshot) => fillStatus(snapshot))
   .catch((error) => setStatus(error.message, true));

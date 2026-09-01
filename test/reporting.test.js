@@ -61,6 +61,20 @@ describe('deal log totals', () => {
     assert.equal(summary.lastRetailDate, '2026-08-31');
   });
 
+  it('ignores padded date-only rows after the last typed retail deal', () => {
+    const summary = summarizeDealLog(
+      [
+        { date: '8/31/2026', type: 'RETAIL', dept: 'New', frontGross: 100, backGross: 200 },
+        { date: '8/31/2026', type: 'Retail', dept: 'Used', frontGross: 50, backGross: 75 },
+        { date: '9/1/2026', type: '', dept: '', frontGross: 0, backGross: 0 },
+        { date: '9/2/2026', type: '', dept: '' }
+      ],
+      '2026-08-31'
+    );
+    assert.equal(summary.daily.dealCount, 2);
+    assert.equal(summary.lastRetailDate, '2026-08-31');
+  });
+
   it('counts only retail new and used for the selected day', () => {
     assert.equal(isRetailType('Retail'), true);
     const summary = summarizeDealLog(deals, '2026-08-31');
