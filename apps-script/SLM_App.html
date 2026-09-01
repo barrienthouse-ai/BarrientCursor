@@ -29,7 +29,7 @@
   <div class="wrap">
     <h1>Sales Manager Report</h1>
     <p class="sub">End-of-day recap. Choosing a date fills retail units and gross from DEALINPUT. Traffic is typed by the manager. Writes only to SLM_* tabs.</p>
-    <label>Report date <input id="reportDate" type="date" onchange="recallDay()" /></label>
+    <label>Report date <input id="reportDate" type="date" min="2020-01-01" max="2035-12-31" onchange="recallDay()" /></label>
     <div class="kpis">
       <div class="card"><div class="meta">New / used</div><div class="value" id="kpiUnits">—</div></div>
       <div class="card"><div class="meta">Total gross</div><div class="value" id="kpiGross">—</div></div>
@@ -141,12 +141,15 @@
       google.script.run.withSuccessHandler(function (snapshot) {
         renderSnapshot(snapshot);
         var deals = snapshot && snapshot.dealLog && snapshot.dealLog.daily ? snapshot.dealLog.daily.dealCount : 0;
+        var date = snapshot && snapshot.date ? snapshot.date : $('reportDate').value;
+        var last = snapshot && snapshot.dealLog ? snapshot.dealLog.lastRetailDate : '';
         if (deals) {
-          setStatus('Filled ' + deals + ' retail deal' + (deals === 1 ? '' : 's') + ' from DEALINPUT. Enter traffic and save.');
+          setStatus('Filled ' + deals + ' retail deal' + (deals === 1 ? '' : 's') + ' from DEALINPUT on ' + date + '. Enter traffic and save.');
         } else {
+          var lastNote = last ? ' Last retail day in DEALINPUT is ' + last + '.' : '';
           setStatus(snapshot && snapshot.saved
-            ? 'No retail deals in DEALINPUT for this date. Showing the saved recap.'
-            : 'No retail deals in DEALINPUT for this date. Enter units, gross, and traffic.');
+            ? 'No retail deals in DEALINPUT on ' + date + '. Showing the saved recap.' + lastNote
+            : 'No retail deals in DEALINPUT on ' + date + '.' + lastNote + ' Enter units, gross, and traffic.');
         }
       }).withFailureHandler(function (error) {
         setStatus(error.message || String(error), true);

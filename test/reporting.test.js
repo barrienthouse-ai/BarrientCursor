@@ -8,6 +8,7 @@ import {
   isRetailType,
   nextBusinessDay,
   normalizeDailyReport,
+  parseSheetDateKey,
   reservedSheetNames,
   reservedSimpleTriggers,
   rollupReports,
@@ -19,6 +20,14 @@ import {
 describe('date helpers', () => {
   it('keeps ISO date keys', () => {
     assert.equal(toDateKey('2026-08-31'), '2026-08-31');
+  });
+
+  it('parses DEALINPUT date formats used on the live sheet', () => {
+    assert.equal(parseSheetDateKey('8/31/2026'), '2026-08-31');
+    assert.equal(parseSheetDateKey('08/31/26'), '2026-08-31');
+    assert.equal(parseSheetDateKey(46265), '2026-08-31');
+    assert.equal(parseSheetDateKey(new Date(Date.UTC(2026, 7, 31))), '2026-08-31');
+    assert.equal(toDateKey('8/31/2026'), '2026-08-31');
   });
 
   it('skips Sunday when finding the next business day', () => {
@@ -36,6 +45,21 @@ describe('deal log totals', () => {
     { date: '2026-08-31', type: 'Dealer Trade', dept: 'New', frontGross: 80, backGross: 0, totalGross: 80 },
     { date: '2026-08-01', type: 'RETAIL', dept: 'New', frontGross: 10, backGross: 20, totalGross: 30 }
   ];
+
+  it('matches 8/31 deals entered as US dates even with empty padded rows', () => {
+    const summary = summarizeDealLog(
+      [
+        { date: '8/31/2026', type: 'RETAIL', dept: 'New', frontGross: 100, backGross: 200 },
+        { date: '8/31/26', type: 'Retail', dept: 'USED', frontGross: 50, backGross: 75 },
+        { date: '', type: 'RETAIL', dept: 'New', frontGross: 9, backGross: 9 }
+      ],
+      '2026-08-31'
+    );
+    assert.equal(summary.daily.newSold, 1);
+    assert.equal(summary.daily.usedSold, 1);
+    assert.equal(summary.daily.dealCount, 2);
+    assert.equal(summary.lastRetailDate, '2026-08-31');
+  });
 
   it('counts only retail new and used for the selected day', () => {
     assert.equal(isRetailType('Retail'), true);

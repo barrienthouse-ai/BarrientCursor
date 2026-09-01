@@ -5,18 +5,76 @@
 
 export const CLOSED_WEEKDAYS = [0]; // Sunday — Geaux Chevrolet is open Monday–Saturday
 
-export function toDateKey(input, now = new Date()) {
-  if (input instanceof Date && !Number.isNaN(input.getTime())) {
-    return formatDateKey(input);
+export function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
+export function normalizeYear(year) {
+  const num = Number(year);
+  if (!Number.isFinite(num) || num <= 0) {
+    return 0;
   }
-  if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input.trim())) {
-    return input.trim();
+  if (num < 100) {
+    return num >= 50 ? 1900 + num : 2000 + num;
   }
-  if (typeof input === 'string' && input.trim()) {
-    const parsed = new Date(input);
-    if (!Number.isNaN(parsed.getTime())) {
-      return formatDateKey(parsed);
+  // 206 → 2026 so a mistyped year still hits this year's deal log
+  if (num < 1000) {
+    return 2000 + (num % 100);
+  }
+  return num;
+}
+
+export function chicagoDateKey(date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+  const get = (type) => parts.find((part) => part.type === type)?.value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+export function parseSheetDateKey(value) {
+  if (value === '' || value === null || value === undefined) {
+    return '';
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    if (value.getUTCHours() === 0 && value.getUTCMinutes() === 0 && value.getUTCSeconds() === 0) {
+      return `${value.getUTCFullYear()}-${pad2(value.getUTCMonth() + 1)}-${pad2(value.getUTCDate())}`;
     }
+    return chicagoDateKey(value);
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const serial = Math.floor(value);
+    if (serial > 20000 && serial < 80000) {
+      const ms = Date.UTC(1899, 11, 30) + serial * 86400000;
+      const excel = new Date(ms);
+      return `${excel.getUTCFullYear()}-${pad2(excel.getUTCMonth() + 1)}-${pad2(excel.getUTCDate())}`;
+    }
+  }
+  const text = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
+    const iso = text.slice(0, 10);
+    const year = normalizeYear(Number(iso.slice(0, 4)));
+    return `${year}-${iso.slice(5)}`;
+  }
+  const us = text.match(/(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/);
+  if (us) {
+    const month = Number(us[1]);
+    const day = Number(us[2]);
+    const year = normalizeYear(us[3]);
+    if (year >= 2000 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${pad2(month)}-${pad2(day)}`;
+    }
+  }
+  return '';
+}
+
+export function toDateKey(input, now = new Date()) {
+  const parsed = parseSheetDateKey(input);
+  if (parsed) {
+    return parsed;
   }
   return formatDateKey(now);
 }
@@ -151,6 +209,7 @@ export function summarizeDealLog(deals = [], dateKey, options = {}) {
   const daily = emptySalesTotals();
   const monthly = emptySalesTotals();
   const rows = [];
+  let lastRetailDate = '';
 
   for (const deal of deals) {
     if (!deal) {
@@ -160,7 +219,10 @@ export function summarizeDealLog(deals = [], dateKey, options = {}) {
     if (retailOnly && !isRetailType(type)) {
       continue;
     }
-    const dealDate = toDateKey(deal.date || deal.DATE);
+    const dealDate = parseSheetDateKey(deal.date || deal.DATE);
+    if (!dealDate) {
+      continue;
+    }
     const dept = classifyDept(deal.dept || deal.DEPT || deal.newUsed);
     const front = roundMoney(deal.frontGross ?? deal.front ?? deal.fTotal ?? deal['F TOTAL']);
     const back = roundMoney(deal.backGross ?? deal.back ?? deal.finTotal ?? deal['FIN TOTAL']);
@@ -178,6 +240,9 @@ export function summarizeDealLog(deals = [], dateKey, options = {}) {
       units,
       salesPerson: deal.sales1 || deal['SALES 1'] || deal.salesPerson || ''
     };
+    if (dealDate && (dept === 'new' || dept === 'used') && dealDate > lastRetailDate) {
+      lastRetailDate = dealDate;
+    }
     if (key && dealDate === key) {
       addSale(daily, rec);
       if (dept === 'new' || dept === 'used') {
@@ -189,7 +254,7 @@ export function summarizeDealLog(deals = [], dateKey, options = {}) {
     }
   }
 
-  return { date: key, month, daily, monthly, rows };
+  return { date: key, month, daily, monthly, rows, lastRetailDate };
 }
 
 export function showRate(shown, appointments) {
@@ -388,7 +453,10 @@ export function buildDailySnapshot({ dateKey, reports = [], dealLog = [], now = 
     monthly: rollup.monthly,
     weekly: rollup.weekly,
     week: rollup.week,
-    dealLog: dealHint
+    dealLog: {
+      ...dealHint,
+      lastRetailDate: dealHint.lastRetailDate || ''
+    }
   };
 }
 

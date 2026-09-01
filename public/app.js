@@ -168,14 +168,17 @@ async function loadDay(date) {
 }
 
 function fillStatus(snapshot) {
+  const date = snapshot?.date || $('reportDate').value;
   const deals = snapshot?.dealLog?.daily?.dealCount || 0;
+  const last = snapshot?.dealLog?.lastRetailDate;
   if (deals) {
-    setStatus(`Filled ${deals} retail deal${deals === 1 ? '' : 's'} from DEALINPUT. Enter traffic and save.`);
+    setStatus(`Filled ${deals} retail deal${deals === 1 ? '' : 's'} from DEALINPUT on ${date}. Enter traffic and save.`);
     return;
   }
+  const lastNote = last ? ` Last retail day in DEALINPUT is ${last}.` : '';
   setStatus(snapshot?.saved
-    ? 'No retail deals in DEALINPUT for this date. Showing the saved recap.'
-    : 'No retail deals in DEALINPUT for this date. Enter units, gross, and traffic.');
+    ? `No retail deals in DEALINPUT on ${date}. Showing the saved recap.${lastNote}`
+    : `No retail deals in DEALINPUT on ${date}.${lastNote} Enter units, gross, and traffic.`);
 }
 
 function setStatus(message, isError = false) {

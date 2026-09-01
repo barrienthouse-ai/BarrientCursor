@@ -71,37 +71,64 @@ function SLM_nowIso_() {
   return new Date().toISOString();
 }
 
-function SLM_toDateKey_(value) {
-  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
-    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  }
-  var text = String(value || '').trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    return text;
-  }
-  if (text) {
-    var parsed = new Date(text);
-    if (!isNaN(parsed.getTime())) {
-      return Utilities.formatDate(parsed, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    }
-  }
-  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+function SLM_pad2_(value) {
+  return Number(value) < 10 ? '0' + Number(value) : String(value);
 }
 
-function SLM_dateKeyFast_(value) {
+function SLM_normalizeYear_(year) {
+  var num = Number(year);
+  if (!isFinite(num) || num <= 0) {
+    return 0;
+  }
+  if (num < 100) {
+    return num >= 50 ? 1900 + num : 2000 + num;
+  }
+  if (num < 1000) {
+    return 2000 + (num % 100);
+  }
+  return num;
+}
+
+function SLM_parseSheetDate_(value) {
   if (value === '' || value === null || value === undefined) {
     return '';
   }
   if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
-    var month = value.getMonth() + 1;
-    var day = value.getDate();
-    return value.getFullYear() + '-' + (month < 10 ? '0' + month : month) + '-' + (day < 10 ? '0' + day : day);
+    try {
+      return Utilities.formatDate(value, Session.getScriptTimeZone() || 'America/Chicago', 'yyyy-MM-dd');
+    } catch (ignoreTz) {
+      if (value.getUTCHours() === 0 && value.getUTCMinutes() === 0 && value.getUTCSeconds() === 0) {
+        return value.getUTCFullYear() + '-' + SLM_pad2_(value.getUTCMonth() + 1) + '-' + SLM_pad2_(value.getUTCDate());
+      }
+      return value.getFullYear() + '-' + SLM_pad2_(value.getMonth() + 1) + '-' + SLM_pad2_(value.getDate());
+    }
+  }
+  if (typeof value === 'number' && isFinite(value) && value > 20000 && value < 80000) {
+    var excel = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86400000);
+    return excel.getUTCFullYear() + '-' + SLM_pad2_(excel.getUTCMonth() + 1) + '-' + SLM_pad2_(excel.getUTCDate());
   }
   var text = String(value).trim();
   if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
-    return text.slice(0, 10);
+    return SLM_normalizeYear_(text.slice(0, 4)) + text.slice(4, 10);
+  }
+  var us = text.match(/(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/);
+  if (us) {
+    var month = Number(us[1]);
+    var day = Number(us[2]);
+    var year = SLM_normalizeYear_(us[3]);
+    if (year >= 2000 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return year + '-' + SLM_pad2_(month) + '-' + SLM_pad2_(day);
+    }
   }
   return '';
+}
+
+function SLM_toDateKey_(value) {
+  return SLM_parseSheetDate_(value) || SLM_todayKey_();
+}
+
+function SLM_dateKeyFast_(value) {
+  return SLM_parseSheetDate_(value);
 }
 
 function SLM_toNumber_(value) {
