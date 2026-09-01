@@ -39,8 +39,8 @@ function SMR_openBriefing() {
   var stored = SMR_briefStoreGet_(SMR_todayKey_());
   template.seedJson = stored && stored.summary ? SMR_safeJson_(stored) : 'null';
   var html = template.evaluate()
-    .setWidth(1180)
-    .setHeight(800)
+    .setWidth(1240)
+    .setHeight(860)
     .setTitle('Service Manager Report');
   SpreadsheetApp.getUi().showModalDialog(html, 'Service Manager Report');
 }

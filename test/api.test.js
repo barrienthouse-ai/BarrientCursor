@@ -135,4 +135,16 @@ describe('API', () => {
     });
     assert.equal(result.status, 400);
   });
+
+  it('serves the Sheet briefing layout with production board and hours table', async () => {
+    const response = await fetch(`${base}/sheet-briefing?date=2026-08-29`);
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /BarrientCursor · Fixed operations/);
+    assert.match(html, /Hours by technician/);
+    assert.match(html, /id="hoursTable"/);
+    assert.match(html, /Shop sold labor hours today/);
+    assert.match(html, /onclick="setTab\('briefing'\)"/);
+    assert.doesNotMatch(html, /<\?!= seedJson \?>/);
+  });
 });

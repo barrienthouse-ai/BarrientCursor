@@ -38,6 +38,11 @@ describe('SMR load-speed contract', () => {
     assert.match(html, /Hours \/ RO/);
     assert.match(html, /Unapplied time/);
     assert.match(html, /function liveTotals\(/);
+    assert.match(html, /onclick="setTab\('briefing'\)"/);
+    assert.match(html, /Hours by technician/);
+    assert.match(html, /id="hoursTable"/);
+    assert.match(html, /Shop sold labor hours today/);
+    assert.match(html, /BarrientCursor · Fixed operations/);
   });
 
   it('loads a briefing from SMR_ properties before touching SMR sheets', () => {

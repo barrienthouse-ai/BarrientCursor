@@ -1,7 +1,8 @@
 import express from 'express';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { auditWorkbook, DEFAULT_ADVISORS } from './reporting.js';
+import { auditWorkbook, DEFAULT_ADVISORS, toDateKey } from './reporting.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
@@ -13,6 +14,20 @@ export function createApp(store) {
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true, service: 'service-manager-report' });
+  });
+
+  app.get('/sheet-briefing', (req, res) => {
+    const date = toDateKey(req.query.date || new Date());
+    const snapshot = store.snapshot(date);
+    const seed = {
+      roster: store.roster(),
+      summary: snapshot,
+      heat: store.listHeatCases('all'),
+      cached: true
+    };
+    const html = readFileSync(path.join(__dirname, '..', 'apps-script', 'SMR_App.html'), 'utf8')
+      .replace('<?!= seedJson ?>', JSON.stringify(seed).replace(/</g, '\\u003c'));
+    res.type('html').send(html);
   });
 
   app.get('/api/config', (_req, res) => {
