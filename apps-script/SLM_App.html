@@ -80,8 +80,10 @@
         <button type="button" class="secondary" onclick="recallDay()">Recall day</button>
         <button type="button" class="secondary" onclick="fillDealLog()">Refresh from deal log</button>
         <button type="button" onclick="saveDay()">Save daily report</button>
+        <button type="button" onclick="emailReport()">Email this report</button>
         <span class="notice" id="status"></span>
       </div>
+      <label>Report email <input id="reportEmail" type="email" placeholder="Add the address later on the SLM_Config tab" /></label>
     </div>
   </div>
   <script>
@@ -241,6 +243,39 @@
         setStatus(error.message || String(error), true);
       }).SLM_saveDailyReport(readForm());
     }
+    function emailReport() {
+      var payload = readForm();
+      payload.to = $('reportEmail').value;
+      setStatus('Sending Geaux Chevrolet recap…');
+      google.script.run.withSuccessHandler(function (result) {
+        if (result && result.needsEmail) {
+          var to = window.prompt('Send this recap to which email? You can also add it later on the SLM_Config tab (Report email).');
+          if (!to) {
+            setStatus(result.error || 'Set a report email first.', true);
+            return;
+          }
+          $('reportEmail').value = to;
+          payload.to = to;
+          google.script.run.withSuccessHandler(function (sent) {
+            if (sent && sent.sent) {
+              setStatus('Emailed ' + sent.to + '.');
+            } else {
+              setStatus((sent && sent.error) || 'Email was not sent.', true);
+            }
+          }).withFailureHandler(function (error) {
+            setStatus(error.message || String(error), true);
+          }).SLM_emailDailyReport(payload);
+          return;
+        }
+        if (result && result.sent) {
+          setStatus('Emailed ' + result.to + '.');
+          return;
+        }
+        setStatus((result && result.error) || 'Email was not sent.', true);
+      }).withFailureHandler(function (error) {
+        setStatus(error.message || String(error), true);
+      }).SLM_emailDailyReport(payload);
+    }
     function maximizeRecap() {
       try {
         var w = Math.floor(Math.max(1400, (screen.availWidth || 1400) - 16));
@@ -251,6 +286,11 @@
     }
     maximizeRecap();
     $('reportDate').value = (seed && seed.date) || today();
+    google.script.run.withSuccessHandler(function (cfg) {
+      if (cfg && cfg.reportEmail) {
+        $('reportEmail').value = cfg.reportEmail;
+      }
+    }).SLM_getEmailConfig();
     if (seed && seed.loading) {
       setStatus('Loading DEALINPUT…');
       recallDay();

@@ -196,3 +196,68 @@ function SLM_fillFromDealLog(payload) {
 function SLM_listHistory() {
   return { rows: SLM_reportsFromTable_(SLM_readDailyTable_()) };
 }
+
+function SLM_overlayMonthToDate_(prior, today) {
+  prior = prior || {};
+  today = today || {};
+  var newSold = SLM_toNumber_(prior.newSold) + SLM_toNumber_(today.newSold);
+  var usedSold = SLM_toNumber_(prior.usedSold) + SLM_toNumber_(today.usedSold);
+  var todayFront = SLM_toNumber_(today.frontGross);
+  var todayBack = SLM_toNumber_(today.backGross);
+  var todayGross = SLM_roundMoney_(SLM_toNumber_(today.totalGross) || (todayFront + todayBack));
+  var priorGross = SLM_roundMoney_(SLM_toNumber_(prior.totalGross) || (SLM_toNumber_(prior.frontGross) + SLM_toNumber_(prior.backGross)));
+  var totals = {
+    newSold: newSold,
+    usedSold: usedSold,
+    totalSold: newSold + usedSold,
+    frontGross: SLM_roundMoney_(SLM_toNumber_(prior.frontGross) + todayFront),
+    backGross: SLM_roundMoney_(SLM_toNumber_(prior.backGross) + todayBack),
+    totalGross: SLM_roundMoney_(priorGross + todayGross),
+    appointments: SLM_toNumber_(prior.appointments) + SLM_toNumber_(today.appointments),
+    shownAppointments: SLM_toNumber_(prior.shownAppointments) + SLM_toNumber_(today.shownAppointments),
+    showroomVisits: SLM_toNumber_(prior.showroomVisits) + SLM_toNumber_(today.showroomVisits),
+    nextDayAppointments: SLM_toNumber_(today.nextDayAppointments)
+  };
+  totals.metrics = SLM_metrics_(totals);
+  return totals;
+}
+
+function SLM_getEmailConfig() {
+  SLM_ensureSheets();
+  return { reportEmail: SLM_getReportEmail_() };
+}
+
+function SLM_saveReportEmail(email) {
+  return { reportEmail: SLM_setReportEmail_(email) };
+}
+
+function SLM_emailDailyReport(payload) {
+  SLM_ensureSheets();
+  var report = SLM_normalizeReport_(payload || {});
+  var to = String((payload && payload.to) || SLM_getReportEmail_() || '').trim();
+  if (!to) {
+    return { sent: false, needsEmail: true, error: 'Set a report email first. You can add it later on the SLM_Config tab.' };
+  }
+  if (!SLM_isValidEmail_(to)) {
+    throw new Error('Enter a valid report email address.');
+  }
+  if (payload && payload.to) {
+    SLM_setReportEmail_(to);
+  }
+  var snapshot = SLM_getSummary(report.date);
+  snapshot.report = report;
+  snapshot.metrics = SLM_metrics_(report);
+  var mail = SLM_buildReportEmail_({
+    report: report,
+    monthlyPrior: snapshot.monthlyPrior || {},
+    nextBusinessDate: snapshot.nextBusinessDate
+  });
+  MailApp.sendEmail({
+    to: to,
+    subject: mail.subject,
+    htmlBody: mail.html,
+    body: mail.text,
+    name: 'Geaux Chevrolet Sales'
+  });
+  return { sent: true, to: to, subject: mail.subject };
+}

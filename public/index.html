@@ -120,11 +120,13 @@
           <article class="card"><div class="label">MTD close %</div><div class="value" id="mtdClosePct">—</div></article>
         </div>
         <label>Notes <textarea id="notes" placeholder="What drove the day, missing deals, or tomorrow’s focus"></textarea></label>
+        <label>Report email <input id="reportEmail" type="email" placeholder="Add the address later — saved for next time" /></label>
       </article>
 
       <div class="actions">
         <button class="btn ghost" id="fillDealLog" type="button">Refresh from deal log</button>
         <button class="btn primary" id="saveDaily" type="button">Save daily report</button>
+        <button class="btn" id="emailReport" type="button">Email this report</button>
         <span class="notice" id="dailyStatus"></span>
       </div>
     </section>

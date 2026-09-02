@@ -106,6 +106,16 @@ export function weekday(dateKey) {
   return parseDateKey(dateKey).getDay();
 }
 
+export function formatLongDate(dateKey) {
+  const date = parseDateKey(dateKey);
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
 export function nextBusinessDay(dateKey, closedWeekdays = CLOSED_WEEKDAYS) {
   let key = addDays(dateKey, 1);
   for (let i = 0; i < 8; i += 1) {

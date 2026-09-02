@@ -142,4 +142,38 @@ describe('API', () => {
     assert.ok(audit.body.protectedHits.includes('DEALINPUT'));
     assert.ok(audit.body.protectedHits.includes('SMR_Dashboard'));
   });
+
+  it('builds a branded recap email and can send to a later-provided address', async () => {
+    const preview = await json(`${base}/api/email-report`, {
+      method: 'POST',
+      body: JSON.stringify({
+        date: '2026-08-31',
+        newSold: 5,
+        usedSold: 2,
+        frontGross: -3600.05,
+        backGross: 14298.98,
+        appointments: 14,
+        shownAppointments: 10,
+        showroomVisits: 19,
+        nextDayAppointments: 8,
+        notes: 'Strong Saturday.'
+      })
+    });
+    assert.equal(preview.status, 200);
+    assert.equal(preview.body.sent, false);
+    assert.equal(preview.body.preview, true);
+    assert.match(preview.body.html, /GEAUX CHEVROLET/);
+    assert.match(preview.body.html, /Strong Saturday/);
+
+    const saved = await json(`${base}/api/config`, {
+      method: 'PUT',
+      body: JSON.stringify({ reportEmail: 'gm@geauxchevrolet.com' })
+    });
+    assert.equal(saved.body.reportEmail, 'gm@geauxchevrolet.com');
+
+    const htmlPage = await fetch(`${base}/api/email-preview?date=2026-08-31`);
+    const html = await htmlPage.text();
+    assert.equal(htmlPage.status, 200);
+    assert.match(html, /GEAUX CHEVROLET/);
+  });
 });

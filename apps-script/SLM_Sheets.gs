@@ -6,10 +6,12 @@ function SLM_ensureSheets() {
   var ss = SpreadsheetApp.getActive();
   SLM_ensureSheet_(ss, SLM_SHEETS.CONFIG, SLM_HEADERS.CONFIG, [
     ['Timezone', Session.getScriptTimeZone()],
-    ['Submitter', 'Sales Manager']
+    ['Submitter', 'Sales Manager'],
+    ['Report email', '']
   ]);
   SLM_ensureSheet_(ss, SLM_SHEETS.DAILY, SLM_HEADERS.DAILY, []);
   SLM_ensureDashboard_(ss);
+  SLM_ensureConfigKeys_();
   return SLM_reservedSheetNames();
 }
 
@@ -154,6 +156,75 @@ function SLM_upsertDaily_(report) {
   } else {
     sheet.appendRow(values);
   }
+}
+
+function SLM_ensureConfigKeys_() {
+  var sheet = SLM_sheet_(SLM_SHEETS.CONFIG);
+  var wanted = {
+    Timezone: Session.getScriptTimeZone(),
+    Submitter: 'Sales Manager',
+    'Report email': ''
+  };
+  var last = sheet.getLastRow();
+  var existing = {};
+  if (last >= 2) {
+    var values = sheet.getRange(2, 1, last - 1, 2).getValues();
+    for (var i = 0; i < values.length; i++) {
+      existing[String(values[i][0])] = i + 2;
+    }
+  }
+  Object.keys(wanted).forEach(function (key) {
+    if (!existing[key]) {
+      sheet.appendRow([key, wanted[key]]);
+    }
+  });
+}
+
+function SLM_configGet_(key) {
+  var sheet = SLM_existingSheet_(SLM_SHEETS.CONFIG);
+  if (!sheet || sheet.getLastRow() < 2) {
+    return '';
+  }
+  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0]) === key) {
+      return String(values[i][1] || '').trim();
+    }
+  }
+  return '';
+}
+
+function SLM_configSet_(key, value) {
+  SLM_ensureSheets();
+  var sheet = SLM_sheet_(SLM_SHEETS.CONFIG);
+  var last = Math.max(sheet.getLastRow(), 1);
+  if (last >= 2) {
+    var values = sheet.getRange(2, 1, last - 1, 2).getValues();
+    for (var i = 0; i < values.length; i++) {
+      if (String(values[i][0]) === key) {
+        sheet.getRange(i + 2, 2).setValue(value);
+        return;
+      }
+    }
+  }
+  sheet.appendRow([key, value]);
+}
+
+function SLM_isValidEmail_(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function SLM_getReportEmail_() {
+  return SLM_configGet_('Report email');
+}
+
+function SLM_setReportEmail_(email) {
+  var text = String(email || '').trim();
+  if (text && !SLM_isValidEmail_(text)) {
+    throw new Error('Enter a valid report email address.');
+  }
+  SLM_configSet_('Report email', text);
+  return text;
 }
 
 var SLM_BRIEF_PROP_PREFIX_ = 'SLM_b_';

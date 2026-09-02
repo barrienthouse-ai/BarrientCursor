@@ -24,7 +24,8 @@ GEAUXCHEVROLETSALESLOG already logs deals on `DEALINPUT` and rolls MTD on `SUMMA
    - `SLM_Dashboard.gs`
    - `SLM_Compatibility.gs`
    - `SLM_Import.gs`
-   - `SLM_App.html`
+   - `SLM_Email.gs`
+  - `SLM_App.html`
 3. Leave every existing `.gs` / `.html` file exactly as it is.
 4. If you already have `onOpen`, add this single line inside it:
 
@@ -42,7 +43,7 @@ GEAUXCHEVROLETSALESLOG already logs deals on `DEALINPUT` and rolls MTD on `SUMMA
 - If a day with deals (for example **8/31/2026**) says there are none, replace `SLM_Config.gs`, `SLM_Import.gs`, `SLM_Api.gs`, `SLM_Menu.gs`, `SLM_Dashboard.gs`, and `SLM_App.html`. After replacing, click **Use last DEALINPUT day** or use **Peek DEALINPUT retail totals** and enter `8/31/2026`.
 - Type **appts for the day**, **shown appts**, **total showroom visits**, and **appts for the next business day**. Those are not in the deal log.
 - Override any pulled unit/gross number if a deal is still being logged. Use **Refresh from deal log** if deals were added after the date was already selected.
-- **Save daily report** upserts that date on `SLM_Daily` and refreshes `SLM_Dashboard`.
+- **Email this report** sends a branded Geaux Chevrolet recap to the address on `SLM_Config` → **Report email**. Leave that cell blank until you have the address. The button will ask once, then save it. Menu: **Set report email**.
 
 Next business day skips Sunday. Saturday recaps set Monday as the next selling day.
 

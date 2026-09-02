@@ -17,7 +17,8 @@ export function emptyStore() {
     config: {
       timezone: 'America/Chicago',
       submitter: 'Sales Manager',
-      storeName: 'Geaux Chevrolet'
+      storeName: 'Geaux Chevrolet',
+      reportEmail: ''
     },
     reports: [],
     dealLog: []
@@ -96,6 +97,11 @@ export function createStore(filePath) {
         },
         now
       );
+    },
+    setReportEmail(email) {
+      state.config.reportEmail = String(email || '').trim();
+      persist();
+      return state.config.reportEmail;
     }
   };
 }

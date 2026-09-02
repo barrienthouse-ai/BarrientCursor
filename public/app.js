@@ -278,6 +278,37 @@ $('saveDaily').addEventListener('click', async () => {
   }
 });
 
+$('emailReport').addEventListener('click', async () => {
+  try {
+    const payload = { ...readForm(), to: $('reportEmail').value };
+    const result = await api('/api/email-report', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (result.html) {
+      const blob = new Blob([result.html], { type: 'text/html' });
+      window.open(URL.createObjectURL(blob), '_blank');
+    }
+    if (result.sent) {
+      setStatus(`Emailed ${result.to}.`);
+      return;
+    }
+    setStatus(result.to
+      ? `Preview opened for ${result.to}. In the live sheet this sends through Gmail.`
+      : 'Preview opened. Add a report email when you are ready to send.');
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+});
+
+api('/api/config')
+  .then((cfg) => {
+    if (cfg?.reportEmail) {
+      $('reportEmail').value = cfg.reportEmail;
+    }
+  })
+  .catch(() => {});
+
 $('lastDealDayBtn').addEventListener('click', async () => {
   const last = state.lastRetailDate;
   if (!last) {

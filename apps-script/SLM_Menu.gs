@@ -15,6 +15,7 @@ function SLM_onOpen() {
     .createMenu(SLM_MENU_NAME)
     .addItem('Open end-of-day recap', 'SLM_openRecap')
     .addItem('Refresh dashboard sheet', 'SLM_refreshDashboard')
+    .addItem('Set report email', 'SLM_promptReportEmail')
     .addSeparator()
     .addItem('Install / repair SLM sheets', 'SLM_install')
     .addItem('Peek DEALINPUT retail totals', 'SLM_showDealLogPeek')
