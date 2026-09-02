@@ -2,7 +2,10 @@
  * Writes a recap snapshot to SLM_Dashboard only.
  */
 function SLM_refreshDashboard() {
-  var summary = SLM_getSummary(new Date());
+  return SLM_writeDashboard_(SLM_getSummary(new Date()));
+}
+
+function SLM_writeDashboard_(summary) {
   var sheet = SLM_sheet_(SLM_SHEETS.DASHBOARD);
   sheet.clear();
   sheet.getRange('A1').setValue('Sales Manager Report');
@@ -39,6 +42,5 @@ function SLM_refreshDashboard() {
   sheet.getRange('A23').setValue('Notes');
   sheet.getRange('B23').setValue(summary.report.notes || '');
   sheet.setFrozenRows(2);
-  sheet.autoResizeColumns(1, 2);
   return summary.date;
 }

@@ -4,8 +4,11 @@ import {
   auditWorkbook,
   buildDailySnapshot,
   closeRate,
+  findDateSpan,
   formatPercent,
   isRetailType,
+  lastDealScanCellsRead,
+  lastFilledDealIndex,
   nextBusinessDay,
   normalizeDailyReport,
   parseSheetDateKey,
@@ -73,6 +76,26 @@ describe('deal log totals', () => {
     );
     assert.equal(summary.daily.dealCount, 2);
     assert.equal(summary.lastRetailDate, '2026-08-31');
+  });
+
+  it('finds the last typed deal without scanning the formula tail', () => {
+    const rows = [];
+    for (let i = 0; i < 788; i += 1) {
+      rows.push(['RETAIL', 'New']);
+    }
+    for (let i = 0; i < 11200; i += 1) {
+      rows.push(['', '']);
+    }
+    const scan = lastDealScanCellsRead(rows);
+    assert.equal(lastFilledDealIndex(rows), 787);
+    assert.equal(scan.found, 787);
+    assert.ok(scan.cells < 1200, `expected a short TYPE scan, read ${scan.cells} cells`);
+  });
+
+  it('reads only the selected day’s rows from a date column', () => {
+    const dates = ['2026-08-30', '2026-08-31', '2026-08-31', '2026-08-31', '', ''];
+    assert.deepEqual(findDateSpan(dates, '2026-08-31'), { start: 1, end: 3 });
+    assert.equal(findDateSpan(dates, '2026-09-01'), null);
   });
 
   it('counts only retail new and used for the selected day', () => {

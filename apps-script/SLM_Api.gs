@@ -147,9 +147,7 @@ function SLM_getSummary(dateKey) {
   var key = SLM_dateKeyFast_(dateKey) || SLM_toDateKey_(dateKey);
   var reports = SLM_reportsFromTable_(SLM_readDailyTable_());
   var dealLog = SLM_peekDealInput_(key);
-  var snapshot = SLM_buildSnapshot_(key, reports, dealLog);
-  SLM_briefStorePut_(key, snapshot);
-  return snapshot;
+  return SLM_buildSnapshot_(key, reports, dealLog);
 }
 
 function SLM_saveDailyReport(payload) {
@@ -163,14 +161,14 @@ function SLM_saveDailyReport(payload) {
   snapshot.metrics = SLM_metrics_(report);
   SLM_briefStorePut_(report.date, snapshot);
   try {
-    SLM_refreshDashboard();
+    SLM_writeDashboard_(snapshot);
   } catch (ignoreDash) {}
   return snapshot;
 }
 
 function SLM_fillFromDealLog(payload) {
   var key = SLM_toDateKey_(payload && payload.date);
-  var peek = SLM_peekDealInput_(key);
+  var peek = SLM_peekDealInput_(key, { skipCache: true });
   var report = SLM_normalizeReport_({
     date: key,
     newSold: peek.daily.newSold,

@@ -166,6 +166,55 @@ export function classifyDept(value) {
   return 'other';
 }
 
+export function lastFilledDealIndex(typeDeptRows = []) {
+  for (let i = typeDeptRows.length - 1; i >= 0; i -= 1) {
+    const type = String(typeDeptRows[i]?.[0] || '').trim();
+    const dept = String(typeDeptRows[i]?.[1] || '').trim();
+    if (type || dept) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+export function findDateSpan(dateKeys = [], dateKey) {
+  let first = -1;
+  let last = -1;
+  for (let i = 0; i < dateKeys.length; i += 1) {
+    if (dateKeys[i] === dateKey) {
+      if (first < 0) {
+        first = i;
+      }
+      last = i;
+    }
+  }
+  return first < 0 ? null : { start: first, end: last };
+}
+
+/** Count TYPE/DEPT cells read by the exponential last-deal scan (never the formula tail). */
+export function lastDealScanCellsRead(typeDeptRows = []) {
+  let cursor = 0;
+  let size = 80;
+  let cells = 0;
+  let found = -1;
+  while (cursor < typeDeptRows.length) {
+    const end = Math.min(typeDeptRows.length, cursor + size);
+    cells += end - cursor;
+    const slice = typeDeptRows.slice(cursor, end);
+    const local = lastFilledDealIndex(slice);
+    if (local < 0) {
+      break;
+    }
+    found = cursor + local;
+    if (found < end - 1) {
+      break;
+    }
+    cursor = found + 1;
+    size = Math.min(size * 2, 400);
+  }
+  return { found, cells };
+}
+
 export function emptySalesTotals() {
   return {
     newSold: 0,

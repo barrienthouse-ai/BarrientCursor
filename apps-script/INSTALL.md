@@ -37,8 +37,9 @@ GEAUXCHEVROLETSALESLOG already logs deals on `DEALINPUT` and rolls MTD on `SUMMA
 
 ## Daily use
 
+- The recap window opens immediately. DEALINPUT loads in the background and does not walk the ~12,000 formula-padded rows. It caches the last typed deal row and reads only that day’s cells.
 - Pick the date (defaults to today). Retail new/used units and front/back/total gross fill from `DEALINPUT` automatically. Wholesale and dealer trades are skipped.
-- If a day with deals (for example **8/31/2026**) says there are none, replace `SLM_Config.gs`, `SLM_Import.gs`, `SLM_Api.gs`, and `SLM_App.html`. The old peek read the empty formula tail of DEALINPUT (~12,000 padded rows) instead of the last typed deal. After replacing, click **Use last DEALINPUT day** or use **Peek DEALINPUT retail totals** and enter `8/31/2026`.
+- If a day with deals (for example **8/31/2026**) says there are none, replace `SLM_Config.gs`, `SLM_Import.gs`, `SLM_Api.gs`, `SLM_Menu.gs`, `SLM_Dashboard.gs`, and `SLM_App.html`. After replacing, click **Use last DEALINPUT day** or use **Peek DEALINPUT retail totals** and enter `8/31/2026`.
 - Type **appts for the day**, **shown appts**, **total showroom visits**, and **appts for the next business day**. Those are not in the deal log.
 - Override any pulled unit/gross number if a deal is still being logged. Use **Refresh from deal log** if deals were added after the date was already selected.
 - **Save daily report** upserts that date on `SLM_Daily` and refreshes `SLM_Dashboard`.
