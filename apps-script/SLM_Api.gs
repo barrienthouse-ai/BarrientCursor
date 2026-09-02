@@ -125,8 +125,15 @@ function SLM_buildSnapshot_(dateKey, reports, dealLog) {
   var weekRows = (reports || []).filter(function (row) {
     return row.date && row.date >= weekStart && row.date <= weekEnd;
   });
+  var monthPriorRows = monthRows.filter(function (row) {
+    return row.date !== key;
+  });
   var monthly = SLM_sumReports_(monthRows);
+  monthly.metrics = SLM_metrics_(monthly);
+  var monthlyPrior = SLM_sumReports_(monthPriorRows);
+  monthlyPrior.metrics = SLM_metrics_(monthlyPrior);
   var weekly = SLM_sumReports_(weekRows);
+  weekly.metrics = SLM_metrics_(weekly);
   return {
     date: key,
     month: month,
@@ -137,6 +144,7 @@ function SLM_buildSnapshot_(dateKey, reports, dealLog) {
     report: report,
     metrics: SLM_metrics_(report),
     monthly: monthly,
+    monthlyPrior: monthlyPrior,
     weekly: weekly,
     week: { start: weekStart, end: weekEnd, label: 'Selling week (Mon–Sat)' },
     dealLog: dealLog || SLM_peekDealInput_(key)

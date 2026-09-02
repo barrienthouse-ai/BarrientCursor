@@ -11,6 +11,7 @@ import {
   lastFilledDealIndex,
   nextBusinessDay,
   normalizeDailyReport,
+  overlayMonthToDate,
   parseSheetDateKey,
   reservedSheetNames,
   reservedSimpleTriggers,
@@ -153,6 +154,23 @@ describe('daily recap math', () => {
     assert.equal(rollup.monthly.newSold, 6);
     assert.equal(rollup.monthly.usedSold, 3);
     assert.equal(rollup.monthly.totalGross, 430);
+    assert.equal(rollup.monthlyPrior.newSold, 1);
+    assert.equal(rollup.monthlyPrior.usedSold, 1);
+  });
+
+  it('overlays today onto prior MTD for live recap totals and rates', () => {
+    const mtd = overlayMonthToDate(
+      { newSold: 16, usedSold: 0, totalGross: 5638.19, appointments: 63, shownAppointments: 43, showroomVisits: 86 },
+      { newSold: 5, usedSold: 2, frontGross: -3600.05, backGross: 14298.98, appointments: 14, shownAppointments: 10, showroomVisits: 19 }
+    );
+    assert.equal(mtd.newSold, 21);
+    assert.equal(mtd.usedSold, 2);
+    assert.equal(mtd.totalGross, 16337.12);
+    assert.equal(mtd.appointments, 77);
+    assert.equal(mtd.shownAppointments, 53);
+    assert.equal(mtd.showroomVisits, 105);
+    assert.equal(mtd.metrics.showRate, 53 / 77);
+    assert.equal(mtd.metrics.closeRate, 23 / 105);
   });
 });
 

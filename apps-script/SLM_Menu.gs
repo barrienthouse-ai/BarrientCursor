@@ -51,8 +51,8 @@ function SLM_openRecap() {
     }
   });
   var html = template.evaluate()
-    .setWidth(1100)
-    .setHeight(780)
+    .setWidth(1400)
+    .setHeight(900)
     .setTitle('Sales Manager Report');
   SpreadsheetApp.getUi().showModalDialog(html, 'Sales Manager Report');
 }

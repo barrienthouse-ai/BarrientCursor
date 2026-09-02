@@ -36,11 +36,16 @@ function SLM_writeDashboard_(summary) {
     ['Appts next business day', summary.report.nextDayAppointments],
     ['MTD new', summary.monthly.newSold],
     ['MTD used', summary.monthly.usedSold],
-    ['MTD total gross', money(summary.monthly.totalGross)]
+    ['MTD total gross', money(summary.monthly.totalGross)],
+    ['MTD appts', summary.monthly.appointments],
+    ['MTD appts shown', summary.monthly.shownAppointments],
+    ['MTD showroom visits', summary.monthly.showroomVisits],
+    ['MTD show %', pct(summary.monthly.metrics && summary.monthly.metrics.showRate)],
+    ['MTD close %', pct(summary.monthly.metrics && summary.monthly.metrics.closeRate)]
   ];
   sheet.getRange(5, 1, kpis.length, 2).setValues(kpis);
-  sheet.getRange('A23').setValue('Notes');
-  sheet.getRange('B23').setValue(summary.report.notes || '');
+  sheet.getRange('A28').setValue('Notes');
+  sheet.getRange('B28').setValue(summary.report.notes || '');
   sheet.setFrozenRows(2);
   return summary.date;
 }

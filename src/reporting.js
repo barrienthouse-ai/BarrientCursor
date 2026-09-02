@@ -420,14 +420,39 @@ export function findDailyReport(rows = [], dateKey) {
   return matches.length ? matches[matches.length - 1] : null;
 }
 
+export function overlayMonthToDate(prior = {}, today = {}) {
+  const newSold = toNumber(prior.newSold) + toNumber(today.newSold);
+  const usedSold = toNumber(prior.usedSold) + toNumber(today.usedSold);
+  const totalSold = newSold + usedSold;
+  const todayFront = toNumber(today.frontGross);
+  const todayBack = toNumber(today.backGross);
+  const todayGross = roundMoney(toNumber(today.totalGross, todayFront + todayBack));
+  const priorGross = roundMoney(toNumber(prior.totalGross, toNumber(prior.frontGross) + toNumber(prior.backGross)));
+  const totals = {
+    newSold,
+    usedSold,
+    totalSold,
+    frontGross: roundMoney(toNumber(prior.frontGross) + todayFront),
+    backGross: roundMoney(toNumber(prior.backGross) + todayBack),
+    totalGross: roundMoney(priorGross + todayGross),
+    appointments: toNumber(prior.appointments) + toNumber(today.appointments),
+    shownAppointments: toNumber(prior.shownAppointments) + toNumber(today.shownAppointments),
+    showroomVisits: toNumber(prior.showroomVisits) + toNumber(today.showroomVisits),
+    nextDayAppointments: toNumber(today.nextDayAppointments)
+  };
+  return { ...totals, metrics: reportMetrics(totals) };
+}
+
 export function rollupReports(reports = [], dateKey) {
   const key = toDateKey(dateKey);
   const month = monthKey(key);
   const week = sellingWeekRange(key);
   const daily = findDailyReport(reports, key);
   const monthRows = reports.filter((row) => typeof row.date === 'string' && row.date.startsWith(month));
+  const monthPriorRows = monthRows.filter((row) => row.date !== key);
   const weekRows = reports.filter((row) => inDateRange(row.date, week.start, week.end));
   const monthly = sumReports(monthRows);
+  const monthlyPrior = sumReports(monthPriorRows);
   const weekly = sumReports(weekRows);
   return {
     date: key,
@@ -435,6 +460,7 @@ export function rollupReports(reports = [], dateKey) {
     week,
     daily,
     monthly: { ...monthly, metrics: reportMetrics(monthly) },
+    monthlyPrior: { ...monthlyPrior, metrics: reportMetrics(monthlyPrior) },
     weekly: { ...weekly, metrics: reportMetrics(weekly) }
   };
 }
@@ -500,6 +526,7 @@ export function buildDailySnapshot({ dateKey, reports = [], dealLog = [], now = 
     report,
     metrics: report.metrics,
     monthly: rollup.monthly,
+    monthlyPrior: rollup.monthlyPrior,
     weekly: rollup.weekly,
     week: rollup.week,
     dealLog: {

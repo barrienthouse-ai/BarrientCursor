@@ -5,13 +5,17 @@
   <base target="_top" />
   <style>
     :root { color-scheme: dark; }
+    html, body { height: 100%; }
     body { font-family: Arial, sans-serif; margin: 0; background: #0e1624; color: #eef3fb; }
-    .wrap { padding: 16px 18px 20px; }
-    h1 { margin: 0 0 6px; font-size: 22px; }
+    .wrap { padding: 14px 18px 18px; min-height: 100%; box-sizing: border-box; }
+    h1 { margin: 0 0 4px; font-size: 24px; }
     .sub, .meta { color: #9aadc8; font-size: 12px; }
-    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+    .mtd { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 12px; }
     .card, .panel { background: #162236; border: 1px solid #2d3f5c; border-radius: 10px; padding: 10px; }
-    .value { font-size: 20px; font-weight: 700; }
+    .card .label { color: #9aadc8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .value.accent { color: #4cc9c0; }
     label { display: block; font-size: 12px; margin: 6px 0; }
     input, textarea, button { font: inherit; }
     input, textarea { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #2d3f5c; background: #0e1624; color: #eef3fb; }
@@ -58,6 +62,18 @@
         <label>Appts next business day <input id="nextDayAppointments" type="number" oninput="liveTotals()" /></label>
       </div>
       <p class="meta" id="nextDayLabel"></p>
+      <strong>Month to date — includes today</strong>
+      <p class="meta">Saved recaps earlier this month plus the numbers on this form. Show % is shown appts ÷ appts. Close % is units ÷ showroom visits.</p>
+      <div class="mtd">
+        <div class="card"><div class="label">MTD new</div><div class="value accent" id="mtdNew">—</div></div>
+        <div class="card"><div class="label">MTD used</div><div class="value accent" id="mtdUsed">—</div></div>
+        <div class="card"><div class="label">MTD gross</div><div class="value accent" id="mtdGross">—</div></div>
+        <div class="card"><div class="label">MTD appts</div><div class="value accent" id="mtdAppts">—</div></div>
+        <div class="card"><div class="label">MTD appts shown</div><div class="value accent" id="mtdShown">—</div></div>
+        <div class="card"><div class="label">MTD showroom visits</div><div class="value accent" id="mtdVisits">—</div></div>
+        <div class="card"><div class="label">MTD show %</div><div class="value accent" id="mtdShowPct">—</div></div>
+        <div class="card"><div class="label">MTD close %</div><div class="value accent" id="mtdClosePct">—</div></div>
+      </div>
       <label>Notes <textarea id="notes"></textarea></label>
       <div class="actions">
         <button type="button" class="secondary" onclick="useLastDealDay()">Use last DEALINPUT day</button>
@@ -71,6 +87,7 @@
   <script>
     var seed = <?!= seedJson ?>;
     var loadSeq = 0;
+    window._mtdPrior = {};
     function $(id) { return document.getElementById(id); }
     function money(n) {
       var v = Number(n) || 0;
@@ -97,6 +114,21 @@
       $('kpiGross').textContent = money(front + back);
       $('kpiRates').textContent = pct(appts ? shown / appts : null) + ' / ' + pct(visits ? (neu + used) / visits : null);
       $('kpiNext').textContent = String(num('nextDayAppointments'));
+      var prior = window._mtdPrior || {};
+      var mtdNew = (Number(prior.newSold) || 0) + neu;
+      var mtdUsed = (Number(prior.usedSold) || 0) + used;
+      var mtdGross = (Number(prior.totalGross) || 0) + front + back;
+      var mtdAppts = (Number(prior.appointments) || 0) + appts;
+      var mtdShown = (Number(prior.shownAppointments) || 0) + shown;
+      var mtdVisits = (Number(prior.showroomVisits) || 0) + visits;
+      $('mtdNew').textContent = String(mtdNew);
+      $('mtdUsed').textContent = String(mtdUsed);
+      $('mtdGross').textContent = money(mtdGross);
+      $('mtdAppts').textContent = String(mtdAppts);
+      $('mtdShown').textContent = String(mtdShown);
+      $('mtdVisits').textContent = String(mtdVisits);
+      $('mtdShowPct').textContent = pct(mtdAppts ? mtdShown / mtdAppts : null);
+      $('mtdClosePct').textContent = pct(mtdVisits ? (mtdNew + mtdUsed) / mtdVisits : null);
     }
     function fillForm(report) {
       report = report || {};
@@ -127,6 +159,7 @@
     }
     function renderSnapshot(snapshot) {
       if (!snapshot) return;
+      window._mtdPrior = snapshot.monthlyPrior || {};
       fillForm(snapshot.report);
       $('nextDayLabel').textContent = 'Next business day is ' + snapshot.nextBusinessDate + ' (Sunday closed).';
       var last = snapshot.dealLog && snapshot.dealLog.lastRetailDate ? snapshot.dealLog.lastRetailDate : '';
@@ -208,6 +241,15 @@
         setStatus(error.message || String(error), true);
       }).SLM_saveDailyReport(readForm());
     }
+    function maximizeRecap() {
+      try {
+        var w = Math.floor(Math.max(1400, (screen.availWidth || 1400) - 16));
+        var h = Math.floor(Math.max(900, (screen.availHeight || 900) - 40));
+        google.script.host.setWidth(w);
+        google.script.host.setHeight(h);
+      } catch (ignoreMax) {}
+    }
+    maximizeRecap();
     $('reportDate').value = (seed && seed.date) || today();
     if (seed && seed.loading) {
       setStatus('Loading DEALINPUT…');

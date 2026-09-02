@@ -57,6 +57,28 @@ function liveTotals() {
   $('kpiGross').textContent = money.format(front + back);
   $('kpiRates').textContent = `${pct(appts ? shown / appts : null)} / ${pct(visits ? (newSold + usedSold) / visits : null)}`;
   $('kpiNext').textContent = qty.format(num('nextDayAppointments'));
+  renderMtdStrip();
+}
+
+function renderMtdStrip() {
+  if (!$('mtdNew')) {
+    return;
+  }
+  const prior = state.snapshot?.monthlyPrior || {};
+  const mtdNew = (Number(prior.newSold) || 0) + num('newSold');
+  const mtdUsed = (Number(prior.usedSold) || 0) + num('usedSold');
+  const mtdGross = (Number(prior.totalGross) || 0) + num('frontGross') + num('backGross');
+  const mtdAppts = (Number(prior.appointments) || 0) + num('appointments');
+  const mtdShown = (Number(prior.shownAppointments) || 0) + num('shownAppointments');
+  const mtdVisits = (Number(prior.showroomVisits) || 0) + num('showroomVisits');
+  $('mtdNew').textContent = qty.format(mtdNew);
+  $('mtdUsed').textContent = qty.format(mtdUsed);
+  $('mtdGross').textContent = money.format(mtdGross);
+  $('mtdAppts').textContent = qty.format(mtdAppts);
+  $('mtdShown').textContent = qty.format(mtdShown);
+  $('mtdVisits').textContent = qty.format(mtdVisits);
+  $('mtdShowPct').textContent = pct(mtdAppts ? mtdShown / mtdAppts : null);
+  $('mtdClosePct').textContent = pct(mtdVisits ? (mtdNew + mtdUsed) / mtdVisits : null);
 }
 
 function fillForm(report = {}) {
@@ -125,7 +147,12 @@ function renderRecap(snapshot) {
     ['Total units', report.totalSold, monthly.totalSold, weekly.totalSold],
     ['Front gross', money.format(report.frontGross || 0), money.format(monthly.frontGross || 0), money.format(weekly.frontGross || 0)],
     ['Back gross', money.format(report.backGross || 0), money.format(monthly.backGross || 0), money.format(weekly.backGross || 0)],
-    ['Total gross', money.format(report.totalGross || 0), money.format(monthly.totalGross || 0), money.format(weekly.totalGross || 0)]
+    ['Total gross', money.format(report.totalGross || 0), money.format(monthly.totalGross || 0), money.format(weekly.totalGross || 0)],
+    ['Appts', report.appointments, monthly.appointments, weekly.appointments],
+    ['Appts shown', report.shownAppointments, monthly.shownAppointments, weekly.shownAppointments],
+    ['Showroom visits', report.showroomVisits, monthly.showroomVisits, weekly.showroomVisits],
+    ['Show %', pct(snapshot.metrics?.showRate), pct(monthly.metrics?.showRate), pct(weekly.metrics?.showRate)],
+    ['Close %', pct(snapshot.metrics?.closeRate), pct(monthly.metrics?.closeRate), pct(weekly.metrics?.closeRate)]
   ];
   $('compareTable').innerHTML = rows.map((row) => `<tr>${row.map((cell) => `<td>${cell ?? 0}</td>`).join('')}</tr>`).join('');
 

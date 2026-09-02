@@ -107,6 +107,18 @@
           <label>Appts next business day <input id="nextDayAppointments" type="number" min="0" step="1" /></label>
         </div>
         <p class="meta" id="nextDayLabel"></p>
+        <h2>Month to date — includes today</h2>
+        <p class="meta">Saved recaps earlier this month plus the numbers on this form. Show % is shown appts ÷ appts. Close % is units ÷ showroom visits.</p>
+        <div class="grid mtd">
+          <article class="card"><div class="label">MTD new</div><div class="value" id="mtdNew">—</div></article>
+          <article class="card"><div class="label">MTD used</div><div class="value" id="mtdUsed">—</div></article>
+          <article class="card"><div class="label">MTD gross</div><div class="value" id="mtdGross">—</div></article>
+          <article class="card"><div class="label">MTD appts</div><div class="value" id="mtdAppts">—</div></article>
+          <article class="card"><div class="label">MTD appts shown</div><div class="value" id="mtdShown">—</div></article>
+          <article class="card"><div class="label">MTD showroom visits</div><div class="value" id="mtdVisits">—</div></article>
+          <article class="card"><div class="label">MTD show %</div><div class="value" id="mtdShowPct">—</div></article>
+          <article class="card"><div class="label">MTD close %</div><div class="value" id="mtdClosePct">—</div></article>
+        </div>
         <label>Notes <textarea id="notes" placeholder="What drove the day, missing deals, or tomorrow’s focus"></textarea></label>
       </article>
 
