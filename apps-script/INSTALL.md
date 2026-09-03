@@ -10,7 +10,8 @@ The workbook is now readable. It already has 69 tabs, including `SERVICE BOARD` 
 
 - Do **not** replace any existing Apps Script file.
 - Do **not** create functions named `onOpen`, `onEdit`, `onInstall`, `onChange`, `onSelectionChange`, `doGet`, or `doPost`.
-- Copy only files whose names start with `SMR_`.
+- Copy only files whose names start with `SMR_` from this `apps-script/` folder.
+- Never paste `apps-script-web/SMR_Web.gs` into this workbook. That file defines `doGet` for the standalone link. Use `apps-script-web/INSTALL.md` instead.
 - The installer creates only `SMR_*` tabs and never deletes, hides, or renames another sheet.
 
 ## Steps
@@ -66,6 +67,10 @@ What changes:
 - **Save daily report** — upserts that date in `SMR_TechHours`, `SMR_Gross`, and `SMR_RepairOrders`.
 - Heat cases stay on the briefing until **Resolve**. The resolved timestamp and notes are stored on `SMR_HeatCases`.
 - Each heat case now has a customer name, assigned service advisor, and assigned technician. Those show on the heat list. Adding a case appends `Advisor` and `Technician` columns on `SMR_HeatCases` if they are missing; existing rows are not rewritten.
+
+## Send the service manager a link instead of the workbook
+
+Google cannot share only the SMR tabs. To give the service manager this tool without the sales log, deploy the **standalone web app** in `apps-script-web/INSTALL.md`. Save and recall still write `SMR_*` tabs in this workbook.
 
 ## If you want a script-level review
 

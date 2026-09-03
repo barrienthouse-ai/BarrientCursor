@@ -3,7 +3,7 @@
  * any existing sheet — including leftover SMR sheets from a prior install.
  */
 function SMR_ensureSheets() {
-  var ss = SpreadsheetApp.getActive();
+  var ss = SMR_ss_();
   SMR_ensureSheet_(ss, SMR_SHEETS.CONFIG, SMR_HEADERS.CONFIG, [['Timezone', Session.getScriptTimeZone()], ['Submitter', 'Service Manager']]);
   SMR_ensureSheet_(ss, SMR_SHEETS.ROSTER, SMR_HEADERS.ROSTER, SMR_DEFAULT_ROSTER.map(function (name) {
     return [name, 'Yes'];
@@ -60,7 +60,11 @@ var SMR_SS_CACHE_ = null;
 
 function SMR_ss_() {
   if (!SMR_SS_CACHE_) {
-    SMR_SS_CACHE_ = SpreadsheetApp.getActive();
+    var id = SMR_workbookId_();
+    SMR_SS_CACHE_ = id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActive();
+  }
+  if (!SMR_SS_CACHE_) {
+    throw new Error('SMR could not open the service workbook. In the standalone web app, SMR_WEB_WORKBOOK_ID must be set.');
   }
   return SMR_SS_CACHE_;
 }

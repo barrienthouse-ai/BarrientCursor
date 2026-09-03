@@ -3,7 +3,7 @@
  * These functions never write SERVICE BOARD, SVC_RO, or any other existing tab.
  */
 function SMR_peekExistingServiceData() {
-  var ss = SpreadsheetApp.getActive();
+  var ss = SMR_ss_();
   var board = ss.getSheetByName('SERVICE BOARD');
   var roSheet = ss.getSheetByName('SVC_RO');
   var techs = [];

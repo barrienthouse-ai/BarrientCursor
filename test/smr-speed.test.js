@@ -64,6 +64,7 @@ describe('SMR load-speed contract', () => {
     const sheets = read('SMR_Sheets.gs');
     assert.match(sheets, /SMR_BRIEF_PROP_PREFIX_ = 'SMR_b_'/);
     assert.match(sheets, /SMR_ROSTER_PROP_KEY_ = 'SMR_roster'/);
+    assert.match(sheets, /SpreadsheetApp\.openById\(id\)/);
     assert.doesNotMatch(sheets, /dealerLogoDataUrl/);
   });
 

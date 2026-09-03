@@ -60,6 +60,22 @@ var SMR_DO_NOT_TOUCH = [
 var SMR_PROP_PREFIX = 'SMR_';
 var SMR_MENU_NAME = 'Service Manager Report';
 
+function SMR_workbookId_() {
+  if (typeof SMR_WEB_WORKBOOK_ID === 'string' && SMR_WEB_WORKBOOK_ID) {
+    return SMR_WEB_WORKBOOK_ID;
+  }
+  return '';
+}
+
+function SMR_hasBoundSpreadsheet_() {
+  try {
+    var ss = SpreadsheetApp.getActive();
+    return !!(ss && ss.getId());
+  } catch (ignore) {
+    return false;
+  }
+}
+
 function SMR_reservedSheetNames() {
   return Object.keys(SMR_SHEETS).map(function (key) {
     return SMR_SHEETS[key];

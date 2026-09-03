@@ -2,12 +2,13 @@
 <html>
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <base target="_top" />
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
-    body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; background: #0e1624; color: #eef3fb; }
-    .wrap { padding: 16px 18px 20px; }
+    body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; background: #0e1624; color: #eef3fb; min-height: 100%; }
+    .wrap { padding: 16px 18px 20px; max-width: 1280px; margin: 0 auto; }
     .topbar { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
     .eyebrow { color: #f0b429; letter-spacing: 0.12em; text-transform: uppercase; font-size: 11px; font-weight: 700; margin: 0 0 4px; }
     h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.03em; }
@@ -56,7 +57,7 @@
       <div>
         <p class="eyebrow">BarrientCursor · Fixed operations</p>
         <h1>Service Manager Report</h1>
-        <p class="sub">Daily briefing for Geaux Chevrolet service. Writes only to SMR_ tabs.</p>
+        <p class="sub">Daily briefing for Geaux Chevrolet service. Writes only to SMR_ tabs in the live workbook.</p>
       </div>
       <div class="date-box">
         <label>Report date <input id="reportDate" type="date" /></label>

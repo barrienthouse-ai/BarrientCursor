@@ -3,7 +3,7 @@
  * Does not modify sheets, triggers, or scripts.
  */
 function SMR_auditWorkbook() {
-  var ss = SpreadsheetApp.getActive();
+  var ss = SMR_ss_();
   var sheets = ss.getSheets().map(function (sheet) {
     return sheet.getName();
   });

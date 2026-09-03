@@ -11,6 +11,9 @@
  * simple onOpen you add later able to coexist.
  */
 function SMR_onOpen() {
+  if (!SMR_hasBoundSpreadsheet_()) {
+    return;
+  }
   SpreadsheetApp.getUi()
     .createMenu(SMR_MENU_NAME)
     .addItem('Open briefing', 'SMR_openBriefing')
@@ -26,6 +29,9 @@ function SMR_onOpen() {
 function SMR_install() {
   SMR_ensureSheets();
   SMR_refreshDashboard();
+  if (!SMR_hasBoundSpreadsheet_()) {
+    return SMR_ss_().getName();
+  }
   SMR_ensureOpenTrigger_();
   SpreadsheetApp.getUi().alert(
     'Service Manager Report is installed.\n\n' +
@@ -34,18 +40,22 @@ function SMR_install() {
   );
 }
 
-function SMR_openBriefing() {
+function SMR_briefingHtml_() {
   var template = HtmlService.createTemplateFromFile('SMR_App');
   var stored = SMR_briefStoreGet_(SMR_todayKey_());
   template.seedJson = stored && stored.summary ? SMR_safeJson_(stored) : 'null';
-  var html = template.evaluate()
-    .setWidth(1240)
-    .setHeight(860)
-    .setTitle('Service Manager Report');
+  return template.evaluate().setTitle('Service Manager Report');
+}
+
+function SMR_openBriefing() {
+  var html = SMR_briefingHtml_().setWidth(1240).setHeight(860);
   SpreadsheetApp.getUi().showModalDialog(html, 'Service Manager Report');
 }
 
 function SMR_ensureOpenTrigger_() {
+  if (!SMR_hasBoundSpreadsheet_()) {
+    return;
+  }
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
     if (triggers[i].getHandlerFunction() === 'SMR_onOpen') {
