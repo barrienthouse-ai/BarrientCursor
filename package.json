@@ -1,0 +1,18 @@
+{
+  "name": "fleet-manager-report",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fleet department reporting tool for Geaux Chevrolet: working deals, sold deals, GPU, monthly goal, MTD front/finance/total gross, and deliveries.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

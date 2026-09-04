@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base target="_top" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; background: #0e1624; color: #eef3fb; min-height: 100%; }
+    .wrap { padding: 16px 18px 20px; max-width: 1280px; margin: 0 auto; }
+    .topbar { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
+    .eyebrow { color: #f0b429; letter-spacing: 0.12em; text-transform: uppercase; font-size: 11px; font-weight: 700; margin: 0 0 4px; }
+    h1 { margin: 0 0 6px; font-size: 26px; }
+    h2 { margin: 0 0 10px; font-size: 15px; }
+    .sub, .meta, .label { color: #9aadc8; font-size: 12px; }
+    .label { text-transform: uppercase; letter-spacing: 0.08em; }
+    .date-box, .card, .panel { background: #162236; border: 1px solid #2d3f5c; border-radius: 12px; }
+    .date-box { padding: 12px 14px; min-width: 200px; }
+    .tabs { display: flex; gap: 8px; margin: 0 0 14px; flex-wrap: wrap; }
+    .tabs button { border: 1px solid #2d3f5c; background: #1c2b44; color: #eef3fb; border-radius: 999px; padding: 7px 12px; }
+    .tabs button.active { background: #f0b429; color: #1b1403; border-color: #f0b429; font-weight: 700; }
+    .hidden { display: none; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0 0 10px; }
+    .grid-two { display: grid; grid-template-columns: 1.35fr 0.65fr; gap: 10px; }
+    .card, .panel { padding: 12px 14px; }
+    .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .prod .value { color: #4cc9c0; font-size: 26px; }
+    .heat .value { color: #f0b429; }
+    label { display: block; font-size: 12px; margin: 6px 0; }
+    input, select, textarea, button { font: inherit; }
+    input, select, textarea { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #2d3f5c; background: #0e1624; color: #eef3fb; }
+    input[readonly] { color: #4cc9c0; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button { border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: #f0b429; color: #1b1403; font-weight: 700; }
+    button.secondary { background: #1c2b44; color: #eef3fb; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #2d3f5c; vertical-align: top; }
+    th { color: #9aadc8; font-size: 11px; text-transform: uppercase; }
+    .notice { color: #4cc9c0; font-size: 12px; }
+    .error { color: #ef6b6b; font-size: 12px; }
+    .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; background: #5a4314; font-size: 11px; text-transform: uppercase; }
+    .pill.sold { background: #1d3d4f; }
+    .pill.delivered { background: #245c3c; }
+    .pill.dead { background: #5a2428; }
+    @media (max-width: 900px) { .kpis, .row, .grid-two { grid-template-columns: 1fr 1fr; } .topbar { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <p class="eyebrow">BarrientCursor · Fleet operations</p>
+        <h1>Fleet Manager Report</h1>
+        <p class="sub">Writes only to FLM_ tabs in GEAUXCHEVROLETSALESLOG.</p>
+      </div>
+      <div class="date-box">
+        <label>Report date <input type="date" id="reportDate" /></label>
+        <p class="meta" id="lastDealNote">Last fleet day: —</p>
+        <div class="actions">
+          <button class="secondary" id="recallBtn" type="button">Recall day</button>
+        </div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="active" data-tab="board" type="button">Board</button>
+      <button data-tab="daily" type="button">Daily entry</button>
+      <button data-tab="working" type="button">Working deals</button>
+    </div>
+    <section id="board">
+      <div class="kpis">
+        <div class="card"><div class="label">Working deals</div><div class="value" id="kpiWorking">—</div><div class="meta" id="kpiWorkingNote"></div></div>
+        <div class="card"><div class="label">Sold deals</div><div class="value" id="kpiSold">—</div><div class="meta" id="kpiSoldNote"></div></div>
+        <div class="card"><div class="label">Gross per unit</div><div class="value" id="kpiGpu">—</div></div>
+        <div class="card heat"><div class="label">Monthly goal</div><div class="value" id="kpiGoal">—</div><div class="meta" id="kpiGoalNote"></div></div>
+      </div>
+      <div class="kpis">
+        <div class="card"><div class="label">MTD front</div><div class="value" id="kpiMtdFront">—</div></div>
+        <div class="card"><div class="label">Finance gross</div><div class="value" id="kpiFinance">—</div><div class="meta" id="kpiFinanceMtd"></div></div>
+        <div class="card"><div class="label">Total gross</div><div class="value" id="kpiTotal">—</div><div class="meta" id="kpiTotalMtd"></div></div>
+        <div class="card"><div class="label">Goal remaining</div><div class="value" id="kpiGoalLeft">—</div></div>
+      </div>
+      <div class="kpis prod">
+        <div class="card"><div class="label">Daily deliveries</div><div class="value" id="kpiDeliveries">—</div></div>
+        <div class="card"><div class="label">Courtesy</div><div class="value" id="kpiCourtesy">—</div></div>
+        <div class="card"><div class="label">Expected</div><div class="value" id="kpiExpected">—</div></div>
+        <div class="card"><div class="label">Total expected</div><div class="value" id="kpiExpectedTotal">—</div></div>
+      </div>
+    </section>
+    <section id="daily" class="hidden">
+      <div class="panel">
+        <h2>Sold deals and gross</h2>
+        <div class="row">
+          <label>Sold deals <input id="soldDeals" type="number" /></label>
+          <label>Working deals <input id="workingDeals" type="number" /></label>
+          <label>Front gross <input id="frontGross" type="number" /></label>
+          <label>Finance gross <input id="financeGross" type="number" /></label>
+        </div>
+        <div class="row">
+          <label>Total gross <input id="totalGross" readonly /></label>
+          <label>GPU <input id="gpu" readonly /></label>
+          <label>Unit goal <input id="unitGoal" type="number" /></label>
+          <label>Gross goal <input id="grossGoal" type="number" /></label>
+        </div>
+        <div class="row">
+          <label>Deliveries <input id="deliveries" type="number" /></label>
+          <label>Courtesy <input id="courtesyDeliveries" type="number" /></label>
+          <label>Expected deliveries <input id="expectedDeliveries" type="number" /></label>
+        </div>
+        <label>Notes <textarea id="notes"></textarea></label>
+        <div class="actions">
+          <button class="secondary" id="fillDealLog" type="button">Refresh from deal log</button>
+          <button class="secondary" id="saveGoal" type="button">Save monthly goal</button>
+          <button id="saveDaily" type="button">Save daily report</button>
+          <span class="notice" id="dailyStatus"></span>
+        </div>
+      </div>
+    </section>
+    <section id="working" class="hidden">
+      <div class="panel">
+        <h2>Log a working deal</h2>
+        <div class="row">
+          <label>Customer <input id="dealCustomer" /></label>
+          <label>Account <input id="dealAccount" /></label>
+          <label>Vehicle <input id="dealVehicle" /></label>
+          <label>Units <input id="dealUnits" type="number" value="1" /></label>
+        </div>
+        <div class="row">
+          <label>Expected delivery <input id="dealExpected" type="date" /></label>
+          <label>Est. front <input id="dealFront" type="number" /></label>
+          <label>Est. finance <input id="dealFinance" type="number" /></label>
+          <label>Notes <input id="dealNotes" /></label>
+        </div>
+        <div class="actions">
+          <button id="addDeal" type="button">Add working deal</button>
+          <span class="notice" id="dealStatus"></span>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:10px">
+        <h2>Pipeline</h2>
+        <table><thead><tr><th>Account</th><th>Units</th><th>Expected</th><th>Status</th><th></th></tr></thead><tbody id="dealTable"></tbody></table>
+      </div>
+    </section>
+  </div>
+  <script>
+    var seed = <?!= seedJson ?>;
+    var state = { snapshot: null, working: (seed && seed.working) || [] };
+    function $(id) { return document.getElementById(id); }
+    function money(n) { return '$' + (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function num(id) { return Number($(id).value || 0); }
+    function setTab(name) {
+      document.querySelectorAll('.tabs button').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === name); });
+      ['board', 'daily', 'working'].forEach(function (id) { $(id).classList.toggle('hidden', id !== name); });
+    }
+    function setStatus(msg, err, id) {
+      var el = $(id || 'dailyStatus');
+      el.textContent = msg;
+      el.className = err ? 'notice error' : 'notice';
+    }
+    function live() {
+      var sold = num('soldDeals');
+      var total = Math.round((num('frontGross') + num('financeGross')) * 100) / 100;
+      $('totalGross').value = total.toFixed(2);
+      $('gpu').value = sold ? (total / sold).toFixed(2) : '';
+      renderBoard();
+    }
+    function fill(report, goal) {
+      report = report || {};
+      goal = goal || {};
+      $('soldDeals').value = report.soldDeals || '';
+      $('workingDeals').value = report.workingDeals || '';
+      $('frontGross').value = report.frontGross || '';
+      $('financeGross').value = report.financeGross || '';
+      $('deliveries').value = report.deliveries || '';
+      $('courtesyDeliveries').value = report.courtesyDeliveries || '';
+      $('expectedDeliveries').value = report.expectedDeliveries || '';
+      $('notes').value = report.notes || '';
+      $('unitGoal').value = goal.unitGoal || '';
+      $('grossGoal').value = goal.grossGoal || '';
+      live();
+    }
+    function readForm() {
+      return {
+        date: $('reportDate').value,
+        soldDeals: num('soldDeals'),
+        workingDeals: num('workingDeals'),
+        frontGross: num('frontGross'),
+        financeGross: num('financeGross'),
+        deliveries: num('deliveries'),
+        courtesyDeliveries: num('courtesyDeliveries'),
+        expectedDeliveries: num('expectedDeliveries'),
+        notes: $('notes').value
+      };
+    }
+    function renderBoard() {
+      var snap = state.snapshot || {};
+      var prior = snap.monthlyPrior || {};
+      var working = snap.working || {};
+      var sold = num('soldDeals');
+      var front = num('frontGross');
+      var finance = num('financeGross');
+      var total = front + finance;
+      var mtdSold = (Number(prior.soldDeals) || 0) + sold;
+      var goal = num('unitGoal') || (snap.goal && snap.goal.unitGoal) || 0;
+      $('kpiWorking').textContent = String(num('workingDeals') || working.openCount || 0);
+      $('kpiWorkingNote').textContent = (working.workingUnits || 0) + ' units working';
+      $('kpiSold').textContent = String(sold);
+      $('kpiSoldNote').textContent = 'MTD ' + mtdSold;
+      $('kpiGpu').textContent = sold ? money(total / sold) : '—';
+      $('kpiGoal').textContent = goal ? (mtdSold + ' / ' + goal) : '—';
+      $('kpiGoalNote').textContent = goal ? ('Pace ' + ((mtdSold / goal) * 100).toFixed(1) + '%') : '';
+      $('kpiMtdFront').textContent = money((Number(prior.frontGross) || 0) + front);
+      $('kpiFinance').textContent = money(finance);
+      $('kpiFinanceMtd').textContent = 'MTD ' + money((Number(prior.financeGross) || 0) + finance);
+      $('kpiTotal').textContent = money(total);
+      $('kpiTotalMtd').textContent = 'MTD ' + money((Number(prior.totalGross) || 0) + total);
+      $('kpiGoalLeft').textContent = goal ? String(Math.max(0, goal - mtdSold)) : '—';
+      $('kpiDeliveries').textContent = String(num('deliveries'));
+      $('kpiCourtesy').textContent = String(num('courtesyDeliveries'));
+      $('kpiExpected').textContent = String(num('expectedDeliveries') || working.expectedUnits || 0);
+      $('kpiExpectedTotal').textContent = String(num('expectedDeliveries') || working.expectedUnits || 0);
+      if (snap.dealLog && snap.dealLog.lastFleetDate) {
+        $('lastDealNote').textContent = 'Last fleet day: ' + snap.dealLog.lastFleetDate;
+      }
+    }
+    function renderDeals(rows) {
+      rows = rows || [];
+      if (!rows.length) {
+        $('dealTable').innerHTML = '<tr><td colspan="5">No working deals.</td></tr>';
+        return;
+      }
+      $('dealTable').innerHTML = rows.map(function (row) {
+        var buttons = '';
+        if (row.status === 'working') buttons += '<button data-id="' + row.id + '" data-action="sold" type="button">Sold</button> ';
+        if (row.status === 'working' || row.status === 'sold') buttons += '<button class="secondary" data-id="' + row.id + '" data-action="deliver" type="button">Deliver</button>';
+        return '<tr><td>' + (row.account || row.customer || '') + '</td><td>' + row.units + '</td><td>' + (row.expectedDelivery || '—') + '</td><td><span class="pill ' + row.status + '">' + row.status + '</span></td><td>' + buttons + '</td></tr>';
+      }).join('');
+    }
+    function applySnapshot(snapshot) {
+      state.snapshot = snapshot;
+      fill(snapshot.report, snapshot.goal || {});
+      renderBoard();
+    }
+    function run(name, arg, ok, fail) {
+      if (window.google && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(ok).withFailureHandler(fail || function (e) { setStatus(e.message, true); })[name](arg);
+        return;
+      }
+      var map = {
+        FLM_getSummary: '/api/summary?date=' + encodeURIComponent(arg),
+        FLM_listWorkingDeals: '/api/working-deals?status=all'
+      };
+      if (map[name]) {
+        fetch(map[name]).then(function (r) { return r.json(); }).then(function (body) {
+          ok(name === 'FLM_listWorkingDeals' ? body : body);
+        }).catch(function (e) { (fail || setStatus)(e, true); });
+        return;
+      }
+      var posts = {
+        FLM_saveDailyReport: '/api/daily-report',
+        FLM_fillFromDealLog: '/api/fill-from-deal-log',
+        FLM_saveMonthlyGoal: '/api/goals',
+        FLM_addWorkingDeal: '/api/working-deals'
+      };
+      if (posts[name]) {
+        fetch(posts[name], { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(arg) })
+          .then(function (r) { return r.json(); })
+          .then(ok)
+          .catch(function (e) { setStatus(e.message, true); });
+        return;
+      }
+      if (name === 'FLM_updateWorkingDeal') {
+        fetch('/api/working-deals/' + encodeURIComponent(arg.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(arg) })
+          .then(function (r) { return r.json(); })
+          .then(ok);
+      }
+    }
+    function loadDay(date) {
+      run('FLM_getSummary', date, applySnapshot);
+      run('FLM_listWorkingDeals', 'all', function (result) {
+        state.working = result.rows || result || [];
+        renderDeals(state.working);
+      });
+    }
+    document.querySelectorAll('.tabs button').forEach(function (button) {
+      button.addEventListener('click', function () { setTab(button.getAttribute('data-tab')); });
+    });
+    ['soldDeals', 'workingDeals', 'frontGross', 'financeGross', 'deliveries', 'courtesyDeliveries', 'expectedDeliveries', 'unitGoal', 'grossGoal'].forEach(function (id) {
+      $(id).addEventListener('input', live);
+    });
+    $('recallBtn').addEventListener('click', function () { loadDay($('reportDate').value); });
+    $('reportDate').addEventListener('change', function () { loadDay($('reportDate').value); });
+    $('fillDealLog').addEventListener('click', function () {
+      run('FLM_fillFromDealLog', readForm(), function (result) {
+        fill(result.report, state.snapshot && state.snapshot.goal);
+        setStatus('Filled from DEALINPUT fleet rows.');
+      });
+    });
+    $('saveGoal').addEventListener('click', function () {
+      run('FLM_saveMonthlyGoal', { date: $('reportDate').value, month: $('reportDate').value.slice(0, 7), unitGoal: num('unitGoal'), grossGoal: num('grossGoal') }, function (result) {
+        if (result.snapshot) applySnapshot(result.snapshot);
+        setStatus('Monthly goal saved.');
+      });
+    });
+    $('saveDaily').addEventListener('click', function () {
+      run('FLM_saveDailyReport', readForm(), function (snapshot) {
+        applySnapshot(snapshot);
+        setStatus('Saved ' + snapshot.date);
+        setTab('board');
+      });
+    });
+    $('addDeal').addEventListener('click', function () {
+      run('FLM_addWorkingDeal', {
+        date: $('reportDate').value,
+        customer: $('dealCustomer').value,
+        account: $('dealAccount').value,
+        vehicle: $('dealVehicle').value,
+        units: num('dealUnits') || 1,
+        frontGross: num('dealFront'),
+        financeGross: num('dealFinance'),
+        expectedDelivery: $('dealExpected').value,
+        notes: $('dealNotes').value
+      }, function () {
+        setStatus('Working deal added.', false, 'dealStatus');
+        loadDay($('reportDate').value);
+      }, function (e) { setStatus(e.message, true, 'dealStatus'); });
+    });
+    $('dealTable').addEventListener('click', function (event) {
+      var button = event.target.closest('button[data-action]');
+      if (!button) return;
+      run('FLM_updateWorkingDeal', { id: button.getAttribute('data-id'), action: button.getAttribute('data-action') }, function () {
+        loadDay($('reportDate').value);
+      });
+    });
+    var today = new Date();
+    var iso = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    $('reportDate').value = iso;
+    if (seed && seed.summary) {
+      applySnapshot(seed.summary);
+      renderDeals(seed.working || []);
+    } else {
+      loadDay(iso);
+    }
+  </script>
+</body>
+</html>
