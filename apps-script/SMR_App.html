@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base target="_top" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; background: #0e1624; color: #eef3fb; min-height: 100%; }
+    .wrap { padding: 16px 18px 20px; max-width: 1280px; margin: 0 auto; }
+    .topbar { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
+    .eyebrow { color: #f0b429; letter-spacing: 0.12em; text-transform: uppercase; font-size: 11px; font-weight: 700; margin: 0 0 4px; }
+    h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.03em; }
+    h2 { margin: 0 0 10px; font-size: 15px; }
+    .sub, .meta, .label { color: #9aadc8; font-size: 12px; }
+    .label { text-transform: uppercase; letter-spacing: 0.08em; }
+    .date-box { background: #162236; border: 1px solid #2d3f5c; border-radius: 12px; padding: 12px 14px; min-width: 200px; }
+    .tabs { display: flex; gap: 8px; margin: 0 0 14px; flex-wrap: wrap; }
+    .tabs button { border: 1px solid #2d3f5c; background: #1c2b44; color: #eef3fb; }
+    .tabs button.active { background: #f0b429; color: #1b1403; border-color: #f0b429; }
+    .hidden { display: none; }
+    .prod { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0 0 10px; }
+    .prod .value { font-size: 28px; color: #4cc9c0; margin-top: 4px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0 0 12px; }
+    .grid-two { display: grid; grid-template-columns: 1.35fr 0.65fr; gap: 10px; }
+    .card, .panel { background: #162236; border: 1px solid #2d3f5c; border-radius: 12px; padding: 12px 14px; }
+    .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .heat .value { color: #f0b429; }
+    .critical .value { color: #ef6b6b; }
+    label { display: block; font-size: 12px; margin: 6px 0; }
+    input, select, textarea, button { font: inherit; }
+    input, select, textarea { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 8px; border: 1px solid #2d3f5c; background: #0e1624; color: #eef3fb; }
+    .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .tech-row { display: grid; grid-template-columns: 1.4fr 0.8fr 0.8fr 0.9fr; gap: 6px; align-items: end; margin-bottom: 6px; }
+    .week-toggle { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+    .week-hours { padding: 6px 0; font-weight: 700; }
+    .tech-head { color: #9aadc8; font-size: 11px; text-transform: uppercase; }
+    .tech-list { max-height: 280px; overflow: auto; padding-right: 4px; margin: 8px 0; }
+    .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button { border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: #f0b429; color: #1b1403; font-weight: 700; }
+    button.secondary { background: #1c2b44; color: #eef3fb; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #2d3f5c; vertical-align: top; }
+    th { color: #9aadc8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .notice { color: #4cc9c0; font-size: 12px; }
+    .error { color: #ef6b6b; font-size: 12px; }
+    .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; background: #5a4314; font-size: 11px; text-transform: uppercase; }
+    .pill.open, .pill.critical, .pill.high { background: #5a2428; }
+    .pill.briefed, .pill.medium { background: #5a4314; }
+    .pill.resolved, .pill.low { background: #245c3c; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <p class="eyebrow">BarrientCursor · Fixed operations</p>
+        <h1>Service Manager Report</h1>
+        <p class="sub">Daily briefing for Geaux Chevrolet service. Writes only to SMR_ tabs in the live workbook.</p>
+      </div>
+      <div class="date-box">
+        <label>Report date <input id="reportDate" type="date" /></label>
+        <div class="actions" style="margin-top:8px">
+          <button type="button" class="secondary" onclick="recallDay()">Recall day</button>
+        </div>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button type="button" class="active" id="tab-briefing" onclick="setTab('briefing')">Briefing</button>
+      <button type="button" id="tab-daily" onclick="setTab('daily')">Daily entry</button>
+      <button type="button" id="tab-heat" onclick="setTab('heat')">Heat cases</button>
+    </nav>
+    <span class="notice" id="status"></span>
+
+    <section id="page-briefing">
+      <div class="prod">
+        <div class="card"><div class="label">Sold hours</div><div class="value" id="prodSold">—</div><div class="meta">Shop sold labor hours today</div></div>
+        <div class="card"><div class="label">ELR</div><div class="value" id="prodElr">—</div><div class="meta">Labor gross ÷ sold hours</div></div>
+        <div class="card"><div class="label">Hours / RO</div><div class="value" id="prodHoursRo">—</div><div class="meta">Sold hours ÷ ROs closed</div></div>
+        <div class="card"><div class="label">Unapplied time</div><div class="value" id="prodUnapplied">—</div><div class="meta">Clock − sold</div></div>
+      </div>
+      <div class="kpis">
+        <div class="card"><div class="label">Sold / clock hours</div><div class="value" id="kpiHours">—</div><div class="meta" id="kpiEfficiency">Efficiency —</div></div>
+        <div class="card"><div class="label">Service gross today</div><div class="value" id="kpiGross">—</div><div class="meta" id="kpiGrossMonth">MTD —</div></div>
+        <div class="card"><div class="label" id="kpiWeekLabel">Sold week (Mon–Fri)</div><div class="value" id="kpiWeek">—</div><div class="meta" id="kpiWeekNote">Weekly hours from saved daily entries</div></div>
+        <div class="card heat" id="kpiHeatCard"><div class="label">Open heat cases</div><div class="value" id="kpiHeat">—</div><div class="meta" id="kpiHeatNote">Awaiting briefing —</div></div>
+      </div>
+      <div class="kpis">
+        <div class="card"><div class="label">Open ROs</div><div class="value" id="roOpen">—</div><div class="meta">Store open repair orders</div></div>
+        <div class="card"><div class="label">Opened today</div><div class="value" id="roOpened">—</div><div class="meta" id="roOpenedMtd">MTD opened —</div></div>
+        <div class="card"><div class="label">Closed today</div><div class="value" id="roClosed">—</div><div class="meta" id="roClosedMtd">MTD closed —</div></div>
+        <div class="card"><div class="label">MTD opened / closed</div><div class="value" id="roMtd">—</div><div class="meta">Month-to-date store totals</div></div>
+      </div>
+      <div class="grid-two">
+        <div class="panel">
+          <h2>Hours by technician</h2>
+          <table>
+            <thead><tr><th>Tech</th><th>Clock</th><th>Sold</th><th>Unapplied</th><th>Eff.</th></tr></thead>
+            <tbody id="hoursTable"></tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <h2>Needs briefing</h2>
+          <div id="openHeatList"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:10px">
+        <h2>Resolved on this day</h2>
+        <div id="resolvedHeatList"></div>
+      </div>
+    </section>
+
+    <section id="page-daily" class="hidden">
+      <div class="panel">
+        <h2>Daily entry</h2>
+        <p class="meta">Enter today’s clock and sold hours, store open ROs, opened today, and closed today. Use the toggle for sold week (Monday–Friday) or payroll clock hours (last Tuesday through this Monday). Service gross only — parts are separate.</p>
+        <div class="week-toggle">
+          <button type="button" id="weekSoldBtn" onclick="setWeekMode('sold')">Sold week Mon–Fri</button>
+          <button type="button" class="secondary" id="weekPayrollBtn" onclick="setWeekMode('payroll')">Payroll Tue–Mon</button>
+        </div>
+        <p class="meta" id="weekRangeLabel"></p>
+        <div class="row" style="grid-template-columns: repeat(4, 1fr)">
+          <label>Service labor <input id="laborGross" type="number" oninput="liveTotals()" /></label>
+          <label>Other service <input id="otherGross" type="number" oninput="liveTotals()" /></label>
+          <label>Period
+            <select id="grossPeriod">
+              <option value="daily">Daily</option>
+              <option value="monthly">Monthly override</option>
+            </select>
+          </label>
+        </div>
+        <div class="row" style="grid-template-columns: repeat(3, 1fr)">
+          <label>Open ROs <input id="openRos" type="number" min="0" step="1" oninput="liveTotals()" /></label>
+          <label>Opened today <input id="openedRos" type="number" min="0" step="1" oninput="liveTotals()" /></label>
+          <label>Closed today <input id="closedRos" type="number" min="0" step="1" oninput="liveTotals()" /></label>
+        </div>
+        <div class="tech-list" id="techRows"></div>
+        <div class="actions">
+          <button type="button" onclick="saveDay()">Save daily report</button>
+          <span class="notice" id="dailyStatus"></span>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-heat" class="hidden">
+      <div class="panel">
+        <h2>Heat cases</h2>
+        <div class="row">
+          <label>Customer <input id="heatCustomer" /></label>
+          <label>Assigned advisor
+            <input id="heatAdvisor" list="advisorList" placeholder="Cody Raffary" />
+            <datalist id="advisorList"></datalist>
+          </label>
+          <label>Assigned technician
+            <select id="heatTechnician"></select>
+          </label>
+        </div>
+        <div class="row">
+          <label>RO <input id="heatRo" /></label>
+          <label>Severity
+            <select id="heatSeverity">
+              <option>medium</option><option>low</option><option>high</option><option>critical</option>
+            </select>
+          </label>
+          <label>Issue <input id="heatIssue" /></label>
+        </div>
+        <div class="actions">
+          <button type="button" onclick="addHeat()">Add heat case</button>
+        </div>
+        <table>
+          <thead><tr><th>Customer</th><th>Advisor</th><th>Tech</th><th>Issue</th><th>Status</th><th>Resolved</th><th></th></tr></thead>
+          <tbody id="heatTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <script>
+    var SEED = <?!= seedJson ?>;
+    var lastSummary = null;
+    var lastHeat = [];
+    var weekMode = 'sold';
+    var DEFAULT_ROSTER = ['BIG AL', 'ELECTRIC-T', 'DIESEL-E', 'INTERNAL-F', 'HEAVY-C', 'SPECIAL-K', 'LIL-J', 'EASY-E', 'DUEL FUEL-A'];
+    var DEFAULT_ADVISORS = ['Cody Raffary'];
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    }
+    function today() {
+      var now = new Date();
+      return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    }
+    function num(value) {
+      var n = Number(value);
+      return isFinite(n) ? n : 0;
+    }
+    function fieldNum(value) {
+      return value == null || value === '' ? '' : value;
+    }
+    function round1(value) {
+      return Math.round(num(value) * 10) / 10;
+    }
+    function money(value) {
+      return '$' + Math.round(num(value)).toLocaleString('en-US');
+    }
+    function moneyExact(value) {
+      return '$' + (Math.round(num(value) * 100) / 100).toFixed(2);
+    }
+    function pct(ratio) {
+      return ratio == null || !isFinite(ratio) ? '—' : (ratio * 100).toFixed(1) + '%';
+    }
+    function setStatus(text, isError) {
+      var el = document.getElementById('status');
+      el.className = isError ? 'error' : 'notice';
+      el.textContent = text || '';
+      document.getElementById('dailyStatus').className = el.className;
+      document.getElementById('dailyStatus').textContent = text || '';
+    }
+    function setTab(name) {
+      ['briefing', 'daily', 'heat'].forEach(function (id) {
+        document.getElementById('page-' + id).className = id === name ? '' : 'hidden';
+        document.getElementById('tab-' + id).className = id === name ? 'active' : '';
+      });
+    }
+    function run(name, args, ok) {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        if (name === 'SMR_listHeatCases') { ok((SEED && SEED.heat) || lastHeat || []); }
+        return;
+      }
+      var runner = google.script.run.withFailureHandler(function (err) {
+        setStatus((err.message || String(err)) + ' Technician names stay on the form so you can still enter hours.', true);
+      }).withSuccessHandler(ok);
+      runner[name].apply(runner, args || []);
+    }
+    function addTechRow(row) {
+      row = row || {};
+      var host = document.getElementById('techRows');
+      if (!host.querySelector('.tech-head')) {
+        var head = document.createElement('div');
+        head.className = 'tech-row tech-head';
+        head.innerHTML = '<div>Tech</div><div>Clock today</div><div>Sold today</div><div id="weekColHead">Week sold</div>';
+        host.appendChild(head);
+      }
+      var wrap = document.createElement('div');
+      wrap.className = 'tech-row';
+      wrap.innerHTML = '<label><strong>' + (row.techName || '') + '</strong>' +
+        '<input class="tech-name" type="hidden" value="' + (row.techName || '') + '"></label>' +
+        '<input class="tech-clock" type="number" step="0.1" value="' + (row.clockHours || 8) + '" oninput="liveTotals()">' +
+        '<input class="tech-sold" type="number" step="0.1" value="' + (row.soldHours || '') + '" oninput="liveTotals()">' +
+        '<div class="week-hours" data-tech="' + escapeHtml(row.techName || '') + '">—</div>';
+      host.appendChild(wrap);
+    }
+    function readTechRows() {
+      return Array.prototype.map.call(document.querySelectorAll('.tech-row:not(.tech-head)'), function (row) {
+        return {
+          techName: row.querySelector('.tech-name').value,
+          clockHours: row.querySelector('.tech-clock').value,
+          soldHours: row.querySelector('.tech-sold').value
+        };
+      });
+    }
+    function currentWeek() {
+      var weeks = lastSummary && lastSummary.weekHours ? lastSummary.weekHours : {};
+      return weeks[weekMode] || { rows: [], total: 0, start: '', end: '', label: weekMode === 'payroll' ? 'Payroll week (Tue–Mon)' : 'Sold week (Mon–Fri)' };
+    }
+    function setWeekMode(mode) {
+      weekMode = mode === 'payroll' ? 'payroll' : 'sold';
+      document.getElementById('weekSoldBtn').className = weekMode === 'sold' ? '' : 'secondary';
+      document.getElementById('weekPayrollBtn').className = weekMode === 'payroll' ? '' : 'secondary';
+      applyWeekView();
+    }
+    function applyWeekView() {
+      var week = currentWeek();
+      var byName = {};
+      (week.rows || []).forEach(function (row) {
+        byName[String(row.techName || '').trim().toUpperCase()] = row.hours;
+      });
+      document.querySelectorAll('.week-hours').forEach(function (cell) {
+        var key = String(cell.getAttribute('data-tech') || '').trim().toUpperCase();
+        var hours = byName[key];
+        cell.textContent = hours != null ? round1(hours) : '0';
+      });
+      var head = document.getElementById('weekColHead');
+      if (head) {
+        head.textContent = weekMode === 'payroll' ? 'Week payroll' : 'Week sold';
+      }
+      document.getElementById('kpiWeekLabel').textContent = week.label || (weekMode === 'payroll' ? 'Payroll week (Tue–Mon)' : 'Sold week (Mon–Fri)');
+      document.getElementById('kpiWeek').textContent = week.total != null ? String(round1(week.total)) : '—';
+      document.getElementById('kpiWeekNote').textContent = week.start && week.end
+        ? week.start + ' to ' + week.end
+        : 'Weekly hours from saved daily entries';
+      document.getElementById('weekRangeLabel').textContent = week.start && week.end
+        ? week.label + ': ' + week.start + ' to ' + week.end
+        : 'Save daily hours to build the week total.';
+    }
+    function renderHoursTable() {
+      var rows = readTechRows();
+      var html = rows.map(function (row) {
+        var clock = num(row.clockHours);
+        var sold = num(row.soldHours);
+        var unapplied = round1(clock - sold);
+        var eff = clock > 0 ? sold / clock : null;
+        return '<tr><td>' + escapeHtml(row.techName) + '</td><td>' + round1(clock) + '</td><td>' + round1(sold) +
+          '</td><td>' + unapplied + '</td><td>' + pct(eff) + '</td></tr>';
+      }).join('');
+      document.getElementById('hoursTable').innerHTML = html || '<tr><td colspan="5">No hours reported for this date.</td></tr>';
+    }
+    function liveTotals() {
+      var clock = 0;
+      var sold = 0;
+      readTechRows().forEach(function (row) {
+        clock += num(row.clockHours);
+        sold += num(row.soldHours);
+      });
+      var labor = num(document.getElementById('laborGross').value);
+      var other = num(document.getElementById('otherGross').value);
+      var closed = num(document.getElementById('closedRos').value);
+      var openRos = num(document.getElementById('openRos').value);
+      var openedRos = num(document.getElementById('openedRos').value);
+      var unapplied = round1(clock - sold);
+      var lines = readTechRows().length;
+      document.getElementById('prodSold').textContent = String(round1(sold));
+      document.getElementById('prodElr').textContent = sold > 0 && labor > 0 ? moneyExact(labor / sold) : '—';
+      document.getElementById('prodHoursRo').textContent = closed > 0 ? String(round1(sold / closed)) : '—';
+      document.getElementById('prodUnapplied').textContent = String(unapplied);
+      document.getElementById('kpiHours').textContent = round1(sold) + ' / ' + round1(clock);
+      document.getElementById('kpiEfficiency').textContent = 'Efficiency ' + pct(clock > 0 ? sold / clock : null) + ' · ' + lines + ' tech lines';
+      document.getElementById('kpiGross').textContent = money(labor + other);
+      var mtd = lastSummary && lastSummary.gross ? lastSummary.gross.monthly.totalGross : 0;
+      document.getElementById('kpiGrossMonth').textContent = 'MTD ' + money(mtd);
+      var savedRo = lastSummary && lastSummary.repairOrders ? lastSummary.repairOrders : {};
+      var savedOpened = num(savedRo.openedCount != null ? savedRo.openedCount : savedRo.writtenCount);
+      var savedClosed = num(savedRo.closedCount);
+      var monthRo = savedRo.monthly || { openedCount: savedOpened, closedCount: savedClosed };
+      var mtdOpened = Math.max(0, num(monthRo.openedCount) - savedOpened + openedRos);
+      var mtdClosed = Math.max(0, num(monthRo.closedCount) - savedClosed + closed);
+      document.getElementById('roOpen').textContent = String(openRos);
+      document.getElementById('roOpened').textContent = String(openedRos);
+      document.getElementById('roClosed').textContent = String(closed);
+      document.getElementById('roOpenedMtd').textContent = 'MTD opened ' + mtdOpened;
+      document.getElementById('roClosedMtd').textContent = 'MTD closed ' + mtdClosed;
+      document.getElementById('roMtd').textContent = mtdOpened + ' / ' + mtdClosed;
+      renderHoursTable();
+      applyWeekView();
+    }
+    function overlaySummary(summary) {
+      lastSummary = summary;
+      var formRows = (summary.techHours && (summary.techHours.formRows || summary.techHours.rows)) || [];
+      var existing = document.querySelectorAll('.tech-row:not(.tech-head)');
+      var namesMatch = existing.length === formRows.length && formRows.length > 0;
+      if (namesMatch) {
+        existing.forEach(function (row, i) {
+          if (row.querySelector('.tech-name').value !== formRows[i].techName) {
+            namesMatch = false;
+          }
+        });
+      }
+      if (!namesMatch) {
+        document.getElementById('techRows').innerHTML = '';
+        formRows.forEach(addTechRow);
+      } else {
+        existing.forEach(function (row, i) {
+          var rec = formRows[i];
+          setIfIdle(row.querySelector('.tech-clock'), rec.clockHours != null && rec.clockHours !== '' ? rec.clockHours : 8);
+          setIfIdle(row.querySelector('.tech-sold'), rec.soldHours != null ? rec.soldHours : '');
+        });
+      }
+      if (summary.gross && summary.gross.daily) {
+        document.getElementById('laborGross').value = summary.gross.daily.laborGross || '';
+        document.getElementById('otherGross').value = summary.gross.daily.otherGross || '';
+      }
+      var ros = summary.repairOrders || {};
+      var opened = ros.openedCount != null && ros.openedCount !== '' ? ros.openedCount : ros.writtenCount;
+      var closed = summary.production && summary.production.closedCount != null
+        ? summary.production.closedCount
+        : ros.closedCount;
+      var reported = !!ros.reported || ros.openCount || opened || closed;
+      document.getElementById('openRos').value = reported ? fieldNum(ros.openCount) : '';
+      document.getElementById('openedRos').value = reported ? fieldNum(opened) : '';
+      document.getElementById('closedRos').value = reported ? fieldNum(closed) : '';
+      liveTotals();
+    }
+    function setIfIdle(input, value) {
+      if (document.activeElement !== input) {
+        input.value = value;
+      }
+    }
+    function applyPayload(payload, fromSeed) {
+      if (payload && payload.roster && payload.roster.length) {
+        fillHeatLookups(payload.roster);
+      }
+      if (payload && payload.summary) {
+        overlaySummary(payload.summary);
+        setStatus(fromSeed || payload.cached
+          ? 'Opened instantly from last save.'
+          : 'Loaded ' + payload.summary.date);
+      }
+      if (payload && payload.heat && payload.heat.length) {
+        renderHeat(payload.heat);
+      } else {
+        loadHeat();
+      }
+    }
+    function heatLists(rows) {
+      var dateKey = document.getElementById('reportDate').value;
+      var open = [];
+      var resolvedToday = [];
+      var critical = 0;
+      var awaiting = 0;
+      (rows || []).forEach(function (row) {
+        if (row.status === 'resolved') {
+          if (String(row.resolvedAt || '').indexOf(dateKey) === 0) {
+            resolvedToday.push(row);
+          }
+        } else {
+          open.push(row);
+          if (row.status !== 'briefed') awaiting += 1;
+          if (row.severity === 'critical') critical += 1;
+        }
+      });
+      return { open: open, resolvedToday: resolvedToday, critical: critical, awaiting: awaiting };
+    }
+    function heatLine(item) {
+      return '<p><strong>' + escapeHtml(item.customer || 'No customer name') + '</strong> ' +
+        '<span class="pill ' + escapeHtml(item.severity || '') + '">' + escapeHtml(item.severity || '') + '</span> ' +
+        '<span class="pill ' + escapeHtml(item.status || '') + '">' + escapeHtml(item.status || '') + '</span><br>' +
+        escapeHtml(item.advisor || item.owner || 'Advisor n/a') + ' · ' +
+        escapeHtml(item.technician || 'Tech n/a') + ' · ' +
+        escapeHtml(item.roNumber || 'RO n/a') + '<br>' +
+        escapeHtml(item.issue || '') + '</p>';
+    }
+    function renderHeat(rows) {
+      lastHeat = rows || [];
+      var lists = heatLists(lastHeat);
+      document.getElementById('heatTable').innerHTML = lastHeat.map(function (row) {
+        var customer = row.customer ? escapeHtml(row.customer) : '<span class="meta">No customer name</span>';
+        var advisor = escapeHtml(row.advisor || row.owner || '—');
+        var tech = escapeHtml(row.technician || '—');
+        return '<tr><td><strong>' + customer + '</strong><div class="meta">' + escapeHtml(row.id || '') +
+          (row.roNumber ? ' · ' + escapeHtml(row.roNumber) : '') + '</div></td><td>' + advisor + '</td><td>' + tech +
+          '</td><td>' + escapeHtml(row.issue || '') + '</td><td><span class="pill ' + escapeHtml(row.status) + '">' + escapeHtml(row.status) + '</span></td><td>' +
+          escapeHtml(row.resolvedAt || '—') + (row.resolutionNotes ? '<br>' + escapeHtml(row.resolutionNotes) : '') +
+          '</td><td>' + (row.status === 'resolved'
+            ? '<button class="secondary" type="button" onclick="heatAction(\'' + escapeHtml(row.id) + '\',\'reopen\')">Reopen</button>'
+            : '<button class="secondary" type="button" onclick="heatAction(\'' + escapeHtml(row.id) + '\',\'brief\')">Briefed</button> ' +
+              '<button type="button" onclick="heatAction(\'' + escapeHtml(row.id) + '\',\'resolve\')">Resolve</button>') + '</td></tr>';
+      }).join('');
+      document.getElementById('openHeatList').innerHTML = lists.open.length
+        ? lists.open.map(heatLine).join('')
+        : '<p class="meta">No open heat cases.</p>';
+      document.getElementById('resolvedHeatList').innerHTML = lists.resolvedToday.length
+        ? lists.resolvedToday.map(function (item) {
+          return '<p><strong>' + escapeHtml(item.customer || item.id) + '</strong> resolved ' + escapeHtml(item.resolvedAt || '') +
+            '<br>' + escapeHtml(item.advisor || item.owner || '') +
+            (item.technician ? ' · ' + escapeHtml(item.technician) : '') +
+            '<br>' + escapeHtml(item.resolutionNotes || 'No resolution notes') + '</p>';
+        }).join('')
+        : '<p class="meta">No heat cases were marked resolved on this date.</p>';
+      document.getElementById('kpiHeat').textContent = String(lists.open.length);
+      document.getElementById('kpiHeatNote').textContent = lists.awaiting + ' need briefing · ' + lists.resolvedToday.length + ' resolved this day';
+      document.getElementById('kpiHeatCard').className = lists.critical > 0 ? 'card heat critical' : 'card heat';
+      if (lastSummary) {
+        lastSummary.heatCases = lastSummary.heatCases || {};
+        lastSummary.heatCases.openCount = lists.open.length;
+      }
+    }
+    function fillHeatLookups(roster) {
+      var names = roster && roster.length ? roster : DEFAULT_ROSTER;
+      var tech = document.getElementById('heatTechnician');
+      var current = tech.value;
+      tech.innerHTML = '<option value="">Select technician</option>' + names.map(function (name) {
+        return '<option value="' + escapeHtml(name) + '">' + escapeHtml(name) + '</option>';
+      }).join('');
+      if (current) {
+        tech.value = current;
+      }
+      var list = document.getElementById('advisorList');
+      list.innerHTML = DEFAULT_ADVISORS.map(function (name) {
+        return '<option value="' + escapeHtml(name) + '"></option>';
+      }).join('');
+    }
+    function showRoster(names) {
+      document.getElementById('techRows').innerHTML = '';
+      (names || DEFAULT_ROSTER).forEach(function (name) {
+        addTechRow({ techName: name, clockHours: 8 });
+      });
+      liveTotals();
+    }
+    function loadHeat() {
+      run('SMR_listHeatCases', ['all'], function (rows) {
+        renderHeat(rows || []);
+      });
+    }
+    function recallDay() {
+      setStatus('Loading saved numbers…');
+      run('SMR_loadBriefing', [document.getElementById('reportDate').value], function (payload) {
+        applyPayload(payload, false);
+        if (payload && payload.roster && payload.roster.length && !document.querySelector('.tech-row:not(.tech-head)')) {
+          showRoster(payload.roster);
+        }
+      });
+    }
+    function saveDay() {
+      run('SMR_saveDailyReport', [{
+        date: document.getElementById('reportDate').value,
+        techHours: { rows: readTechRows() },
+        repairOrders: {
+          openCount: document.getElementById('openRos').value,
+          openedCount: document.getElementById('openedRos').value,
+          writtenCount: document.getElementById('openedRos').value,
+          closedCount: document.getElementById('closedRos').value
+        },
+        gross: {
+          period: document.getElementById('grossPeriod').value,
+          laborGross: document.getElementById('laborGross').value,
+          otherGross: document.getElementById('otherGross').value
+        }
+      }], function (summary) {
+        overlaySummary(summary);
+        setStatus('Saved ' + summary.date + '. Next open of this date will be instant.');
+        setTab('briefing');
+      });
+    }
+    function addHeat() {
+      run('SMR_addHeatCase', [{
+        openedDate: document.getElementById('reportDate').value,
+        customer: document.getElementById('heatCustomer').value,
+        advisor: document.getElementById('heatAdvisor').value,
+        technician: document.getElementById('heatTechnician').value,
+        roNumber: document.getElementById('heatRo').value,
+        issue: document.getElementById('heatIssue').value,
+        severity: document.getElementById('heatSeverity').value
+      }], function () {
+        document.getElementById('heatIssue').value = '';
+        setStatus('Heat case added.');
+        loadHeat();
+      });
+    }
+    function heatAction(id, action) {
+      var notes = action === 'resolve' ? (prompt('Resolution notes') || '') : '';
+      run('SMR_updateHeatCase', [id, action, notes], function () { loadHeat(); });
+    }
+    document.getElementById('reportDate').value = today();
+    document.getElementById('reportDate').onchange = recallDay;
+    fillHeatLookups(DEFAULT_ROSTER);
+    showRoster(DEFAULT_ROSTER);
+    if (SEED && SEED.summary) {
+      applyPayload(SEED, true);
+    } else {
+      recallDay();
+    }
+  </script>
+</body>
+</html>
