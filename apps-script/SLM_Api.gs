@@ -232,21 +232,24 @@ function SLM_saveReportEmail(email) {
 }
 
 function SLM_emailDailyReport(payload) {
-  SLM_ensureSheets();
-  var report = SLM_normalizeReport_(payload || {});
   var to = String((payload && payload.to) || SLM_getReportEmail_() || '').trim();
-  if (!to) {
-    return { sent: false, needsEmail: true, error: 'Set a report email first. You can add it later on the SLM_Config tab.' };
-  }
-  if (!SLM_isValidEmail_(to)) {
+  if (to && !SLM_isValidEmail_(to)) {
     throw new Error('Enter a valid report email address.');
+  }
+  var snapshot = SLM_saveDailyReport(payload);
+  var report = snapshot.report;
+  if (!to) {
+    return {
+      sent: false,
+      saved: true,
+      snapshot: snapshot,
+      needsEmail: true,
+      error: 'Saved. Set a report email to send. You can add it later on the SLM_Config tab.'
+    };
   }
   if (payload && payload.to) {
     SLM_setReportEmail_(to);
   }
-  var snapshot = SLM_getSummary(report.date);
-  snapshot.report = report;
-  snapshot.metrics = SLM_metrics_(report);
   var mail = SLM_buildReportEmail_({
     report: report,
     monthlyPrior: snapshot.monthlyPrior || {},
@@ -259,5 +262,5 @@ function SLM_emailDailyReport(payload) {
     body: mail.text,
     name: 'Geaux Chevrolet Sales'
   });
-  return { sent: true, to: to, subject: mail.subject };
+  return { sent: true, saved: true, snapshot: snapshot, to: to, subject: mail.subject };
 }

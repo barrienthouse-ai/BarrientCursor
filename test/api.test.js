@@ -162,6 +162,7 @@ describe('API', () => {
     assert.equal(preview.status, 200);
     assert.equal(preview.body.sent, false);
     assert.equal(preview.body.preview, true);
+    assert.equal(preview.body.saved, true);
     assert.match(preview.body.html, /GEAUX CHEVROLET/);
     assert.match(preview.body.html, /Strong Saturday/);
 
@@ -175,5 +176,45 @@ describe('API', () => {
     const html = await htmlPage.text();
     assert.equal(htmlPage.status, 200);
     assert.match(html, /GEAUX CHEVROLET/);
+  });
+
+  it('saves the recap when emailing so a separate Save click is not required', async () => {
+    const emailed = await json(`${base}/api/email-report`, {
+      method: 'POST',
+      body: JSON.stringify({
+        date: '2026-09-02',
+        newSold: 3,
+        usedSold: 1,
+        frontGross: 1200,
+        backGross: 800,
+        appointments: 9,
+        shownAppointments: 6,
+        showroomVisits: 11,
+        nextDayAppointments: 4,
+        notes: 'Emailed without a separate save.'
+      })
+    });
+    assert.equal(emailed.status, 200);
+    assert.equal(emailed.body.saved, true);
+    assert.equal(emailed.body.snapshot.saved, true);
+    assert.equal(emailed.body.snapshot.report.newSold, 3);
+    assert.equal(emailed.body.snapshot.report.usedSold, 1);
+    assert.equal(emailed.body.snapshot.report.totalGross, 2000);
+    assert.match(emailed.body.html, /Emailed without a separate save/);
+
+    const history = await json(`${base}/api/history?from=2026-09-02&to=2026-09-02`);
+    assert.equal(history.body.rows.length, 1);
+    assert.equal(history.body.rows[0].newSold, 3);
+    assert.equal(history.body.rows[0].usedSold, 1);
+    assert.equal(history.body.rows[0].appointments, 9);
+    assert.equal(history.body.rows[0].shownAppointments, 6);
+    assert.equal(history.body.rows[0].showroomVisits, 11);
+    assert.match(history.body.rows[0].notes, /without a separate save/);
+
+    const recalled = await json(`${base}/api/daily-report/2026-09-02`);
+    assert.equal(recalled.body.saved, true);
+    assert.equal(recalled.body.report.newSold, 3);
+    assert.equal(recalled.body.report.totalGross, 2000);
+    assert.equal(recalled.body.report.nextDayAppointments, 4);
   });
 });

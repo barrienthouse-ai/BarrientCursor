@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { auditWorkbook, normalizeDailyReport } from './reporting.js';
+import { auditWorkbook } from './reporting.js';
 import { buildReportEmail, isValidEmail, normalizeEmail } from './email.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,16 +12,13 @@ export function createApp(store, options = {}) {
   app.use(express.json({ limit: '1mb' }));
   app.use(express.static(publicDir));
 
-  function composeEmail(payload = {}) {
-    const report = normalizeDailyReport(payload);
-    const snapshot = store.snapshot(report.date);
-    const mail = buildReportEmail({
-      report,
+  function composeEmailFromSnapshot(snapshot) {
+    return buildReportEmail({
+      report: snapshot.report,
       monthlyPrior: snapshot.monthlyPrior || {},
-      nextBusinessDate: snapshot.nextBusinessDate || report.nextBusinessDate,
+      nextBusinessDate: snapshot.nextBusinessDate || snapshot.report?.nextBusinessDate,
       storeName: store.read().config.storeName
     });
-    return { report, snapshot, mail };
   }
 
   app.get('/api/health', (_req, res) => {
@@ -115,15 +112,17 @@ export function createApp(store, options = {}) {
   app.post('/api/email-report', async (req, res) => {
     try {
       const payload = req.body || {};
-      const to = normalizeEmail(payload.to || store.read().config.reportEmail);
-      if (payload.to && !isValidEmail(payload.to) && String(payload.to).trim()) {
+      const rawTo = String(payload.to || '').trim();
+      if (rawTo && !isValidEmail(rawTo)) {
         res.status(400).json({ error: 'Enter a valid report email address.' });
         return;
       }
+      const to = normalizeEmail(rawTo || store.read().config.reportEmail);
       if (to) {
         store.setReportEmail(to);
       }
-      const { mail } = composeEmail(payload);
+      const snapshot = store.saveDailyReport(payload);
+      const mail = composeEmailFromSnapshot(snapshot);
       const message = {
         to,
         subject: mail.subject,
@@ -135,24 +134,28 @@ export function createApp(store, options = {}) {
           sent: false,
           preview: true,
           needsEmail: true,
+          saved: true,
+          snapshot,
           subject: mail.subject,
           html: mail.html,
-          message: 'Preview built. Add a report email when you are ready to send.'
+          message: 'Saved. Preview built. Add a report email when you are ready to send.'
         });
         return;
       }
       if (typeof options.sendEmail === 'function') {
         await options.sendEmail(message);
-        res.json({ sent: true, to, subject: mail.subject });
+        res.json({ sent: true, saved: true, snapshot, to, subject: mail.subject });
         return;
       }
       res.json({
         sent: false,
         preview: true,
+        saved: true,
+        snapshot,
         to,
         subject: mail.subject,
         html: mail.html,
-        message: 'Preview built. In the live workbook this sends through Gmail once Report email is set on SLM_Config.'
+        message: 'Saved. Preview built. In the live workbook this sends through Gmail once Report email is set on SLM_Config.'
       });
     } catch (error) {
       res.status(400).json({ error: error.message });

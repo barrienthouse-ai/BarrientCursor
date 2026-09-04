@@ -285,17 +285,25 @@ $('emailReport').addEventListener('click', async () => {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+    if (result.snapshot) {
+      state.snapshot = result.snapshot;
+      fillForm(result.snapshot.report);
+      renderDealHint(result.snapshot.dealLog);
+      renderRecap(result.snapshot);
+      const history = await api('/api/history');
+      renderHistory(history.rows || []);
+    }
     if (result.html) {
       const blob = new Blob([result.html], { type: 'text/html' });
       window.open(URL.createObjectURL(blob), '_blank');
     }
     if (result.sent) {
-      setStatus(`Emailed ${result.to}.`);
+      setStatus(`Saved and emailed ${result.to}.`);
       return;
     }
     setStatus(result.to
-      ? `Preview opened for ${result.to}. In the live sheet this sends through Gmail.`
-      : 'Preview opened. Add a report email when you are ready to send.');
+      ? `Saved. Preview opened for ${result.to}. In the live sheet this sends through Gmail.`
+      : 'Saved. Preview opened. Add a report email when you are ready to send.');
   } catch (error) {
     setStatus(error.message, true);
   }

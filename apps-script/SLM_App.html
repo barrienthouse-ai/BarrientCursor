@@ -80,7 +80,7 @@
         <button type="button" class="secondary" onclick="recallDay()">Recall day</button>
         <button type="button" class="secondary" onclick="fillDealLog()">Refresh from deal log</button>
         <button type="button" onclick="saveDay()">Save daily report</button>
-        <button type="button" onclick="emailReport()">Email this report</button>
+        <button type="button" onclick="emailReport()" title="Saves this recap, then emails it">Email this report</button>
         <span class="notice" id="status"></span>
       </div>
       <label>Report email <input id="reportEmail" type="email" placeholder="Add the address later on the SLM_Config tab" /></label>
@@ -243,35 +243,47 @@
         setStatus(error.message || String(error), true);
       }).SLM_saveDailyReport(readForm());
     }
+    function applyEmailResult(result, fallbackStatus) {
+      if (result && result.snapshot) {
+        renderSnapshot(result.snapshot);
+      }
+      if (result && result.sent) {
+        setStatus('Saved and emailed ' + result.to + '.');
+        return true;
+      }
+      if (fallbackStatus) {
+        setStatus(fallbackStatus, true);
+      }
+      return false;
+    }
     function emailReport() {
       var payload = readForm();
       payload.to = $('reportEmail').value;
-      setStatus('Sending Geaux Chevrolet recap…');
+      setStatus('Saving and sending Geaux Chevrolet recap…');
       google.script.run.withSuccessHandler(function (result) {
         if (result && result.needsEmail) {
-          var to = window.prompt('Send this recap to which email? You can also add it later on the SLM_Config tab (Report email).');
+          if (result.snapshot) {
+            renderSnapshot(result.snapshot);
+          }
+          var to = window.prompt('Recap is saved. Send it to which email? You can also add it later on the SLM_Config tab (Report email).');
           if (!to) {
-            setStatus(result.error || 'Set a report email first.', true);
+            setStatus(result.error || 'Saved. Add a report email when you are ready to send.');
             return;
           }
           $('reportEmail').value = to;
           payload.to = to;
           google.script.run.withSuccessHandler(function (sent) {
-            if (sent && sent.sent) {
-              setStatus('Emailed ' + sent.to + '.');
-            } else {
-              setStatus((sent && sent.error) || 'Email was not sent.', true);
+            if (!applyEmailResult(sent, (sent && sent.error) || 'Email was not sent.')) {
+              return;
             }
           }).withFailureHandler(function (error) {
             setStatus(error.message || String(error), true);
           }).SLM_emailDailyReport(payload);
           return;
         }
-        if (result && result.sent) {
-          setStatus('Emailed ' + result.to + '.');
+        if (applyEmailResult(result, (result && result.error) || 'Email was not sent.')) {
           return;
         }
-        setStatus((result && result.error) || 'Email was not sent.', true);
       }).withFailureHandler(function (error) {
         setStatus(error.message || String(error), true);
       }).SLM_emailDailyReport(payload);
