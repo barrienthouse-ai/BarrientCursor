@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fleet Manager Report</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BarrientCursor · Fleet operations</p>
+        <h1>Fleet Manager Report</h1>
+        <p class="sub">Daily briefing for Geaux Chevrolet fleet. Working deals, sold deals, GPU, monthly goal, MTD front / finance / total gross, and deliveries. Writes only to <code>FLM_</code> tabs. <code>DEALINPUT</code>, <code>FLEET CUSTOMERS</code>, <code>SUMMARY</code>, <code>HOME</code>, and the rest of GEAUXCHEVROLETSALESLOG stay untouched.</p>
+      </div>
+      <div class="date-box">
+        <label for="reportDate">Report date</label>
+        <input type="date" id="reportDate" min="2020-01-01" max="2035-12-31" />
+        <p class="meta" id="lastDealNote">Last fleet day in DEALINPUT: —</p>
+        <div class="actions">
+          <button class="btn" id="lastDealDayBtn" type="button">Use last fleet day</button>
+          <button class="btn" id="recallBtn" type="button">Recall day</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Sections">
+      <button class="active" data-tab="board" type="button">Board</button>
+      <button data-tab="daily" type="button">Daily entry</button>
+      <button data-tab="working" type="button">Working deals</button>
+      <button data-tab="history" type="button">History</button>
+      <button data-tab="compat" type="button">Sheet safety</button>
+    </nav>
+
+    <section id="board" class="tab-page">
+      <div class="grid kpis">
+        <article class="card">
+          <div class="label">Working deals</div>
+          <div class="value" id="kpiWorking">—</div>
+          <div class="meta" id="kpiWorkingNote">Open pipeline</div>
+        </article>
+        <article class="card">
+          <div class="label">Sold deals</div>
+          <div class="value" id="kpiSold">—</div>
+          <div class="meta" id="kpiSoldNote">Units today</div>
+        </article>
+        <article class="card">
+          <div class="label">Gross per unit</div>
+          <div class="value accent-2" id="kpiGpu">—</div>
+          <div class="meta" id="kpiGpuNote">Total gross ÷ sold</div>
+        </article>
+        <article class="card heat">
+          <div class="label">Monthly goal</div>
+          <div class="value" id="kpiGoal">—</div>
+          <div class="meta" id="kpiGoalNote">Pace —</div>
+        </article>
+      </div>
+
+      <div class="grid kpis" style="margin-top:14px">
+        <article class="card">
+          <div class="label">MTD front gross</div>
+          <div class="value" id="kpiMtdFront">—</div>
+          <div class="meta" id="kpiFrontToday">Today —</div>
+        </article>
+        <article class="card">
+          <div class="label">Finance gross</div>
+          <div class="value" id="kpiFinance">—</div>
+          <div class="meta" id="kpiFinanceMtd">MTD —</div>
+        </article>
+        <article class="card">
+          <div class="label">Total gross</div>
+          <div class="value" id="kpiTotal">—</div>
+          <div class="meta" id="kpiTotalMtd">MTD —</div>
+        </article>
+        <article class="card">
+          <div class="label">Goal remaining</div>
+          <div class="value" id="kpiGoalLeft">—</div>
+          <div class="meta" id="kpiGoalGross">Gross remaining —</div>
+        </article>
+      </div>
+
+      <div class="grid kpis prod-board" style="margin-top:14px">
+        <article class="card">
+          <div class="label">Daily deliveries</div>
+          <div class="value" id="kpiDeliveries">—</div>
+          <div class="meta" id="kpiDeliveriesMtd">MTD —</div>
+        </article>
+        <article class="card">
+          <div class="label">Courtesy deliveries</div>
+          <div class="value" id="kpiCourtesy">—</div>
+          <div class="meta" id="kpiCourtesyMtd">MTD —</div>
+        </article>
+        <article class="card">
+          <div class="label">Expected deliveries</div>
+          <div class="value" id="kpiExpected">—</div>
+          <div class="meta" id="kpiExpectedNote">Pipeline + typed</div>
+        </article>
+        <article class="card">
+          <div class="label">Total expected</div>
+          <div class="value" id="kpiExpectedTotal">—</div>
+          <div class="meta" id="kpiExpectedToday">Due today —</div>
+        </article>
+      </div>
+
+      <div class="grid two" style="margin-top:14px">
+        <article class="panel">
+          <h2>Today versus month-to-date</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Today</th>
+                  <th>MTD</th>
+                  <th>Week (Mon–Sat)</th>
+                </tr>
+              </thead>
+              <tbody id="compareTable"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <h2>Open working deals</h2>
+          <div id="openDealList"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="daily" class="tab-page hidden">
+      <article class="panel">
+        <h2>Sold deals and gross</h2>
+        <p class="meta">Fleet and commercial only — same buckets as a DEALINPUT fleet row. Total gross is front plus finance. <strong>Choosing a report date fills sold units and gross from DEALINPUT automatically</strong> when TYPE or DEPT is Fleet. Override if a deal is still being logged.</p>
+        <div class="row">
+          <label>Sold deals <input id="soldDeals" type="number" min="0" step="1" /></label>
+          <label>Working deals <input id="workingDeals" type="number" min="0" step="1" /></label>
+          <label>Front gross <input id="frontGross" type="number" step="0.01" /></label>
+          <label>Finance gross <input id="financeGross" type="number" step="0.01" /></label>
+        </div>
+        <div class="row">
+          <label>Total gross <input id="totalGross" type="number" step="0.01" readonly /></label>
+          <label>Gross per unit <input id="gpu" type="text" readonly /></label>
+          <div class="hint" id="dealHint">Deal log: —</div>
+        </div>
+      </article>
+
+      <article class="panel" style="margin-top:14px">
+        <h2>Deliveries</h2>
+        <p class="meta">Daily deliveries are customer takeaways. Courtesy deliveries are drops at a shop, yard, or job site. Expected deliveries can be typed or pulled from the working-deal pipeline.</p>
+        <div class="row">
+          <label>Daily deliveries <input id="deliveries" type="number" min="0" step="1" /></label>
+          <label>Courtesy deliveries <input id="courtesyDeliveries" type="number" min="0" step="1" /></label>
+          <label>Total expected deliveries <input id="expectedDeliveries" type="number" min="0" step="1" /></label>
+          <div class="hint" id="expectedHint">Pipeline expected: —</div>
+        </div>
+      </article>
+
+      <article class="panel" style="margin-top:14px">
+        <h2>Monthly goal</h2>
+        <p class="meta">Set the fleet unit and gross goal once for the month. Pace includes today’s form numbers.</p>
+        <div class="row">
+          <label>Unit goal <input id="unitGoal" type="number" min="0" step="1" /></label>
+          <label>Gross goal <input id="grossGoal" type="number" step="0.01" /></label>
+          <label>MTD units <input id="mtdSold" type="text" readonly /></label>
+          <label>MTD total gross <input id="mtdGross" type="text" readonly /></label>
+        </div>
+        <label>Notes <textarea id="notes" placeholder="What is working, units still in F&I, courtesy drops, or tomorrow’s expected deliveries"></textarea></label>
+      </article>
+
+      <div class="actions">
+        <button class="btn ghost" id="fillDealLog" type="button">Refresh from deal log</button>
+        <button class="btn" id="saveGoal" type="button">Save monthly goal</button>
+        <button class="btn primary" id="saveDaily" type="button">Save daily report</button>
+        <span class="notice" id="dailyStatus"></span>
+      </div>
+    </section>
+
+    <section id="working" class="tab-page hidden">
+      <article class="panel">
+        <h2>Log a working deal</h2>
+        <p class="meta">Pipeline deals the fleet desk is working. Sold keeps them on the board until delivered. Expected delivery dates feed total expected deliveries.</p>
+        <div class="row">
+          <label>Customer <input id="dealCustomer" /></label>
+          <label>Fleet account
+            <input id="dealAccount" list="accountList" placeholder="Entergy Louisiana" />
+            <datalist id="accountList"></datalist>
+          </label>
+          <label>Stock <input id="dealStock" /></label>
+          <label>Units <input id="dealUnits" type="number" min="1" step="1" value="1" /></label>
+        </div>
+        <div class="row">
+          <label>Vehicle <input id="dealVehicle" placeholder="2026 Silverado 2500 HD" /></label>
+          <label>Expected delivery <input id="dealExpected" type="date" /></label>
+          <label>Est. front <input id="dealFront" type="number" step="0.01" /></label>
+          <label>Est. finance <input id="dealFinance" type="number" step="0.01" /></label>
+        </div>
+        <label>Notes <input id="dealNotes" /></label>
+        <div class="actions">
+          <button class="btn primary" id="addDeal" type="button">Add working deal</button>
+          <span class="notice" id="dealStatus"></span>
+        </div>
+      </article>
+      <article class="panel" style="margin-top:14px">
+        <h2>Pipeline board</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th>Customer</th>
+                <th>Vehicle</th>
+                <th>Units</th>
+                <th>Expected</th>
+                <th>Est. gross</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="dealTable"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="history" class="tab-page hidden">
+      <article class="panel">
+        <h2>Saved recaps</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Sold</th>
+                <th>Working</th>
+                <th>Front</th>
+                <th>Finance</th>
+                <th>Total</th>
+                <th>GPU</th>
+                <th>Deliveries</th>
+                <th>Courtesy</th>
+                <th>Expected</th>
+              </tr>
+            </thead>
+            <tbody id="historyTable"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="compat" class="tab-page hidden">
+      <article class="panel compat">
+        <h2>GEAUXCHEVROLETSALESLOG stays intact</h2>
+        <p>The live workbook already logs deals on <code>DEALINPUT</code> and keeps fleet accounts on <code>FLEET CUSTOMERS</code>. This tool is the fleet desk’s daily briefing. It does not replace deal entry.</p>
+        <ul>
+          <li><strong>No reserved triggers in the bound package.</strong> The in-sheet files never define <code>onOpen</code>, <code>onEdit</code>, <code>doGet</code>, or <code>doPost</code>.</li>
+          <li><strong>Namespaced only.</strong> Every function, menu handler, and ScriptProperty key starts with <code>FLM_</code>.</li>
+          <li><strong>Dedicated tabs only.</strong> Writes go to <code>FLM_Dashboard</code>, <code>FLM_Daily</code>, <code>FLM_Working</code>, <code>FLM_Goals</code>, and <code>FLM_Config</code>.</li>
+          <li><strong>Protected live tabs.</strong> <code>DEALINPUT</code> is read-only for a fleet totals hint. <code>FLEET CUSTOMERS</code>, <code>SUMMARY</code>, <code>HOME</code>, service <code>SMR_*</code> tabs, and sales <code>SLM_*</code> tabs are never written.</li>
+        </ul>
+        <p>Send the fleet manager a standalone web-app link so they never open the sales log. Save and recall still write <code>FLM_*</code> tabs in GEAUXCHEVROLETSALESLOG. See <code>apps-script-web/INSTALL.md</code>.</p>
+      </article>
+    </section>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
