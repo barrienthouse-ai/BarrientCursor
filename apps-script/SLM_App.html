@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <base target="_top" />
+  <style>
+    :root { color-scheme: dark; }
+    html, body { height: 100%; }
+    body { font-family: Arial, sans-serif; margin: 0; background: #0e1624; color: #eef3fb; }
+    .wrap { padding: 14px 18px 18px; min-height: 100%; box-sizing: border-box; }
+    h1 { margin: 0 0 4px; font-size: 24px; }
+    .sub, .meta { color: #9aadc8; font-size: 12px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+    .mtd { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 12px; }
+    .card, .panel { background: #162236; border: 1px solid #2d3f5c; border-radius: 10px; padding: 10px; }
+    .card .label { color: #9aadc8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .value.accent { color: #4cc9c0; }
+    label { display: block; font-size: 12px; margin: 6px 0; }
+    input, textarea, button { font: inherit; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid #2d3f5c; background: #0e1624; color: #eef3fb; }
+    input[readonly] { color: #4cc9c0; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button { border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: #f0b429; color: #1b1403; font-weight: 700; }
+    button.secondary { background: #1c2b44; color: #eef3fb; }
+    .notice { color: #4cc9c0; font-size: 12px; }
+    .error { color: #ef6b6b; font-size: 12px; }
+    textarea { min-height: 60px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Sales Manager Report</h1>
+    <p class="sub">End-of-day recap. The window opens immediately; DEALINPUT loads in the background. Choosing a date fills that day’s retail units and gross only. Writes only to SLM_* tabs.</p>
+    <label>Report date <input id="reportDate" type="date" min="2020-01-01" max="2035-12-31" onchange="recallDay()" /></label>
+    <p class="meta" id="lastDealNote">Last retail day in DEALINPUT: —</p>
+    <div class="kpis">
+      <div class="card"><div class="meta">New / used</div><div class="value" id="kpiUnits">—</div></div>
+      <div class="card"><div class="meta">Total gross</div><div class="value" id="kpiGross">—</div></div>
+      <div class="card"><div class="meta">Show / close</div><div class="value" id="kpiRates">—</div></div>
+      <div class="card"><div class="meta">Next day appts</div><div class="value" id="kpiNext">—</div></div>
+    </div>
+    <div class="panel">
+      <strong>Units and gross</strong>
+      <p class="meta" id="dealHint">Deal log: —</p>
+      <div class="row">
+        <label>New cars sold <input id="newSold" type="number" oninput="liveTotals()" /></label>
+        <label>Used cars sold <input id="usedSold" type="number" oninput="liveTotals()" /></label>
+        <label>Front gross <input id="frontGross" type="number" step="0.01" oninput="liveTotals()" /></label>
+        <label>Back gross <input id="backGross" type="number" step="0.01" oninput="liveTotals()" /></label>
+      </div>
+      <div class="row">
+        <label>Total gross <input id="totalGross" type="number" readonly /></label>
+        <label>Total units <input id="totalSold" type="number" readonly /></label>
+      </div>
+      <strong>Traffic — enter by hand</strong>
+      <div class="row">
+        <label>Appts for the day <input id="appointments" type="number" oninput="liveTotals()" /></label>
+        <label>Shown appts <input id="shownAppointments" type="number" oninput="liveTotals()" /></label>
+        <label>Total showroom visits <input id="showroomVisits" type="number" oninput="liveTotals()" /></label>
+        <label>Appts next business day <input id="nextDayAppointments" type="number" oninput="liveTotals()" /></label>
+      </div>
+      <p class="meta" id="nextDayLabel"></p>
+      <strong>Month to date — includes today</strong>
+      <p class="meta">Saved recaps earlier this month plus the numbers on this form. Show % is shown appts ÷ appts. Close % is units ÷ showroom visits.</p>
+      <div class="mtd">
+        <div class="card"><div class="label">MTD new</div><div class="value accent" id="mtdNew">—</div></div>
+        <div class="card"><div class="label">MTD used</div><div class="value accent" id="mtdUsed">—</div></div>
+        <div class="card"><div class="label">MTD gross</div><div class="value accent" id="mtdGross">—</div></div>
+        <div class="card"><div class="label">MTD appts</div><div class="value accent" id="mtdAppts">—</div></div>
+        <div class="card"><div class="label">MTD appts shown</div><div class="value accent" id="mtdShown">—</div></div>
+        <div class="card"><div class="label">MTD showroom visits</div><div class="value accent" id="mtdVisits">—</div></div>
+        <div class="card"><div class="label">MTD show %</div><div class="value accent" id="mtdShowPct">—</div></div>
+        <div class="card"><div class="label">MTD close %</div><div class="value accent" id="mtdClosePct">—</div></div>
+      </div>
+      <label>Notes <textarea id="notes"></textarea></label>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="useLastDealDay()">Use last DEALINPUT day</button>
+        <button type="button" class="secondary" onclick="recallDay()">Recall day</button>
+        <button type="button" class="secondary" onclick="fillDealLog()">Refresh from deal log</button>
+        <button type="button" onclick="saveDay()">Save daily report</button>
+        <button type="button" onclick="emailReport()" title="Saves this recap, then emails it">Email this report</button>
+        <span class="notice" id="status"></span>
+      </div>
+      <label>Report email <input id="reportEmail" type="email" placeholder="Add the address later on the SLM_Config tab" /></label>
+    </div>
+  </div>
+  <script>
+    var seed = <?!= seedJson ?>;
+    var loadSeq = 0;
+    window._mtdPrior = {};
+    function $(id) { return document.getElementById(id); }
+    function money(n) {
+      var v = Number(n) || 0;
+      return (v < 0 ? '-' : '') + '$' + Math.abs(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    function pct(v) { return v === null || v === undefined ? '—' : (v * 100).toFixed(1) + '%'; }
+    function num(id) { var v = $(id).value; return v === '' ? 0 : Number(v); }
+    function today() {
+      var now = new Date();
+      var off = now.getTimezoneOffset();
+      return new Date(now.getTime() - off * 60000).toISOString().slice(0, 10);
+    }
+    function liveTotals() {
+      var neu = num('newSold');
+      var used = num('usedSold');
+      var front = num('frontGross');
+      var back = num('backGross');
+      var appts = num('appointments');
+      var shown = num('shownAppointments');
+      var visits = num('showroomVisits');
+      $('totalSold').value = String(neu + used);
+      $('totalGross').value = ((Math.round((front + back) * 100)) / 100).toFixed(2);
+      $('kpiUnits').textContent = neu + ' / ' + used;
+      $('kpiGross').textContent = money(front + back);
+      $('kpiRates').textContent = pct(appts ? shown / appts : null) + ' / ' + pct(visits ? (neu + used) / visits : null);
+      $('kpiNext').textContent = String(num('nextDayAppointments'));
+      var prior = window._mtdPrior || {};
+      var mtdNew = (Number(prior.newSold) || 0) + neu;
+      var mtdUsed = (Number(prior.usedSold) || 0) + used;
+      var mtdGross = (Number(prior.totalGross) || 0) + front + back;
+      var mtdAppts = (Number(prior.appointments) || 0) + appts;
+      var mtdShown = (Number(prior.shownAppointments) || 0) + shown;
+      var mtdVisits = (Number(prior.showroomVisits) || 0) + visits;
+      $('mtdNew').textContent = String(mtdNew);
+      $('mtdUsed').textContent = String(mtdUsed);
+      $('mtdGross').textContent = money(mtdGross);
+      $('mtdAppts').textContent = String(mtdAppts);
+      $('mtdShown').textContent = String(mtdShown);
+      $('mtdVisits').textContent = String(mtdVisits);
+      $('mtdShowPct').textContent = pct(mtdAppts ? mtdShown / mtdAppts : null);
+      $('mtdClosePct').textContent = pct(mtdVisits ? (mtdNew + mtdUsed) / mtdVisits : null);
+    }
+    function fillForm(report) {
+      report = report || {};
+      $('newSold').value = report.newSold ?? '';
+      $('usedSold').value = report.usedSold ?? '';
+      $('frontGross').value = report.frontGross ?? '';
+      $('backGross').value = report.backGross ?? '';
+      $('appointments').value = report.appointments ?? '';
+      $('shownAppointments').value = report.shownAppointments ?? '';
+      $('showroomVisits').value = report.showroomVisits ?? '';
+      $('nextDayAppointments').value = report.nextDayAppointments ?? '';
+      $('notes').value = report.notes || '';
+      liveTotals();
+    }
+    function readForm() {
+      return {
+        date: $('reportDate').value,
+        newSold: num('newSold'),
+        usedSold: num('usedSold'),
+        frontGross: num('frontGross'),
+        backGross: num('backGross'),
+        appointments: num('appointments'),
+        shownAppointments: num('shownAppointments'),
+        showroomVisits: num('showroomVisits'),
+        nextDayAppointments: num('nextDayAppointments'),
+        notes: $('notes').value
+      };
+    }
+    function renderSnapshot(snapshot) {
+      if (!snapshot) return;
+      window._mtdPrior = snapshot.monthlyPrior || {};
+      fillForm(snapshot.report);
+      $('nextDayLabel').textContent = 'Next business day is ' + snapshot.nextBusinessDate + ' (Sunday closed).';
+      var last = snapshot.dealLog && snapshot.dealLog.lastRetailDate ? snapshot.dealLog.lastRetailDate : '';
+      window._lastRetailDate = last;
+      $('lastDealNote').textContent = last
+        ? 'Last retail day in DEALINPUT: ' + last
+        : 'Last retail day in DEALINPUT: (none found — replace SLM_Import.gs if the log has deals)';
+      if (snapshot.dealLog && snapshot.dealLog.daily) {
+        var d = snapshot.dealLog.daily;
+        $('dealHint').textContent = 'DEALINPUT retail: ' + d.newSold + ' new / ' + d.usedSold + ' used · ' + money(d.frontGross) + ' front · ' + money(d.backGross) + ' back · ' + money(d.totalGross) + ' total';
+      }
+    }
+    function timingNote(snapshot) {
+      var ms = snapshot && snapshot.dealLog ? Number(snapshot.dealLog.ms || 0) : 0;
+      if (ms <= 0) {
+        return '';
+      }
+      return ' (' + (ms / 1000).toFixed(1) + 's)';
+    }
+    function describeFill(snapshot) {
+      var deals = snapshot && snapshot.dealLog && snapshot.dealLog.daily ? snapshot.dealLog.daily.dealCount : 0;
+      var date = snapshot && snapshot.date ? snapshot.date : $('reportDate').value;
+      var last = snapshot && snapshot.dealLog ? snapshot.dealLog.lastRetailDate : '';
+      var took = timingNote(snapshot);
+      if (deals) {
+        setStatus('Filled ' + deals + ' retail deal' + (deals === 1 ? '' : 's') + ' from DEALINPUT on ' + date + '.' + took + ' Enter traffic and save.');
+        return;
+      }
+      var lastNote = last ? ' Last retail day in DEALINPUT is ' + last + '.' : '';
+      setStatus(snapshot && snapshot.saved
+        ? 'No retail deals in DEALINPUT on ' + date + '. Showing the saved recap.' + lastNote + took
+        : 'No retail deals in DEALINPUT on ' + date + '.' + lastNote + took + ' Enter units, gross, and traffic.');
+    }
+    function useLastDealDay() {
+      var last = window._lastRetailDate;
+      if (!last) {
+        setStatus('DEALINPUT scan did not find a retail date. Replace SLM_Config.gs, SLM_Import.gs, SLM_Api.gs, and SLM_App.html.', true);
+        return;
+      }
+      $('reportDate').value = last;
+      recallDay();
+    }
+    function setStatus(msg, err) {
+      $('status').textContent = msg;
+      $('status').className = err ? 'error' : 'notice';
+    }
+    function recallDay() {
+      var date = $('reportDate').value;
+      if (!date) return;
+      var seq = ++loadSeq;
+      setStatus('Loading DEALINPUT for ' + date + '…');
+      google.script.run.withSuccessHandler(function (snapshot) {
+        if (seq !== loadSeq) return;
+        renderSnapshot(snapshot);
+        describeFill(snapshot);
+      }).withFailureHandler(function (error) {
+        if (seq !== loadSeq) return;
+        setStatus(error.message || String(error), true);
+      }).SLM_getSummary(date);
+    }
+    function fillDealLog() {
+      setStatus('Refreshing DEALINPUT…');
+      google.script.run.withSuccessHandler(function (result) {
+        fillForm(result.report);
+        if (result.dealLog && result.dealLog.daily) {
+          var d = result.dealLog.daily;
+          $('dealHint').textContent = 'DEALINPUT retail: ' + d.newSold + ' new / ' + d.usedSold + ' used · ' + money(d.frontGross) + ' front · ' + money(d.backGross) + ' back · ' + money(d.totalGross) + ' total';
+        }
+        setStatus('Units and gross refreshed from DEALINPUT. Traffic was kept. Save to lock the recap.');
+      }).withFailureHandler(function (error) {
+        setStatus(error.message || String(error), true);
+      }).SLM_fillFromDealLog(readForm());
+    }
+    function saveDay() {
+      google.script.run.withSuccessHandler(function (snapshot) {
+        renderSnapshot(snapshot);
+        setStatus('Saved ' + snapshot.date + '. Total gross ' + money(snapshot.report.totalGross) + '.');
+      }).withFailureHandler(function (error) {
+        setStatus(error.message || String(error), true);
+      }).SLM_saveDailyReport(readForm());
+    }
+    function applyEmailResult(result, fallbackStatus) {
+      if (result && result.snapshot) {
+        renderSnapshot(result.snapshot);
+      }
+      if (result && result.sent) {
+        setStatus('Saved and emailed ' + result.to + '.');
+        return true;
+      }
+      if (fallbackStatus) {
+        setStatus(fallbackStatus, true);
+      }
+      return false;
+    }
+    function emailReport() {
+      var payload = readForm();
+      payload.to = $('reportEmail').value;
+      setStatus('Saving and sending Geaux Chevrolet recap…');
+      google.script.run.withSuccessHandler(function (result) {
+        if (result && result.needsEmail) {
+          if (result.snapshot) {
+            renderSnapshot(result.snapshot);
+          }
+          var to = window.prompt('Recap is saved. Send it to which email? You can also add it later on the SLM_Config tab (Report email).');
+          if (!to) {
+            setStatus(result.error || 'Saved. Add a report email when you are ready to send.');
+            return;
+          }
+          $('reportEmail').value = to;
+          payload.to = to;
+          google.script.run.withSuccessHandler(function (sent) {
+            if (!applyEmailResult(sent, (sent && sent.error) || 'Email was not sent.')) {
+              return;
+            }
+          }).withFailureHandler(function (error) {
+            setStatus(error.message || String(error), true);
+          }).SLM_emailDailyReport(payload);
+          return;
+        }
+        if (applyEmailResult(result, (result && result.error) || 'Email was not sent.')) {
+          return;
+        }
+      }).withFailureHandler(function (error) {
+        setStatus(error.message || String(error), true);
+      }).SLM_emailDailyReport(payload);
+    }
+    function maximizeRecap() {
+      try {
+        var w = Math.floor(Math.max(1400, (screen.availWidth || 1400) - 16));
+        var h = Math.floor(Math.max(900, (screen.availHeight || 900) - 40));
+        google.script.host.setWidth(w);
+        google.script.host.setHeight(h);
+      } catch (ignoreMax) {}
+    }
+    maximizeRecap();
+    $('reportDate').value = (seed && seed.date) || today();
+    google.script.run.withSuccessHandler(function (cfg) {
+      if (cfg && cfg.reportEmail) {
+        $('reportEmail').value = cfg.reportEmail;
+      }
+    }).SLM_getEmailConfig();
+    if (seed && seed.loading) {
+      setStatus('Loading DEALINPUT…');
+      recallDay();
+    } else if (seed && seed.report) {
+      renderSnapshot(seed);
+      describeFill(seed);
+    } else {
+      recallDay();
+    }
+  </script>
+</body>
+</html>

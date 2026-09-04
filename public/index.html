@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sales Manager Report</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BarrientCursor · Sales operations</p>
+        <h1>Sales Manager Report</h1>
+        <p class="sub">End-of-day recap for Geaux Chevrolet. Enter retail units and gross, plus today’s traffic. Writes only to <code>SLM_</code> tabs. <code>DEALINPUT</code>, <code>SUMMARY</code>, <code>HOME</code>, and the rest of GEAUXCHEVROLETSALESLOG stay untouched.</p>
+      </div>
+      <div class="date-box">
+        <label for="reportDate">Report date</label>
+        <input type="date" id="reportDate" min="2020-01-01" max="2035-12-31" />
+        <p class="meta" id="lastDealNote">Last retail day in DEALINPUT: —</p>
+        <div class="actions">
+          <button class="btn" id="lastDealDayBtn" type="button">Use last DEALINPUT day</button>
+          <button class="btn" id="recallBtn" type="button">Recall day</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Sections">
+      <button class="active" data-tab="recap" type="button">Recap</button>
+      <button data-tab="daily" type="button">Daily entry</button>
+      <button data-tab="history" type="button">History</button>
+      <button data-tab="compat" type="button">Sheet safety</button>
+    </nav>
+
+    <section id="recap" class="tab-page">
+      <div class="grid kpis">
+        <article class="card">
+          <div class="label">New / used sold</div>
+          <div class="value" id="kpiUnits">—</div>
+          <div class="meta" id="kpiUnitsNote">Retail units today</div>
+        </article>
+        <article class="card">
+          <div class="label">Front / back / total</div>
+          <div class="value" id="kpiGross">—</div>
+          <div class="meta" id="kpiGrossMonth">MTD —</div>
+        </article>
+        <article class="card">
+          <div class="label">Show / close</div>
+          <div class="value" id="kpiRates">—</div>
+          <div class="meta" id="kpiRatesNote">Shown appts and visits</div>
+        </article>
+        <article class="card heat">
+          <div class="label">Next business day appts</div>
+          <div class="value" id="kpiNext">—</div>
+          <div class="meta" id="kpiNextNote">—</div>
+        </article>
+      </div>
+
+      <div class="grid two" style="margin-top:14px">
+        <article class="panel">
+          <h2>Today versus month-to-date</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Today</th>
+                  <th>MTD</th>
+                  <th>Week (Mon–Sat)</th>
+                </tr>
+              </thead>
+              <tbody id="compareTable"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <h2>Traffic</h2>
+          <div id="trafficSummary"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="daily" class="tab-page hidden">
+      <article class="panel">
+        <h2>Units and gross</h2>
+        <p class="meta">Retail new and used only — same buckets as SUMMARY’s single-day recap. Total gross is front plus back. <strong>Choosing a report date fills units and gross from DEALINPUT automatically.</strong> Override if a deal is still being logged, then type traffic and save.</p>
+        <div class="row">
+          <label>New cars sold <input id="newSold" type="number" min="0" step="1" /></label>
+          <label>Used cars sold <input id="usedSold" type="number" min="0" step="1" /></label>
+          <label>Front gross <input id="frontGross" type="number" step="0.01" /></label>
+          <label>Back gross <input id="backGross" type="number" step="0.01" /></label>
+        </div>
+        <div class="row">
+          <label>Total gross <input id="totalGross" type="number" step="0.01" readonly /></label>
+          <label>Total units <input id="totalSold" type="number" readonly /></label>
+          <div class="hint" id="dealHint">Deal log: —</div>
+        </div>
+      </article>
+
+      <article class="panel" style="margin-top:14px">
+        <h2>Traffic — enter by hand</h2>
+        <p class="meta">These numbers are not in DEALINPUT. Type appointments, shown, showroom visits (ups), and what is set for the next selling day.</p>
+        <div class="row">
+          <label>Appts for the day <input id="appointments" type="number" min="0" step="1" /></label>
+          <label>Shown appts <input id="shownAppointments" type="number" min="0" step="1" /></label>
+          <label>Total showroom visits <input id="showroomVisits" type="number" min="0" step="1" /></label>
+          <label>Appts next business day <input id="nextDayAppointments" type="number" min="0" step="1" /></label>
+        </div>
+        <p class="meta" id="nextDayLabel"></p>
+        <h2>Month to date — includes today</h2>
+        <p class="meta">Saved recaps earlier this month plus the numbers on this form. Show % is shown appts ÷ appts. Close % is units ÷ showroom visits.</p>
+        <div class="grid mtd">
+          <article class="card"><div class="label">MTD new</div><div class="value" id="mtdNew">—</div></article>
+          <article class="card"><div class="label">MTD used</div><div class="value" id="mtdUsed">—</div></article>
+          <article class="card"><div class="label">MTD gross</div><div class="value" id="mtdGross">—</div></article>
+          <article class="card"><div class="label">MTD appts</div><div class="value" id="mtdAppts">—</div></article>
+          <article class="card"><div class="label">MTD appts shown</div><div class="value" id="mtdShown">—</div></article>
+          <article class="card"><div class="label">MTD showroom visits</div><div class="value" id="mtdVisits">—</div></article>
+          <article class="card"><div class="label">MTD show %</div><div class="value" id="mtdShowPct">—</div></article>
+          <article class="card"><div class="label">MTD close %</div><div class="value" id="mtdClosePct">—</div></article>
+        </div>
+        <label>Notes <textarea id="notes" placeholder="What drove the day, missing deals, or tomorrow’s focus"></textarea></label>
+        <label>Report email <input id="reportEmail" type="email" placeholder="Add the address later — saved for next time" /></label>
+      </article>
+
+      <div class="actions">
+        <button class="btn ghost" id="fillDealLog" type="button">Refresh from deal log</button>
+        <button class="btn primary" id="saveDaily" type="button">Save daily report</button>
+        <button class="btn" id="emailReport" type="button" title="Saves this recap, then emails it">Email this report</button>
+        <span class="notice" id="dailyStatus"></span>
+      </div>
+    </section>
+
+    <section id="history" class="tab-page hidden">
+      <article class="panel">
+        <h2>Saved recaps</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>New</th>
+                <th>Used</th>
+                <th>Front</th>
+                <th>Back</th>
+                <th>Total</th>
+                <th>Appts</th>
+                <th>Shown</th>
+                <th>Visits</th>
+                <th>Next day</th>
+              </tr>
+            </thead>
+            <tbody id="historyTable"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="compat" class="tab-page hidden">
+      <article class="panel compat">
+        <h2>GEAUXCHEVROLETSALESLOG stays intact</h2>
+        <p>The live workbook already logs deals on <code>DEALINPUT</code> and rolls MTD on <code>SUMMARY</code>. This tool is the daily briefing log sales managers complete at close. It does not replace deal entry.</p>
+        <ul>
+          <li><strong>No reserved triggers.</strong> This project never defines <code>onOpen</code>, <code>onEdit</code>, <code>doGet</code>, or <code>doPost</code>.</li>
+          <li><strong>Namespaced only.</strong> Every function, menu handler, and ScriptProperty key starts with <code>SLM_</code>.</li>
+          <li><strong>Dedicated tabs only.</strong> Writes go to <code>SLM_Dashboard</code>, <code>SLM_Daily</code>, and <code>SLM_Config</code>.</li>
+          <li><strong>Protected live tabs.</strong> <code>DEALINPUT</code> is read-only for a retail totals hint. <code>SUMMARY</code>, <code>HOME</code>, <code>LOGDEAL</code>, service <code>SMR_*</code> tabs, and AutoCrat are never written.</li>
+        </ul>
+        <p>In Apps Script, add <code>SLM_onOpen();</code> to your existing <code>onOpen</code>, then run <code>SLM_install()</code>.</p>
+      </article>
+    </section>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
