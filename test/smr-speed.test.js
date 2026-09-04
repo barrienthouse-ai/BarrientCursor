@@ -28,12 +28,17 @@ describe('SMR load-speed contract', () => {
     assert.match(html, /<th>Customer<\/th>/);
     assert.match(html, /Sold week Mon–Fri/);
     assert.match(html, /Payroll Tue–Mon/);
-    assert.doesNotMatch(html, /Open ROs/);
+    assert.doesNotMatch(html, /class="tech-open"/);
+    assert.match(html, /Open ROs/);
     assert.match(html, /id="prodSold"/);
     assert.match(html, /id="prodElr"/);
     assert.match(html, /id="prodHoursRo"/);
     assert.match(html, /id="prodUnapplied"/);
     assert.match(html, /id="closedRos"/);
+    assert.match(html, /id="openRos"/);
+    assert.match(html, /id="openedRos"/);
+    assert.match(html, /Opened today/);
+    assert.match(html, /MTD opened \/ closed/);
     assert.match(html, /Sold hours/);
     assert.match(html, /Hours \/ RO/);
     assert.match(html, /Unapplied time/);
@@ -56,6 +61,7 @@ describe('SMR load-speed contract', () => {
     assert.doesNotMatch(load, /SMR_getSummary/);
     assert.match(api, /function SMR_production_/);
     assert.match(api, /function SMR_attachProduction_/);
+    assert.match(api, /function SMR_recallRoFast_/);
     assert.match(api, /hoursPerRo/);
     assert.match(api, /unappliedHours/);
   });

@@ -373,9 +373,50 @@ export function heatCaseSummary(cases = [], dateKey) {
   };
 }
 
+export function openedRoCount(row) {
+  if (!row) {
+    return 0;
+  }
+  if (row.openedCount != null && row.openedCount !== '') {
+    return toNumber(row.openedCount);
+  }
+  return toNumber(row.writtenCount);
+}
+
 export function findDailyRo(rows = [], dateKey) {
   const matches = filterByDate(rows, dateKey);
   return matches.length ? matches[matches.length - 1] : null;
+}
+
+export function rollupRepairOrders(rows = [], dateKey) {
+  const key = toDateKey(dateKey);
+  const month = monthKey(key);
+  const daily = findDailyRo(rows, key);
+  const monthRows = rows.filter((row) => typeof row.date === 'string' && row.date.startsWith(month));
+  const monthly = monthRows.reduce(
+    (acc, row) => {
+      acc.openedCount += openedRoCount(row);
+      acc.closedCount += toNumber(row.closedCount);
+      return acc;
+    },
+    { openedCount: 0, closedCount: 0 }
+  );
+  const openCount = daily ? toNumber(daily.openCount) : 0;
+  const openedCount = daily ? openedRoCount(daily) : 0;
+  const closedCount = daily ? toNumber(daily.closedCount) : 0;
+  return {
+    openCount,
+    openedCount,
+    writtenCount: openedCount,
+    closedCount,
+    reported: Boolean(daily),
+    row: daily,
+    monthly: {
+      openCount,
+      openedCount: monthly.openedCount,
+      closedCount: monthly.closedCount
+    }
+  };
 }
 
 export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [], repairOrders = [], heatCases = [], roster = [] }) {
@@ -385,8 +426,10 @@ export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [],
   const gross = rollupGross(grossEntries, key);
   const roFromTechs = sumRepairOrders(hoursRows);
   const hasTechRos = hoursRows.some((row) => toNumber(row.openCount) || toNumber(row.closedCount) || toNumber(row.writtenCount));
-  const ro = findDailyRo(repairOrders, key);
-  const closedCount = ro ? toNumber(ro.closedCount) : (hasTechRos ? roFromTechs.closedCount : 0);
+  const shopRos = rollupRepairOrders(repairOrders, key);
+  const closedCount = shopRos.reported ? shopRos.closedCount : (hasTechRos ? roFromTechs.closedCount : 0);
+  const openCount = shopRos.reported ? shopRos.openCount : (hasTechRos ? roFromTechs.openCount : 0);
+  const openedCount = shopRos.reported ? shopRos.openedCount : (hasTechRos ? roFromTechs.writtenCount : 0);
   const heat = heatCaseSummary(heatCases, key);
   const production = computeProduction({
     soldHours: hours.soldHours,
@@ -408,11 +451,13 @@ export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [],
     },
     gross,
     repairOrders: {
-      openCount: ro ? toNumber(ro.openCount) : (hasTechRos ? roFromTechs.openCount : 0),
+      openCount,
+      openedCount,
+      writtenCount: openedCount,
       closedCount,
-      writtenCount: ro ? toNumber(ro.writtenCount) : (hasTechRos ? roFromTechs.writtenCount : 0),
-      reported: Boolean(ro) || hasTechRos,
-      row: ro
+      reported: shopRos.reported || hasTechRos,
+      row: shopRos.row,
+      monthly: shopRos.monthly
     },
     production,
     weekHours: weekHoursSnapshot(techHours, key),

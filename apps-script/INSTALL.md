@@ -62,7 +62,7 @@ What changes:
 
 - **Open briefing** now matches the local briefing: Briefing tab with sold hours, ELR, hours/RO, unapplied, hours-by-tech table, and heat cases. Daily entry and heat logging are on their own tabs.
 - Replace `SMR_App.html` and `SMR_Menu.gs` for this layout. Save in Apps Script, reload the spreadsheet, then **Service Manager Report → Open briefing**. Do not re-run `SMR_install`.
-- **ROs closed today** is a shop-wide count used for Hours / RO. It is not entered per technician.
+- **ROs closed today**, **Opened today**, and **Open ROs** are shop-wide store counts. Month-to-date opened and closed are the sum of saved daily entries.
 - **Recall day** — reloads a previously saved date into the form.
 - **Save daily report** — upserts that date in `SMR_TechHours`, `SMR_Gross`, and `SMR_RepairOrders`.
 - Heat cases stay on the briefing until **Resolve**. The resolved timestamp and notes are stored on `SMR_HeatCases`.

@@ -106,6 +106,29 @@ function applyProduction({ soldHours, clockHours, laborGross, closedCount }) {
   }
 }
 
+function applyStoreRos() {
+  if (!$('roOpen')) {
+    return;
+  }
+  const open = Number($('openRos')?.value || 0);
+  const opened = Number($('openedRos')?.value || 0);
+  const closed = Number($('closedRos')?.value || 0);
+  const saved = state.snapshot?.repairOrders || {};
+  const savedOpened = Number(saved.openedCount ?? saved.writtenCount || 0);
+  const savedClosed = Number(saved.closedCount || 0);
+  const month = saved.monthly || { openedCount: savedOpened, closedCount: savedClosed };
+  const mtdOpened = Math.max(0, Number(month.openedCount || 0) - savedOpened + opened);
+  const mtdClosed = Math.max(0, Number(month.closedCount || 0) - savedClosed + closed);
+  $('roOpen').textContent = String(open);
+  $('roOpened').textContent = String(opened);
+  $('roClosed').textContent = String(closed);
+  if ($('roOpenedMtd')) {
+    $('roOpenedMtd').textContent = `MTD opened ${mtdOpened}`;
+    $('roClosedMtd').textContent = `MTD closed ${mtdClosed}`;
+    $('roMtd').textContent = `${mtdOpened} / ${mtdClosed}`;
+  }
+}
+
 function liveTotals() {
   const rows = readTechRows();
   let clock = 0;
@@ -118,6 +141,7 @@ function liveTotals() {
   const other = Number($('otherGross')?.value || 0);
   const closed = Number($('closedRos')?.value || 0);
   applyProduction({ soldHours: sold, clockHours: clock, laborGross: labor, closedCount: closed });
+  applyStoreRos();
   if ($('kpiGross')) {
     const mtd = state.snapshot?.gross?.monthly?.totalGross || 0;
     $('kpiGross').textContent = money.format(labor + other);
@@ -215,12 +239,22 @@ function applyWeekView() {
   }
 }
 
+function roField(value, reported) {
+  if (!reported) {
+    return '';
+  }
+  return value == null || value === '' ? '' : value;
+}
+
 function fillDailyForm(snapshot) {
   renderHoursRows(snapshot.techHours.formRows || snapshot.techHours.rows);
   const daily = snapshot.gross.daily;
   $('laborGross').value = daily.laborGross || '';
   $('otherGross').value = daily.otherGross || '';
-  $('closedRos').value = snapshot.production?.closedCount ?? snapshot.repairOrders?.closedCount ?? '';
+  const ros = snapshot.repairOrders || {};
+  $('openRos').value = roField(ros.openCount, ros.reported);
+  $('openedRos').value = roField(ros.openedCount ?? ros.writtenCount, ros.reported);
+  $('closedRos').value = roField(snapshot.production?.closedCount ?? ros.closedCount, ros.reported);
   $('grossNotes').value = '';
   $('grossPeriod').value = 'daily';
   liveTotals();
@@ -323,7 +357,7 @@ async function init() {
     $('dailyStatus').textContent = `Recalled ${$('reportDate').value}.`;
   });
   $('reportDate').addEventListener('change', loadDay);
-  ['laborGross', 'otherGross', 'closedRos'].forEach((id) => {
+  ['laborGross', 'otherGross', 'openRos', 'openedRos', 'closedRos'].forEach((id) => {
     $(id).addEventListener('input', liveTotals);
   });
 
@@ -337,6 +371,9 @@ async function init() {
           date,
           techHours: { rows: readTechRows() },
           repairOrders: {
+            openCount: $('openRos').value,
+            openedCount: $('openedRos').value,
+            writtenCount: $('openedRos').value,
             closedCount: $('closedRos').value
           },
           gross: {

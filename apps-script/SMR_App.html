@@ -86,6 +86,12 @@
         <div class="card"><div class="label" id="kpiWeekLabel">Sold week (Mon–Fri)</div><div class="value" id="kpiWeek">—</div><div class="meta" id="kpiWeekNote">Weekly hours from saved daily entries</div></div>
         <div class="card heat" id="kpiHeatCard"><div class="label">Open heat cases</div><div class="value" id="kpiHeat">—</div><div class="meta" id="kpiHeatNote">Awaiting briefing —</div></div>
       </div>
+      <div class="kpis">
+        <div class="card"><div class="label">Open ROs</div><div class="value" id="roOpen">—</div><div class="meta">Store open repair orders</div></div>
+        <div class="card"><div class="label">Opened today</div><div class="value" id="roOpened">—</div><div class="meta" id="roOpenedMtd">MTD opened —</div></div>
+        <div class="card"><div class="label">Closed today</div><div class="value" id="roClosed">—</div><div class="meta" id="roClosedMtd">MTD closed —</div></div>
+        <div class="card"><div class="label">MTD opened / closed</div><div class="value" id="roMtd">—</div><div class="meta">Month-to-date store totals</div></div>
+      </div>
       <div class="grid-two">
         <div class="panel">
           <h2>Hours by technician</h2>
@@ -108,7 +114,7 @@
     <section id="page-daily" class="hidden">
       <div class="panel">
         <h2>Daily entry</h2>
-        <p class="meta">Enter today’s clock and sold hours. Use the toggle to show sold hours for Monday–Friday, or payroll clock hours from last Tuesday through this Monday. Service gross only — parts are separate.</p>
+        <p class="meta">Enter today’s clock and sold hours, store open ROs, opened today, and closed today. Use the toggle for sold week (Monday–Friday) or payroll clock hours (last Tuesday through this Monday). Service gross only — parts are separate.</p>
         <div class="week-toggle">
           <button type="button" id="weekSoldBtn" onclick="setWeekMode('sold')">Sold week Mon–Fri</button>
           <button type="button" class="secondary" id="weekPayrollBtn" onclick="setWeekMode('payroll')">Payroll Tue–Mon</button>
@@ -117,13 +123,17 @@
         <div class="row" style="grid-template-columns: repeat(4, 1fr)">
           <label>Service labor <input id="laborGross" type="number" oninput="liveTotals()" /></label>
           <label>Other service <input id="otherGross" type="number" oninput="liveTotals()" /></label>
-          <label>ROs closed today <input id="closedRos" type="number" min="0" step="1" oninput="liveTotals()" /></label>
           <label>Period
             <select id="grossPeriod">
               <option value="daily">Daily</option>
               <option value="monthly">Monthly override</option>
             </select>
           </label>
+        </div>
+        <div class="row" style="grid-template-columns: repeat(3, 1fr)">
+          <label>Open ROs <input id="openRos" type="number" min="0" step="1" oninput="liveTotals()" /></label>
+          <label>Opened today <input id="openedRos" type="number" min="0" step="1" oninput="liveTotals()" /></label>
+          <label>Closed today <input id="closedRos" type="number" min="0" step="1" oninput="liveTotals()" /></label>
         </div>
         <div class="tech-list" id="techRows"></div>
         <div class="actions">
@@ -184,6 +194,9 @@
     function num(value) {
       var n = Number(value);
       return isFinite(n) ? n : 0;
+    }
+    function fieldNum(value) {
+      return value == null || value === '' ? '' : value;
     }
     function round1(value) {
       return Math.round(num(value) * 10) / 10;
@@ -303,6 +316,8 @@
       var labor = num(document.getElementById('laborGross').value);
       var other = num(document.getElementById('otherGross').value);
       var closed = num(document.getElementById('closedRos').value);
+      var openRos = num(document.getElementById('openRos').value);
+      var openedRos = num(document.getElementById('openedRos').value);
       var unapplied = round1(clock - sold);
       var lines = readTechRows().length;
       document.getElementById('prodSold').textContent = String(round1(sold));
@@ -314,6 +329,18 @@
       document.getElementById('kpiGross').textContent = money(labor + other);
       var mtd = lastSummary && lastSummary.gross ? lastSummary.gross.monthly.totalGross : 0;
       document.getElementById('kpiGrossMonth').textContent = 'MTD ' + money(mtd);
+      var savedRo = lastSummary && lastSummary.repairOrders ? lastSummary.repairOrders : {};
+      var savedOpened = num(savedRo.openedCount != null ? savedRo.openedCount : savedRo.writtenCount);
+      var savedClosed = num(savedRo.closedCount);
+      var monthRo = savedRo.monthly || { openedCount: savedOpened, closedCount: savedClosed };
+      var mtdOpened = Math.max(0, num(monthRo.openedCount) - savedOpened + openedRos);
+      var mtdClosed = Math.max(0, num(monthRo.closedCount) - savedClosed + closed);
+      document.getElementById('roOpen').textContent = String(openRos);
+      document.getElementById('roOpened').textContent = String(openedRos);
+      document.getElementById('roClosed').textContent = String(closed);
+      document.getElementById('roOpenedMtd').textContent = 'MTD opened ' + mtdOpened;
+      document.getElementById('roClosedMtd').textContent = 'MTD closed ' + mtdClosed;
+      document.getElementById('roMtd').textContent = mtdOpened + ' / ' + mtdClosed;
       renderHoursTable();
       applyWeekView();
     }
@@ -343,10 +370,15 @@
         document.getElementById('laborGross').value = summary.gross.daily.laborGross || '';
         document.getElementById('otherGross').value = summary.gross.daily.otherGross || '';
       }
+      var ros = summary.repairOrders || {};
+      var opened = ros.openedCount != null && ros.openedCount !== '' ? ros.openedCount : ros.writtenCount;
       var closed = summary.production && summary.production.closedCount != null
         ? summary.production.closedCount
-        : (summary.repairOrders ? summary.repairOrders.closedCount : 0);
-      document.getElementById('closedRos').value = closed || '';
+        : ros.closedCount;
+      var reported = !!ros.reported || ros.openCount || opened || closed;
+      document.getElementById('openRos').value = reported ? fieldNum(ros.openCount) : '';
+      document.getElementById('openedRos').value = reported ? fieldNum(opened) : '';
+      document.getElementById('closedRos').value = reported ? fieldNum(closed) : '';
       liveTotals();
     }
     function setIfIdle(input, value) {
@@ -474,6 +506,9 @@
         date: document.getElementById('reportDate').value,
         techHours: { rows: readTechRows() },
         repairOrders: {
+          openCount: document.getElementById('openRos').value,
+          openedCount: document.getElementById('openedRos').value,
+          writtenCount: document.getElementById('openedRos').value,
           closedCount: document.getElementById('closedRos').value
         },
         gross: {

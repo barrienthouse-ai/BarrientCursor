@@ -13,6 +13,7 @@ import {
   monthKey,
   nextHeatCaseId,
   payrollWeekRange,
+  rollupRepairOrders,
   rollupWeekHours,
   soldWeekRange,
   roundHours,
@@ -94,6 +95,20 @@ describe('RO totals', () => {
     assert.equal(totals.openCount, 6);
     assert.equal(totals.closedCount, 3);
     assert.equal(totals.writtenCount, 4);
+  });
+
+  it('rolls store open, opened today, closed today, and MTD totals', () => {
+    const rollup = rollupRepairOrders([
+      { date: '2026-08-01', openCount: 40, writtenCount: 10, closedCount: 8 },
+      { date: '2026-08-29', openCount: 36, openedCount: 12, closedCount: 16 },
+      { date: '2026-07-31', openCount: 50, writtenCount: 9, closedCount: 9 }
+    ], '2026-08-29');
+    assert.equal(rollup.openCount, 36);
+    assert.equal(rollup.openedCount, 12);
+    assert.equal(rollup.closedCount, 16);
+    assert.equal(rollup.monthly.openCount, 36);
+    assert.equal(rollup.monthly.openedCount, 22);
+    assert.equal(rollup.monthly.closedCount, 24);
   });
 });
 
@@ -200,8 +215,11 @@ describe('daily snapshot', () => {
     });
     assert.equal(snapshot.techHours.lineCount, 1);
     assert.equal(snapshot.repairOrders.openCount, 99);
+    assert.equal(snapshot.repairOrders.openedCount, 99);
     assert.equal(snapshot.repairOrders.closedCount, 99);
     assert.equal(snapshot.repairOrders.writtenCount, 99);
+    assert.equal(snapshot.repairOrders.monthly.openedCount, 99);
+    assert.equal(snapshot.repairOrders.monthly.closedCount, 99);
     assert.equal(snapshot.heatCases.openCount, 1);
     assert.equal(snapshot.heatCases.resolvedTodayCount, 1);
     assert.equal(snapshot.heatCases.criticalCount, 1);

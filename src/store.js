@@ -195,7 +195,7 @@ export function createStore(filePath) {
         date,
         openCount: toNumber(payload.openCount),
         closedCount: toNumber(payload.closedCount),
-        writtenCount: toNumber(payload.writtenCount),
+        writtenCount: toNumber(payload.writtenCount != null && payload.writtenCount !== '' ? payload.writtenCount : payload.openedCount),
         notes: payload.notes || '',
         submittedBy,
         submittedAt

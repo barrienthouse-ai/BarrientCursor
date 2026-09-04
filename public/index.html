@@ -76,6 +76,28 @@
           <div class="meta" id="kpiHeatNote">Awaiting briefing —</div>
         </article>
       </div>
+      <div class="grid kpis" style="margin-top:14px">
+        <article class="card">
+          <div class="label">Open ROs</div>
+          <div class="value" id="roOpen">—</div>
+          <div class="meta">Store open repair orders</div>
+        </article>
+        <article class="card">
+          <div class="label">Opened today</div>
+          <div class="value" id="roOpened">—</div>
+          <div class="meta" id="roOpenedMtd">MTD opened —</div>
+        </article>
+        <article class="card">
+          <div class="label">Closed today</div>
+          <div class="value" id="roClosed">—</div>
+          <div class="meta" id="roClosedMtd">MTD closed —</div>
+        </article>
+        <article class="card">
+          <div class="label">MTD opened / closed</div>
+          <div class="value" id="roMtd">—</div>
+          <div class="meta">Month-to-date store totals</div>
+        </article>
+      </div>
 
       <div class="grid two" style="margin-top:14px">
         <article class="panel">
@@ -118,13 +140,17 @@
           <div class="row">
             <label>Service labor <input id="laborGross" type="number" step="0.01" /></label>
             <label>Other service <input id="otherGross" type="number" step="0.01" /></label>
-            <label>ROs closed today <input id="closedRos" type="number" min="0" step="1" /></label>
             <label>Period
               <select id="grossPeriod">
                 <option value="daily">Daily</option>
                 <option value="monthly">Monthly override</option>
               </select>
             </label>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <label>Open ROs <input id="openRos" type="number" min="0" step="1" /></label>
+            <label>Opened today <input id="openedRos" type="number" min="0" step="1" /></label>
+            <label>Closed today <input id="closedRos" type="number" min="0" step="1" /></label>
           </div>
           <label>Gross notes <textarea id="grossNotes"></textarea></label>
         </article>
@@ -204,7 +230,7 @@
           <h2>Gross and RO history</h2>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Date</th><th>Gross</th><th>Open</th><th>Closed</th><th>Written</th></tr></thead>
+              <thead><tr><th>Date</th><th>Gross</th><th>Open</th><th>Closed</th><th>Opened</th></tr></thead>
               <tbody id="historyOps"></tbody>
             </table>
           </div>

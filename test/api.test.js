@@ -55,7 +55,7 @@ describe('API', () => {
           ]
         },
         gross: { laborGross: 3000, otherGross: 100 },
-        repairOrders: { closedCount: 5 }
+        repairOrders: { openCount: 42, openedCount: 11, closedCount: 5 }
       })
     });
     assert.equal(saved.status, 201);
@@ -65,6 +65,10 @@ describe('API', () => {
     assert.equal(saved.body.production.hoursPerRo, 3.1);
     assert.equal(saved.body.production.unappliedHours, 0.5);
     assert.equal(saved.body.production.closedCount, 5);
+    assert.equal(saved.body.repairOrders.openCount, 42);
+    assert.equal(saved.body.repairOrders.openedCount, 11);
+    assert.equal(saved.body.repairOrders.monthly.openedCount, 11);
+    assert.equal(saved.body.repairOrders.monthly.closedCount, 5);
     assert.equal(saved.body.weekHours.sold.start, '2026-08-24');
     assert.equal(saved.body.weekHours.sold.end, '2026-08-28');
     assert.equal(saved.body.weekHours.sold.total, 0);
@@ -145,6 +149,44 @@ describe('API', () => {
     assert.match(html, /id="hoursTable"/);
     assert.match(html, /Shop sold labor hours today/);
     assert.match(html, /onclick="setTab\('briefing'\)"/);
+    assert.match(html, /id="roOpen"/);
+    assert.match(html, /Opened today/);
+    assert.match(html, /MTD opened \/ closed/);
     assert.doesNotMatch(html, /<\?!= seedJson \?>/);
+  });
+
+  it('rolls month-to-date opened and closed across saved days', async () => {
+    const first = await json(`${base}/api/daily-report`, {
+      method: 'POST',
+      body: JSON.stringify({
+        date: '2026-09-02',
+        techHours: { rows: [{ techName: 'BIG AL', clockHours: 8, soldHours: 8 }] },
+        repairOrders: { openCount: 40, openedCount: 10, closedCount: 8 }
+      })
+    });
+    assert.equal(first.status, 201);
+    assert.equal(first.body.repairOrders.openCount, 40);
+    assert.equal(first.body.repairOrders.monthly.openedCount, 10);
+
+    const second = await json(`${base}/api/daily-report`, {
+      method: 'POST',
+      body: JSON.stringify({
+        date: '2026-09-03',
+        techHours: { rows: [{ techName: 'BIG AL', clockHours: 8, soldHours: 9 }] },
+        repairOrders: { openCount: 43, openedCount: 12, closedCount: 9 }
+      })
+    });
+    assert.equal(second.status, 201);
+    assert.equal(second.body.repairOrders.openCount, 43);
+    assert.equal(second.body.repairOrders.openedCount, 12);
+    assert.equal(second.body.repairOrders.closedCount, 9);
+    assert.equal(second.body.repairOrders.monthly.openCount, 43);
+    assert.equal(second.body.repairOrders.monthly.openedCount, 22);
+    assert.equal(second.body.repairOrders.monthly.closedCount, 17);
+
+    const recalled = await json(`${base}/api/summary?date=2026-09-03`);
+    assert.equal(recalled.body.repairOrders.openCount, 43);
+    assert.equal(recalled.body.repairOrders.monthly.openedCount, 22);
+    assert.equal(recalled.body.repairOrders.monthly.closedCount, 17);
   });
 });
