@@ -140,7 +140,7 @@ function SMR_recallRoFast_(dateKey) {
     var opened = writtenIdx >= 0 ? SMR_toNumber_(table.values[i][writtenIdx]) : 0;
     var closed = closedIdx >= 0 ? SMR_toNumber_(table.values[i][closedIdx]) : 0;
     var openCount = openIdx >= 0 ? SMR_toNumber_(table.values[i][openIdx]) : 0;
-    if (rowDate.indexOf(month) === 0) {
+    if (rowDate.indexOf(month) === 0 && rowDate <= dateKey) {
       result.monthly.openedCount += opened;
       result.monthly.closedCount += closed;
     }
@@ -655,7 +655,7 @@ function SMR_getSummary(dateKey, roster) {
   var ro = null;
   allRos.forEach(function (row) {
     var date = SMR_toDateKey_(row.Date);
-    if (date.indexOf(month) === 0) {
+    if (date.indexOf(month) === 0 && date <= key) {
       mtdOpened += SMR_toNumber_(row['Written today']);
       mtdClosed += SMR_toNumber_(row['Closed today']);
     }

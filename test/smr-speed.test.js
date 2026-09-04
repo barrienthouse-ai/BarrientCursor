@@ -84,4 +84,12 @@ describe('SMR load-speed contract', () => {
     assert.equal(namesMatch, true);
     assert.equal(rows.reduce((sum, row) => sum + row.soldHours, 0), 16);
   });
+
+  it('parses the local briefing script', () => {
+    const appJs = path.join(root, '..', 'public', 'app.js');
+    const src = readFileSync(appJs, 'utf8');
+    assert.doesNotMatch(src, /\?\?[^;\n]*\|\|/);
+    assert.match(src, /applyStoreRos/);
+    assert.match(src, /openedCount/);
+  });
 });

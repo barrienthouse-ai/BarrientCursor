@@ -392,7 +392,7 @@ export function rollupRepairOrders(rows = [], dateKey) {
   const key = toDateKey(dateKey);
   const month = monthKey(key);
   const daily = findDailyRo(rows, key);
-  const monthRows = rows.filter((row) => typeof row.date === 'string' && row.date.startsWith(month));
+  const monthRows = rows.filter((row) => typeof row.date === 'string' && row.date.startsWith(month) && row.date <= key);
   const monthly = monthRows.reduce(
     (acc, row) => {
       acc.openedCount += openedRoCount(row);

@@ -109,6 +109,13 @@ describe('RO totals', () => {
     assert.equal(rollup.monthly.openCount, 36);
     assert.equal(rollup.monthly.openedCount, 22);
     assert.equal(rollup.monthly.closedCount, 24);
+    const early = rollupRepairOrders([
+      { date: '2026-08-01', openCount: 40, writtenCount: 10, closedCount: 8 },
+      { date: '2026-08-29', openCount: 36, openedCount: 12, closedCount: 16 }
+    ], '2026-08-01');
+    assert.equal(early.openCount, 40);
+    assert.equal(early.monthly.openedCount, 10);
+    assert.equal(early.monthly.closedCount, 8);
   });
 });
 

@@ -124,6 +124,15 @@
 
     <section id="daily" class="tab-page hidden">
       <article class="panel">
+        <h2>Store repair orders</h2>
+        <p class="meta">Shop-wide counts for the report date. Open ROs is the current store open count. Opened and closed today roll into the month-to-date totals on the briefing.</p>
+        <div class="row" style="grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom:0">
+          <label>Open ROs <input id="openRos" type="number" min="0" step="1" /></label>
+          <label>Opened today <input id="openedRos" type="number" min="0" step="1" /></label>
+          <label>Closed today <input id="closedRos" type="number" min="0" step="1" /></label>
+        </div>
+      </article>
+      <article class="panel" style="margin-top:14px">
         <h2>Technician hours</h2>
         <p class="meta">Names come from the service roster. Enter today’s clock and sold hours. Toggle sold week (Monday–Friday) or payroll clock hours (last Tuesday through this Monday).</p>
         <div class="actions" style="margin-top:0">
@@ -146,11 +155,6 @@
                 <option value="monthly">Monthly override</option>
               </select>
             </label>
-          </div>
-          <div class="row" style="margin-top:8px">
-            <label>Open ROs <input id="openRos" type="number" min="0" step="1" /></label>
-            <label>Opened today <input id="openedRos" type="number" min="0" step="1" /></label>
-            <label>Closed today <input id="closedRos" type="number" min="0" step="1" /></label>
           </div>
           <label>Gross notes <textarea id="grossNotes"></textarea></label>
         </article>

@@ -114,8 +114,8 @@ function applyStoreRos() {
   const opened = Number($('openedRos')?.value || 0);
   const closed = Number($('closedRos')?.value || 0);
   const saved = state.snapshot?.repairOrders || {};
-  const savedOpened = Number(saved.openedCount ?? saved.writtenCount || 0);
-  const savedClosed = Number(saved.closedCount || 0);
+  const savedOpened = Number(saved.openedCount ?? saved.writtenCount ?? 0);
+  const savedClosed = Number(saved.closedCount ?? 0);
   const month = saved.monthly || { openedCount: savedOpened, closedCount: savedClosed };
   const mtdOpened = Math.max(0, Number(month.openedCount || 0) - savedOpened + opened);
   const mtdClosed = Math.max(0, Number(month.closedCount || 0) - savedClosed + closed);
