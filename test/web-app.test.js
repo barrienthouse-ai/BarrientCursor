@@ -36,7 +36,8 @@ describe('standalone web app', () => {
 
     const menu = read('apps-script/SMR_Menu.gs');
     assert.match(menu, /function SMR_briefingHtml_/);
-    assert.match(menu, /createTemplateFromFile\('SMR_App'\)/);
+    assert.match(menu, /createHtmlOutputFromFile\('SMR_App'\)/);
+    assert.doesNotMatch(menu.slice(menu.indexOf('return HtmlService')), /evaluate\s*\(/);
 
     const manifest = read('apps-script-web/appsscript.json');
     assert.match(manifest, /USER_DEPLOYING/);

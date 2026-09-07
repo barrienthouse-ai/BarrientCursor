@@ -56,12 +56,12 @@ What changes:
 - Changing dates or the first open of a new day only reads the small `SMR_TechHours` and `SMR_Gross` tabs — not `SERVICE BOARD`, `SVC_RO`, or the rest of the workbook.
 - Heat cases load in a second, lighter call so they do not block the hours form.
 
-`SMR_Menu.gs` must be replaced too. It now opens the dialog as a template so today’s saved snapshot can be injected before the form appears. If you leave the old menu file, the dialog will break on `seedJson`.
+`SMR_Menu.gs` must be replaced too. It opens `SMR_App.html` as plain HTML (`createHtmlOutputFromFile`). Do not use `createTemplateFromFile` — injecting `null` as `<?!= seedJson ?>` throws `Unexpected token 'null'` and the dialog never opens. The briefing then loads today’s snapshot with `SMR_loadBriefing`.
 
 ## Daily use
 
 - **Open briefing** now matches the local briefing: Briefing tab with sold hours, ELR, hours/RO, unapplied, hours-by-tech table, and heat cases. Daily entry and heat logging are on their own tabs.
-- Replace `SMR_App.html` and `SMR_Menu.gs` together. `SMR_App.html` is a template. If `SMR_Menu.gs` still opens it with `createHtmlOutputFromFile`, the briefing stays blank. Save in Apps Script, reload the spreadsheet, then **Service Manager Report → Open briefing**. Do not re-run `SMR_install`.
+- Replace `SMR_App.html` and `SMR_Menu.gs` together. `SMR_App.html` must not contain `<? ?>` scriptlets. Save in Apps Script, reload the spreadsheet, then **Service Manager Report → Open briefing**. Do not re-run `SMR_install`.
 - **ROs closed today**, **Opened today**, and **Open ROs** are shop-wide store counts. Month-to-date opened and closed are the sum of saved daily entries.
 - **Recall day** — reloads a previously saved date into the form.
 - **Save daily report** — upserts that date in `SMR_TechHours`, `SMR_Gross`, and `SMR_RepairOrders`.

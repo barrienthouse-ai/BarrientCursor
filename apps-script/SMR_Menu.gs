@@ -44,18 +44,10 @@ function SMR_install() {
 }
 
 function SMR_briefingHtml_() {
-  var template = HtmlService.createTemplateFromFile('SMR_App');
-  var seedJson = 'null';
-  try {
-    if (typeof SMR_briefStoreGet_ === 'function') {
-      var stored = SMR_briefStoreGet_(SMR_todayKey_());
-      if (stored && stored.summary) {
-        seedJson = SMR_safeJson_(stored);
-      }
-    }
-  } catch (ignore) {}
-  template.seedJson = seedJson;
-  return template.evaluate().setTitle('Service Manager Report');
+  // Serve the dialog as static HTML. Template evaluation of a null seed
+  // throws "Unexpected token 'null'" and the dialog never opens.
+  // The client calls SMR_loadBriefing after paint (cached SMR_ snapshot).
+  return HtmlService.createHtmlOutputFromFile('SMR_App').setTitle('Service Manager Report');
 }
 
 function SMR_openBriefing() {

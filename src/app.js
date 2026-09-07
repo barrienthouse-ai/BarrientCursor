@@ -26,7 +26,7 @@ export function createApp(store) {
       cached: true
     };
     const html = readFileSync(path.join(__dirname, '..', 'apps-script', 'SMR_App.html'), 'utf8')
-      .replace('<?!= seedJson ?>', JSON.stringify(seed).replace(/</g, '\\u003c'));
+      .replace('var SEED = null;', 'var SEED = ' + JSON.stringify(seed).replace(/</g, '\\u003c') + ';');
     res.type('html').send(html);
   });
 

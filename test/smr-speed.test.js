@@ -13,18 +13,20 @@ function read(name) {
 describe('SMR load-speed contract', () => {
   it('opens the dialog from a cached snapshot instead of the workbook', () => {
     const menu = read('SMR_Menu.gs');
-    assert.match(menu, /createTemplateFromFile\('SMR_App'\)/);
-    assert.match(menu, /SMR_briefStoreGet_/);
-    assert.match(menu, /seedJson/);
+    const briefingHtmlFn = menu.slice(menu.indexOf('function SMR_briefingHtml_'), menu.indexOf('function SMR_openBriefing'));
+    assert.match(briefingHtmlFn, /createHtmlOutputFromFile\('SMR_App'\)/);
+    assert.doesNotMatch(briefingHtmlFn, /evaluate\s*\(/);
+    assert.doesNotMatch(menu, /seedJson/);
     assert.doesNotMatch(menu, /function onOpen\s*\(/);
     const onOpenFn = menu.slice(menu.indexOf('function SMR_onOpen'), menu.indexOf('function SMR_install'));
     assert.match(onOpenFn, /try \{/);
     assert.match(onOpenFn, /catch \(ignore\) \{\}/);
 
     const html = read('SMR_App.html');
-    assert.match(html, /id="smr-seed"/);
-    assert.match(html, /<\?!= seedJson \?>/);
+    assert.doesNotMatch(html, /<\?/);
     assert.match(html, /var SEED = null;/);
+    const script = html.split('<script>')[1].split('</script>')[0];
+    assert.doesNotThrow(() => new Function(script));
     assert.match(html, /function overlaySummary\(/);
     assert.match(html, /Opened instantly from last save/);
     assert.match(html, /if \(SEED && SEED\.summary\)/);

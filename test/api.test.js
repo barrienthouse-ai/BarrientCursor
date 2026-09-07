@@ -152,7 +152,9 @@ describe('API', () => {
     assert.match(html, /id="roOpen"/);
     assert.match(html, /Opened today/);
     assert.match(html, /MTD opened \/ closed/);
-    assert.doesNotMatch(html, /<\?!= seedJson \?>/);
+    assert.doesNotMatch(html, /<\?/);
+    assert.match(html, /var SEED = \{/);
+    assert.doesNotMatch(html, /var SEED = null;/);
   });
 
   it('rolls month-to-date opened and closed across saved days', async () => {
