@@ -25,11 +25,11 @@ The workbook is now readable. It already has 69 tabs, including `SERVICE BOARD` 
    - `SMR_Dashboard.gs`
    - `SMR_Compatibility.gs`
    - `SMR_App.html`
-3. Leave every existing `.gs` / `.html` file exactly as it is.
-4. If you already have `onOpen`, add this single line inside it:
+3. Leave every existing `.gs` / `.html` file exactly as it is. Never paste SMR source into `Code.gs` or the Sales Manager file.
+4. If you already have `onOpen`, add this at the **end** of that function — do not replace the function:
 
    ```javascript
-   SMR_onOpen();
+   try { SMR_onOpen(); } catch (ignore) {}
    ```
 
 5. In the Apps Script editor, select `SMR_install` and click **Run**. Authorize when prompted. Run this once only. Opening the briefing no longer creates sheets, so it will not time out on this large workbook.

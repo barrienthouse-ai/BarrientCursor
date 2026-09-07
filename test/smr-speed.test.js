@@ -16,6 +16,10 @@ describe('SMR load-speed contract', () => {
     assert.match(menu, /createTemplateFromFile\('SMR_App'\)/);
     assert.match(menu, /SMR_briefStoreGet_/);
     assert.match(menu, /seedJson/);
+    assert.doesNotMatch(menu, /function onOpen\s*\(/);
+    const onOpenFn = menu.slice(menu.indexOf('function SMR_onOpen'), menu.indexOf('function SMR_install'));
+    assert.match(onOpenFn, /try \{/);
+    assert.match(onOpenFn, /catch \(ignore\) \{\}/);
 
     const html = read('SMR_App.html');
     assert.match(html, /id="smr-seed"/);
