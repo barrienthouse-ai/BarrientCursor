@@ -709,7 +709,8 @@ function SMR_getSummary(dateKey, roster) {
       resolvedTodayCount: resolvedToday.length,
       open: open,
       resolvedToday: resolvedToday
-    }
+    },
+    needs: SMR_needsSummary_(SMR_listNeeds(key), key)
   };
   SMR_attachProduction_(summary);
   return summary;
@@ -799,4 +800,154 @@ function SMR_rowToHeat_(headers, values) {
     obj[header] = values[idx];
   });
   return SMR_objectToHeat_(obj);
+}
+
+function SMR_normalizeNeedStatus_(value) {
+  var raw = String(value || '').trim().toLowerCase();
+  for (var i = 0; i < SMR_NEED_STATUSES.length; i++) {
+    if (SMR_NEED_STATUSES[i].toLowerCase() === raw) {
+      return SMR_NEED_STATUSES[i];
+    }
+  }
+  return SMR_NEED_STATUSES[0];
+}
+
+function SMR_needAgeDays_(foundDate, asOfDate) {
+  var found = SMR_toDateKey_(foundDate);
+  var asOf = SMR_toDateKey_(asOfDate);
+  var foundMs = Date.parse(found + 'T00:00:00');
+  var asOfMs = Date.parse(asOf + 'T00:00:00');
+  if (!isFinite(foundMs) || !isFinite(asOfMs)) {
+    return 0;
+  }
+  return Math.max(0, Math.round((asOfMs - foundMs) / 86400000));
+}
+
+function SMR_attachNeedAge_(row, asOfDate) {
+  row = row || {};
+  row.foundDate = SMR_toDateKey_(row.foundDate);
+  row.status = SMR_normalizeNeedStatus_(row.status);
+  row.estimatedCost = SMR_toNumber_(row.estimatedCost);
+  row.ageDays = SMR_needAgeDays_(row.foundDate, asOfDate);
+  return row;
+}
+
+function SMR_needsSummary_(rows, dateKey) {
+  var open = [];
+  var pending = 0;
+  var cost = 0;
+  (rows || []).forEach(function (row) {
+    if (row.status === 'Denied') {
+      return;
+    }
+    open.push(row);
+    if (row.status === 'Pending Review') {
+      pending += 1;
+    }
+    cost += SMR_toNumber_(row.estimatedCost);
+  });
+  return {
+    openCount: open.length,
+    pendingReviewCount: pending,
+    estimatedCost: cost,
+    open: open,
+    all: rows || []
+  };
+}
+
+function SMR_objectToNeed_(row) {
+  return {
+    id: String(row['Need ID'] || ''),
+    item: String(row.Item || '').trim(),
+    foundDate: SMR_toDateKey_(row['Found date']),
+    estimatedCost: SMR_toNumber_(row['Estimated cost']),
+    status: SMR_normalizeNeedStatus_(row.Status),
+    updatedAt: row['Updated at'] || ''
+  };
+}
+
+function SMR_rowToNeed_(headers, values) {
+  var obj = {};
+  headers.forEach(function (header, idx) {
+    obj[header] = values[idx];
+  });
+  return SMR_objectToNeed_(obj);
+}
+
+function SMR_nextNeedId_(dateKey) {
+  var prefix = 'NEED-' + String(dateKey || '').replace(/-/g, '') + '-';
+  var table = SMR_readTail_(SMR_SHEETS.NEEDS, 80);
+  var idIdx = SMR_col_(table.headers, 'Need ID');
+  var maxSeq = 0;
+  if (idIdx >= 0) {
+    for (var i = 0; i < table.values.length; i++) {
+      var id = String(table.values[i][idIdx] || '');
+      if (id.indexOf(prefix) !== 0) {
+        continue;
+      }
+      var seq = Number(id.slice(prefix.length));
+      if (isFinite(seq) && seq > maxSeq) {
+        maxSeq = seq;
+      }
+    }
+  }
+  var next = String(maxSeq + 1);
+  while (next.length < 3) {
+    next = '0' + next;
+  }
+  return prefix + next;
+}
+
+function SMR_listNeeds(asOfDate) {
+  var asOf = SMR_toDateKey_(asOfDate || SMR_todayKey_());
+  var table = SMR_readTail_(SMR_SHEETS.NEEDS, 150);
+  if (!table.headers.length) {
+    return [];
+  }
+  var objects = [];
+  for (var i = 0; i < table.values.length; i++) {
+    var rec = SMR_attachNeedAge_(SMR_rowToNeed_(table.headers, table.values[i]), asOf);
+    if (rec.id || rec.item) {
+      objects.push(rec);
+    }
+  }
+  return objects;
+}
+
+function SMR_addNeed(payload) {
+  payload = payload || {};
+  var item = String(payload.item || payload.issue || '').trim();
+  if (!item) {
+    throw new Error('Need item or fix is required.');
+  }
+  var foundDate = SMR_toDateKey_(payload.foundDate || payload.date);
+  var id = payload.id || SMR_nextNeedId_(foundDate);
+  var now = SMR_nowIso_();
+  var status = SMR_normalizeNeedStatus_(payload.status);
+  var cost = SMR_toNumber_(payload.estimatedCost);
+  SMR_sheet_(SMR_SHEETS.NEEDS).appendRow([id, item, foundDate, cost, status, now]);
+  return SMR_attachNeedAge_({
+    id: id,
+    item: item,
+    foundDate: foundDate,
+    estimatedCost: cost,
+    status: status,
+    updatedAt: now
+  }, foundDate);
+}
+
+function SMR_updateNeed(id, status) {
+  var sheet = SMR_sheet_(SMR_SHEETS.NEEDS);
+  var values = sheet.getDataRange().getValues();
+  var nextStatus = SMR_normalizeNeedStatus_(status);
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]) !== String(id)) {
+      continue;
+    }
+    values[i][4] = nextStatus;
+    values[i][5] = SMR_nowIso_();
+    sheet.getRange(i + 1, 1, 1, values[i].length).setValues([values[i]]);
+    return SMR_attachNeedAge_(SMR_rowToNeed_(values[0], values[i]), values[i][2]);
+  }
+  throw new Error('Need ' + id + ' was not found.');
 }

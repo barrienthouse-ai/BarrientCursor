@@ -12,6 +12,7 @@ Reporting tool for the service manager to send daily numbers up to leadership, w
 - Service department gross only (labor and other service). Parts is out of scope
 - Recall of any previously saved day
 - Heat cases that need a briefing, including assigned advisor, technician, and customer name
+- Needs list: item or fix, date found, estimated cost, age, and status (Pending Review through Denied)
 
 ## Three ways to use it
 

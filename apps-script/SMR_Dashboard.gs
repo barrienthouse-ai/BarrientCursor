@@ -28,21 +28,24 @@ function SMR_refreshDashboard() {
     ['Payroll week Tue–Mon', summary.weekHours && summary.weekHours.payroll ? summary.weekHours.payroll.total : 0],
     ['Open heat cases', summary.heatCases.openCount],
     ['Need briefing', summary.heatCases.awaitingBriefing],
-    ['Resolved today', summary.heatCases.resolvedTodayCount]
+    ['Resolved today', summary.heatCases.resolvedTodayCount],
+    ['Open needs', summary.needs ? summary.needs.openCount : 0],
+    ['Needs pending review', summary.needs ? summary.needs.pendingReviewCount : 0],
+    ['Needs estimated cost', summary.needs ? summary.needs.estimatedCost : 0]
   ];
   sheet.getRange(5, 1, kpis.length, 2).setValues(kpis);
 
-  sheet.getRange('A22').setValue('Hours by technician');
-  sheet.getRange('A23:E23').setValues([['Tech', 'Clock', 'Sold', 'Unapplied', 'Efficiency']]);
+  sheet.getRange('A25').setValue('Hours by technician');
+  sheet.getRange('A26:E26').setValues([['Tech', 'Clock', 'Sold', 'Unapplied', 'Efficiency']]);
   if (summary.techHours.rows.length) {
     var hourRows = summary.techHours.rows.map(function (row) {
       var eff = row.clockHours ? row.soldHours / row.clockHours : null;
       var unapplied = Math.round((SMR_toNumber_(row.clockHours) - SMR_toNumber_(row.soldHours)) * 10) / 10;
       return [row.techName, row.clockHours, row.soldHours, unapplied, eff === null ? '—' : (eff * 100).toFixed(1) + '%'];
     });
-    sheet.getRange(24, 1, hourRows.length, 5).setValues(hourRows);
+    sheet.getRange(27, 1, hourRows.length, 5).setValues(hourRows);
   } else {
-    sheet.getRange('A24').setValue('No hours reported for today.');
+    sheet.getRange('A27').setValue('No hours reported for today.');
   }
 
   sheet.getRange('A40').setValue('Open heat cases');
@@ -54,6 +57,17 @@ function SMR_refreshDashboard() {
     sheet.getRange(42, 1, heatRows.length, 8).setValues(heatRows);
   } else {
     sheet.getRange('A42').setValue('No open heat cases.');
+  }
+
+  sheet.getRange('A68').setValue('Open needs');
+  sheet.getRange('A69:F69').setValues([['Need ID', 'Item', 'Found date', 'Age (days)', 'Est. cost', 'Status']]);
+  if (summary.needs && summary.needs.open && summary.needs.open.length) {
+    var needRows = summary.needs.open.map(function (row) {
+      return [row.id, row.item, row.foundDate, row.ageDays, row.estimatedCost, row.status];
+    });
+    sheet.getRange(70, 1, needRows.length, 6).setValues(needRows);
+  } else {
+    sheet.getRange('A70').setValue('No open needs.');
   }
 
   sheet.getRange('A54').setValue('Resolved today');

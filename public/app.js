@@ -44,8 +44,23 @@ function setTab(name) {
   });
 }
 
+const NEED_STATUSES = ['Pending Review', 'Acknowledged', 'Order Pending', 'Approved', 'Denied', 'Delayed'];
+
 function heatPill(value) {
   return `<span class="pill ${value}">${value}</span>`;
+}
+
+function needSlug(status) {
+  return String(status || '').toLowerCase().replace(/[^a-z]+/g, '-').replace(/-+$/g, '');
+}
+
+function needPill(status) {
+  return `<span class="pill ${needSlug(status)}">${escapeAttr(status || '')}</span>`;
+}
+
+function ageLabel(days) {
+  const n = Number(days) || 0;
+  return n === 1 ? '1 day' : `${n} days`;
 }
 
 function renderHoursRows(rows) {
@@ -197,6 +212,19 @@ function renderBriefing(snapshot) {
       `<p><strong>${escapeAttr(item.customer || item.id)}</strong> resolved ${escapeAttr(item.resolvedAt || '')}<br>${escapeAttr(item.advisor || item.owner || '')}${item.technician ? ` · ${escapeAttr(item.technician)}` : ''}<br>${escapeAttr(item.resolutionNotes || 'No resolution notes')}</p>`
     )).join('')
     : '<p class="meta">No heat cases were marked resolved on this date.</p>';
+
+  const needs = snapshot.needs || { open: [], openCount: 0, pendingReviewCount: 0, estimatedCost: 0 };
+  if ($('kpiNeeds')) {
+    $('kpiNeeds').textContent = String(needs.openCount || 0);
+    $('kpiNeedsNote').textContent = `${needs.pendingReviewCount || 0} pending review · ${money.format(needs.estimatedCost || 0)} estimated`;
+  }
+  if ($('openNeedsList')) {
+    $('openNeedsList').innerHTML = (needs.open || []).length
+      ? needs.open.map((item) => (
+        `<p><strong>${escapeAttr(item.item)}</strong> ${needPill(item.status)}<br>Found ${escapeAttr(item.foundDate)} · Age ${ageLabel(item.ageDays)} · Est. ${moneyExact.format(item.estimatedCost || 0)}</p>`
+      )).join('')
+      : '<p class="meta">No open needs.</p>';
+  }
 }
 
 function currentWeek() {
@@ -293,6 +321,27 @@ async function loadHistory() {
   )).join('');
 }
 
+async function loadNeedsBoard() {
+  if (!$('needsTable')) {
+    return;
+  }
+  const date = $('reportDate').value;
+  const { rows } = await api(`/api/needs?date=${encodeURIComponent(date)}`);
+  $('needsTable').innerHTML = rows.sort((a, b) => String(b.foundDate).localeCompare(String(a.foundDate))).map((item) => `
+    <tr>
+      <td><strong>${escapeAttr(item.item)}</strong><br><span class="meta">${escapeAttr(item.id)}</span></td>
+      <td>${escapeAttr(item.foundDate)}</td>
+      <td>${ageLabel(item.ageDays)}</td>
+      <td>${moneyExact.format(item.estimatedCost || 0)}</td>
+      <td>
+        <select data-need-id="${escapeAttr(item.id)}">
+          ${NEED_STATUSES.map((status) => `<option${status === item.status ? ' selected' : ''}>${status}</option>`).join('')}
+        </select>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="5">No needs logged yet.</td></tr>';
+}
+
 async function loadHeatBoard() {
   const { rows } = await api('/api/heat-cases');
   $('heatTable').innerHTML = rows.sort((a, b) => b.openedDate.localeCompare(a.openedDate)).map((item) => `
@@ -337,6 +386,9 @@ async function init() {
       if (button.dataset.tab === 'heat') {
         await loadHeatBoard();
       }
+      if (button.dataset.tab === 'needs') {
+        await loadNeedsBoard();
+      }
     });
   });
 
@@ -346,6 +398,10 @@ async function init() {
   fillHeatLookups();
   await loadDay();
   await loadHeatBoard();
+  if ($('needFoundDate')) {
+    $('needFoundDate').value = $('reportDate').value;
+  }
+  await loadNeedsBoard();
 
   if ($('weekSoldBtn')) {
     $('weekSoldBtn').addEventListener('click', () => setWeekMode('sold'));
@@ -420,6 +476,48 @@ async function init() {
       $('heatStatus').className = 'error';
     }
   });
+
+  if ($('addNeed')) {
+    $('addNeed').addEventListener('click', async () => {
+      $('needStatusNote').textContent = 'Saving…';
+      $('needStatusNote').className = 'notice';
+      try {
+        await api('/api/needs', {
+          method: 'POST',
+          body: JSON.stringify({
+            item: $('needItem').value,
+            foundDate: $('needFoundDate').value || $('reportDate').value,
+            estimatedCost: $('needCost').value,
+            status: $('needStatus').value
+          })
+        });
+        $('needItem').value = '';
+        $('needCost').value = '';
+        $('needStatus').value = 'Pending Review';
+        await loadNeedsBoard();
+        await loadDay();
+        $('needStatusNote').textContent = 'Need added.';
+      } catch (error) {
+        $('needStatusNote').textContent = error.message;
+        $('needStatusNote').className = 'error';
+      }
+    });
+  }
+
+  if ($('needsTable')) {
+    $('needsTable').addEventListener('change', async (event) => {
+      const select = event.target.closest('select[data-need-id]');
+      if (!select) {
+        return;
+      }
+      await api(`/api/needs/${encodeURIComponent(select.dataset.needId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: select.value })
+      });
+      await loadNeedsBoard();
+      await loadDay();
+    });
+  }
 
   $('heatTable').addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-action]');

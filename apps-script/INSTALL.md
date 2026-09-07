@@ -40,7 +40,7 @@ The workbook is now readable. It already has 69 tabs, including `SERVICE BOARD` 
 
 This workbook is large (~18MB, 69 tabs). Each spreadsheet read from Apps Script is slow, so the briefing now avoids those reads after the first save.
 
-Replace these files with the latest copies — no need to re-run `SMR_install` unless `SMR_HeatCases` is missing:
+Replace these files with the latest copies. Re-run `SMR_install` once if `SMR_Needs` is missing (that only creates the new `SMR_*` tab):
 
 - `SMR_App.html`
 - `SMR_Api.gs`
@@ -65,6 +65,7 @@ What changes:
 - **ROs closed today**, **Opened today**, and **Open ROs** are shop-wide store counts. Month-to-date opened and closed are the sum of saved daily entries.
 - **Recall day** — reloads a previously saved date into the form.
 - **Save daily report** — upserts that date in `SMR_TechHours`, `SMR_Gross`, and `SMR_RepairOrders`.
+- **Needs** — a top tab for shop items or fixes. Fields: item, date found/broke, estimated cost, age (report date minus found date), and status (`Pending Review`, `Acknowledged`, `Order Pending`, `Approved`, `Denied`, `Delayed`). Open needs (everything except Denied) also list on the briefing like heat cases. Stored on `SMR_Needs` only.
 - Heat cases stay on the briefing until **Resolve**. The resolved timestamp and notes are stored on `SMR_HeatCases`.
 - Each heat case now has a customer name, assigned service advisor, and assigned technician. Those show on the heat list. Adding a case appends `Advisor` and `Technician` columns on `SMR_HeatCases` if they are missing; existing rows are not rewritten.
 

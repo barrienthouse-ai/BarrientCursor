@@ -27,6 +27,7 @@
       <button class="active" data-tab="briefing" type="button">Briefing</button>
       <button data-tab="daily" type="button">Daily entry</button>
       <button data-tab="heat" type="button">Heat cases</button>
+      <button data-tab="needs" type="button">Needs</button>
       <button data-tab="history" type="button">History</button>
       <button data-tab="compat" type="button">Sheet safety</button>
     </nav>
@@ -77,6 +78,13 @@
         </article>
       </div>
       <div class="grid kpis" style="margin-top:14px">
+        <article class="card needs" id="kpiNeedsCard">
+          <div class="label">Open needs</div>
+          <div class="value" id="kpiNeeds">—</div>
+          <div class="meta" id="kpiNeedsNote">Pending review —</div>
+        </article>
+      </div>
+      <div class="grid kpis" style="margin-top:14px">
         <article class="card">
           <div class="label">Open ROs</div>
           <div class="value" id="roOpen">—</div>
@@ -119,6 +127,10 @@
       <article class="panel" style="margin-top:14px">
         <h2>Resolved on this day</h2>
         <div id="resolvedHeatList"></div>
+      </article>
+      <article class="panel" style="margin-top:14px">
+        <h2>Needs list</h2>
+        <div id="openNeedsList"></div>
       </article>
     </section>
 
@@ -219,6 +231,47 @@
       </article>
     </section>
 
+    <section id="needs" class="tab-page hidden">
+      <article class="panel">
+        <h2>Log a need</h2>
+        <p class="meta">Shop tools, equipment, or fixes that are waiting on a decision. Age is today’s date minus the date the issue was found.</p>
+        <div class="row">
+          <label style="grid-column: span 2">Item or fix needed <input id="needItem" /></label>
+          <label>Date found / broke <input id="needFoundDate" type="date" /></label>
+          <label>Estimated cost <input id="needCost" type="number" min="0" step="0.01" /></label>
+        </div>
+        <div class="row">
+          <label>Status
+            <select id="needStatus">
+              <option>Pending Review</option>
+              <option>Acknowledged</option>
+              <option>Order Pending</option>
+              <option>Approved</option>
+              <option>Denied</option>
+              <option>Delayed</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="addNeed" type="button">Add need</button>
+          <span class="notice" id="needStatusNote"></span>
+        </div>
+      </article>
+      <article class="panel" style="margin-top:14px">
+        <h2>Needs board</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Item / fix</th><th>Found</th><th>Age</th><th>Est. cost</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="needsTable"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
     <section id="history" class="tab-page hidden">
       <div class="grid two">
         <article class="panel">
@@ -249,7 +302,7 @@
         <ul>
           <li><strong>No reserved triggers.</strong> This project never defines <code>onOpen</code>, <code>onEdit</code>, <code>doGet</code>, or <code>doPost</code>.</li>
           <li><strong>Namespaced only.</strong> Every function, menu handler, and ScriptProperty key starts with <code>SMR_</code>.</li>
-          <li><strong>Dedicated tabs only.</strong> Writes go to <code>SMR_Dashboard</code>, <code>SMR_TechHours</code>, <code>SMR_Gross</code>, <code>SMR_HeatCases</code>, <code>SMR_RepairOrders</code>, <code>SMR_Roster</code>, and <code>SMR_Config</code>.</li>
+          <li><strong>Dedicated tabs only.</strong> Writes go to <code>SMR_Dashboard</code>, <code>SMR_TechHours</code>, <code>SMR_Gross</code>, <code>SMR_HeatCases</code>, <code>SMR_Needs</code>, <code>SMR_RepairOrders</code>, <code>SMR_Roster</code>, and <code>SMR_Config</code>.</li>
           <li><strong>Protected live tabs.</strong> <code>SERVICE BOARD</code>, <code>SVC_RO</code>, <code>SUMMARY</code>, <code>HOME</code>, parts/accounting JSON tabs, and AutoCrat are read-only to SMR.</li>
         </ul>
         <p>In Apps Script, add <code>SMR_onOpen();</code> to your existing <code>onOpen</code>, then run <code>SMR_install()</code>. Optional: <code>SMR_importRosterFromServiceBoard()</code> copies the shop nicknames into <code>SMR_Roster</code> only.</p>
