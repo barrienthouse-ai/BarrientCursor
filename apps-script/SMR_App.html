@@ -27,6 +27,7 @@
     .card, .panel { background: #162236; border: 1px solid #2d3f5c; border-radius: 12px; padding: 12px 14px; }
     .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
     .heat .value { color: #f0b429; }
+    .needs .value { color: #7eb6ff; }
     .critical .value { color: #ef6b6b; }
     label { display: block; font-size: 12px; margin: 6px 0; }
     input, select, textarea, button { font: inherit; }
@@ -49,6 +50,10 @@
     .pill.open, .pill.critical, .pill.high { background: #5a2428; }
     .pill.briefed, .pill.medium { background: #5a4314; }
     .pill.resolved, .pill.low { background: #245c3c; }
+    .pill.pending-review, .pill.order-pending, .pill.delayed { background: #5a4314; }
+    .pill.acknowledged { background: #1d3d4f; }
+    .pill.approved { background: #245c3c; }
+    .pill.denied { background: #5a2428; }
   </style>
 </head>
 <body>
@@ -70,6 +75,7 @@
       <button type="button" class="active" id="tab-briefing" onclick="setTab('briefing')">Briefing</button>
       <button type="button" id="tab-daily" onclick="setTab('daily')">Daily entry</button>
       <button type="button" id="tab-heat" onclick="setTab('heat')">Heat cases</button>
+      <button type="button" id="tab-needs" onclick="setTab('needs')">Needs</button>
     </nav>
     <span class="notice" id="status"></span>
 
@@ -85,6 +91,9 @@
         <div class="card"><div class="label">Service gross today</div><div class="value" id="kpiGross">—</div><div class="meta" id="kpiGrossMonth">MTD —</div></div>
         <div class="card"><div class="label" id="kpiWeekLabel">Sold week (Mon–Fri)</div><div class="value" id="kpiWeek">—</div><div class="meta" id="kpiWeekNote">Weekly hours from saved daily entries</div></div>
         <div class="card heat" id="kpiHeatCard"><div class="label">Open heat cases</div><div class="value" id="kpiHeat">—</div><div class="meta" id="kpiHeatNote">Awaiting briefing —</div></div>
+      </div>
+      <div class="kpis">
+        <div class="card needs" id="kpiNeedsCard"><div class="label">Open needs</div><div class="value" id="kpiNeeds">—</div><div class="meta" id="kpiNeedsNote">Pending review —</div></div>
       </div>
       <div class="kpis">
         <div class="card"><div class="label">Open ROs</div><div class="value" id="roOpen">—</div><div class="meta">Store open repair orders</div></div>
@@ -108,6 +117,10 @@
       <div class="panel" style="margin-top:10px">
         <h2>Resolved on this day</h2>
         <div id="resolvedHeatList"></div>
+      </div>
+      <div class="panel" style="margin-top:10px">
+        <h2>Needs list</h2>
+        <div id="openNeedsList"></div>
       </div>
     </section>
 
@@ -174,11 +187,44 @@
         </table>
       </div>
     </section>
+
+    <section id="page-needs" class="hidden">
+      <div class="panel">
+        <h2>Needs list</h2>
+        <p class="meta">Shop tools, equipment, or fixes waiting on a decision. Age is the report date minus the date the issue was found.</p>
+        <div class="row">
+          <label style="grid-column: span 2">Item or fix needed <input id="needItem" /></label>
+          <label>Date found / broke <input id="needFoundDate" type="date" /></label>
+        </div>
+        <div class="row">
+          <label>Estimated cost <input id="needCost" type="number" min="0" step="0.01" /></label>
+          <label>Status
+            <select id="needStatus">
+              <option>Pending Review</option>
+              <option>Acknowledged</option>
+              <option>Order Pending</option>
+              <option>Approved</option>
+              <option>Denied</option>
+              <option>Delayed</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="button" onclick="addNeed()">Add need</button>
+        </div>
+        <table>
+          <thead><tr><th>Item / fix</th><th>Found</th><th>Age</th><th>Est. cost</th><th>Status</th></tr></thead>
+          <tbody id="needsTable"></tbody>
+        </table>
+      </div>
+    </section>
   </div>
   <script>
     var SEED = null;
     var lastSummary = null;
     var lastHeat = [];
+    var lastNeeds = [];
+    var NEED_STATUSES = ['Pending Review', 'Acknowledged', 'Order Pending', 'Approved', 'Denied', 'Delayed'];
     var weekMode = 'sold';
     var DEFAULT_ROSTER = ['BIG AL', 'ELECTRIC-T', 'DIESEL-E', 'INTERNAL-F', 'HEAVY-C', 'SPECIAL-K', 'LIL-J', 'EASY-E', 'DUEL FUEL-A'];
     var DEFAULT_ADVISORS = ['Cody Raffary'];
@@ -218,7 +264,7 @@
       document.getElementById('dailyStatus').textContent = text || '';
     }
     function setTab(name) {
-      ['briefing', 'daily', 'heat'].forEach(function (id) {
+      ['briefing', 'daily', 'heat', 'needs'].forEach(function (id) {
         document.getElementById('page-' + id).className = id === name ? '' : 'hidden';
         document.getElementById('tab-' + id).className = id === name ? 'active' : '';
       });
@@ -226,6 +272,7 @@
     function run(name, args, ok) {
       if (typeof google === 'undefined' || !google.script || !google.script.run) {
         if (name === 'SMR_listHeatCases') { ok((SEED && SEED.heat) || lastHeat || []); }
+        if (name === 'SMR_listNeeds') { ok((SEED && SEED.needs) || lastNeeds || []); }
         return;
       }
       var runner = google.script.run.withFailureHandler(function (err) {
@@ -401,6 +448,11 @@
       } else {
         loadHeat();
       }
+      if (payload && payload.needs && payload.needs.length) {
+        renderNeeds(payload.needs);
+      } else {
+        loadNeeds();
+      }
     }
     function heatLists(rows) {
       var dateKey = document.getElementById('reportDate').value;
@@ -464,6 +516,78 @@
         lastSummary.heatCases = lastSummary.heatCases || {};
         lastSummary.heatCases.openCount = lists.open.length;
       }
+    }
+    function needSlug(status) {
+      return String(status || '').toLowerCase().replace(/[^a-z]+/g, '-').replace(/-+$/g, '');
+    }
+    function ageLabel(days) {
+      var n = num(days);
+      return n === 1 ? '1 day' : n + ' days';
+    }
+    function needAgeDays(foundDate, asOfDate) {
+      var found = Date.parse(String(foundDate || asOfDate) + 'T00:00:00');
+      var asOf = Date.parse(String(asOfDate || today()) + 'T00:00:00');
+      if (!isFinite(found) || !isFinite(asOf)) {
+        return 0;
+      }
+      return Math.max(0, Math.round((asOf - found) / 86400000));
+    }
+    function renderNeeds(rows) {
+      lastNeeds = rows || [];
+      var asOf = document.getElementById('reportDate').value || today();
+      var open = [];
+      var pending = 0;
+      var cost = 0;
+      lastNeeds.forEach(function (row) {
+        row.ageDays = row.ageDays != null ? row.ageDays : needAgeDays(row.foundDate, asOf);
+        if (row.status === 'Denied') {
+          return;
+        }
+        open.push(row);
+        if (row.status === 'Pending Review') {
+          pending += 1;
+        }
+        cost += num(row.estimatedCost);
+      });
+      document.getElementById('needsTable').innerHTML = lastNeeds.map(function (row) {
+        return '<tr><td><strong>' + escapeHtml(row.item || '') + '</strong><div class="meta">' + escapeHtml(row.id || '') +
+          '</div></td><td>' + escapeHtml(row.foundDate || '') + '</td><td>' + ageLabel(row.ageDays) +
+          '</td><td>' + moneyExact(row.estimatedCost) + '</td><td><select onchange="changeNeed(\'' + escapeHtml(row.id) + '\', this.value)">' +
+          NEED_STATUSES.map(function (status) {
+            return '<option' + (status === row.status ? ' selected' : '') + '>' + status + '</option>';
+          }).join('') + '</select></td></tr>';
+      }).join('');
+      document.getElementById('openNeedsList').innerHTML = open.length
+        ? open.map(function (item) {
+          return '<p><strong>' + escapeHtml(item.item || '') + '</strong> <span class="pill ' + needSlug(item.status) + '">' +
+            escapeHtml(item.status || '') + '</span><br>Found ' + escapeHtml(item.foundDate || '') +
+            ' · Age ' + ageLabel(item.ageDays) + ' · Est. ' + moneyExact(item.estimatedCost) + '</p>';
+        }).join('')
+        : '<p class="meta">No open needs.</p>';
+      document.getElementById('kpiNeeds').textContent = String(open.length);
+      document.getElementById('kpiNeedsNote').textContent = pending + ' pending review · ' + money(cost) + ' estimated';
+    }
+    function loadNeeds() {
+      run('SMR_listNeeds', [document.getElementById('reportDate').value], function (rows) {
+        renderNeeds(rows || []);
+      });
+    }
+    function addNeed() {
+      run('SMR_addNeed', [{
+        item: document.getElementById('needItem').value,
+        foundDate: document.getElementById('needFoundDate').value || document.getElementById('reportDate').value,
+        estimatedCost: document.getElementById('needCost').value,
+        status: document.getElementById('needStatus').value
+      }], function () {
+        document.getElementById('needItem').value = '';
+        document.getElementById('needCost').value = '';
+        document.getElementById('needStatus').value = 'Pending Review';
+        setStatus('Need added.');
+        loadNeeds();
+      });
+    }
+    function changeNeed(id, status) {
+      run('SMR_updateNeed', [id, status], function () { loadNeeds(); });
     }
     function fillHeatLookups(roster) {
       var names = roster && roster.length ? roster : DEFAULT_ROSTER;
@@ -542,7 +666,11 @@
       run('SMR_updateHeatCase', [id, action, notes], function () { loadHeat(); });
     }
     document.getElementById('reportDate').value = today();
-    document.getElementById('reportDate').onchange = recallDay;
+    document.getElementById('needFoundDate').value = today();
+    document.getElementById('reportDate').onchange = function () {
+      document.getElementById('needFoundDate').value = document.getElementById('needFoundDate').value || document.getElementById('reportDate').value;
+      recallDay();
+    };
     fillHeatLookups(DEFAULT_ROSTER);
     showRoster(DEFAULT_ROSTER);
     if (SEED && SEED.summary) {

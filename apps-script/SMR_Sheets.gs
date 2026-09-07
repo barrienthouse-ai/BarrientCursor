@@ -13,6 +13,7 @@ function SMR_ensureSheets() {
   SMR_ensureSheet_(ss, SMR_SHEETS.GROSS, SMR_HEADERS.GROSS, []);
   SMR_ensureSheet_(ss, SMR_SHEETS.HEAT, SMR_HEADERS.HEAT, []);
   SMR_upgradeHeatHeader_(ss.getSheetByName(SMR_SHEETS.HEAT));
+  SMR_ensureSheet_(ss, SMR_SHEETS.NEEDS, SMR_HEADERS.NEEDS, []);
   SMR_ensureSheet_(ss, SMR_SHEETS.ROS, SMR_HEADERS.ROS, []);
   SMR_ensureDashboard_(ss);
   return SMR_reservedSheetNames();
@@ -243,6 +244,7 @@ function SMR_headersFor_(name) {
   if (name === SMR_SHEETS.TECH_HOURS) return SMR_HEADERS.TECH_HOURS;
   if (name === SMR_SHEETS.GROSS) return SMR_HEADERS.GROSS;
   if (name === SMR_SHEETS.HEAT) return SMR_HEADERS.HEAT;
+  if (name === SMR_SHEETS.NEEDS) return SMR_HEADERS.NEEDS;
   if (name === SMR_SHEETS.ROS) return SMR_HEADERS.ROS;
   if (name === SMR_SHEETS.ROSTER) return SMR_HEADERS.ROSTER;
   if (name === SMR_SHEETS.CONFIG) return SMR_HEADERS.CONFIG;

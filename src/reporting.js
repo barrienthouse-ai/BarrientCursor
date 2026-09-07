@@ -14,6 +14,17 @@ export const SEVERITIES = ['low', 'medium', 'high', 'critical'];
 
 export const DEFAULT_ADVISORS = ['Cody Raffary'];
 
+export const NEED_STATUSES = [
+  'Pending Review',
+  'Acknowledged',
+  'Order Pending',
+  'Approved',
+  'Denied',
+  'Delayed'
+];
+
+export const NEED_CLOSED = 'Denied';
+
 export function heatAssignment(payload = {}) {
   const advisor = String(payload.advisor || payload.owner || '').trim();
   const technician = String(payload.technician || '').trim();
@@ -347,6 +358,74 @@ export function applyHeatTransition(caseRow, action, timestamp, notes = '') {
   throw new Error(`Unknown heat case action: ${action}`);
 }
 
+export function normalizeNeedStatus(value) {
+  const raw = String(value || '').trim();
+  const match = NEED_STATUSES.find((status) => status.toLowerCase() === raw.toLowerCase());
+  return match || NEED_STATUSES[0];
+}
+
+export function isNeedOpen(status) {
+  return normalizeNeedStatus(status) !== NEED_CLOSED;
+}
+
+export function needStatusSlug(status) {
+  return normalizeNeedStatus(status).toLowerCase().replace(/[^a-z]+/g, '-').replace(/-+$/g, '');
+}
+
+export function needAgeDays(foundDate, asOfDate) {
+  const found = toDateKey(foundDate);
+  const asOf = toDateKey(asOfDate);
+  const foundMs = Date.parse(`${found}T00:00:00`);
+  const asOfMs = Date.parse(`${asOf}T00:00:00`);
+  if (!Number.isFinite(foundMs) || !Number.isFinite(asOfMs)) {
+    return 0;
+  }
+  return Math.max(0, Math.round((asOfMs - foundMs) / 86400000));
+}
+
+export function nextNeedId(rows = [], foundDate) {
+  const key = toDateKey(foundDate);
+  const prefix = `NEED-${key.replace(/-/g, '')}-`;
+  let maxSeq = 0;
+  for (const row of rows) {
+    const id = String(row.id || '');
+    if (!id.startsWith(prefix)) {
+      continue;
+    }
+    const seq = Number(id.slice(prefix.length));
+    if (Number.isFinite(seq) && seq > maxSeq) {
+      maxSeq = seq;
+    }
+  }
+  return `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
+}
+
+export function attachNeedAge(row, asOfDate) {
+  const foundDate = toDateKey(row.foundDate || row.date || asOfDate);
+  return {
+    ...row,
+    foundDate,
+    status: normalizeNeedStatus(row.status),
+    estimatedCost: toNumber(row.estimatedCost),
+    ageDays: needAgeDays(foundDate, asOfDate)
+  };
+}
+
+export function needsSummary(rows = [], dateKey) {
+  const key = toDateKey(dateKey);
+  const all = rows.map((row) => attachNeedAge(row, key));
+  const open = all.filter((row) => isNeedOpen(row.status));
+  const pendingReview = open.filter((row) => row.status === 'Pending Review');
+  const estimatedCost = open.reduce((sum, row) => sum + toNumber(row.estimatedCost), 0);
+  return {
+    openCount: open.length,
+    pendingReviewCount: pendingReview.length,
+    estimatedCost,
+    open,
+    all
+  };
+}
+
 export function heatCaseSummary(cases = [], dateKey) {
   const key = toDateKey(dateKey);
   const open = cases.filter((row) => normalizeHeatStatus(row.status) !== HEAT_RESOLVED);
@@ -419,7 +498,7 @@ export function rollupRepairOrders(rows = [], dateKey) {
   };
 }
 
-export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [], repairOrders = [], heatCases = [], roster = [] }) {
+export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [], repairOrders = [], heatCases = [], needs = [], roster = [] }) {
   const key = toDateKey(dateKey);
   const hoursRows = filterByDate(techHours, key);
   const hours = sumTechHours(hoursRows);
@@ -461,7 +540,8 @@ export function buildDailySnapshot({ dateKey, techHours = [], grossEntries = [],
     },
     production,
     weekHours: weekHoursSnapshot(techHours, key),
-    heatCases: heat
+    heatCases: heat,
+    needs: needsSummary(needs, key)
   };
 }
 
@@ -471,6 +551,7 @@ export function reservedSheetNames() {
     'SMR_TechHours',
     'SMR_Gross',
     'SMR_HeatCases',
+    'SMR_Needs',
     'SMR_RepairOrders',
     'SMR_Roster',
     'SMR_Config'

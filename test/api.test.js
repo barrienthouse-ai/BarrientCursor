@@ -132,6 +132,45 @@ describe('API', () => {
     assert.equal(summary.body.heatCases.resolvedTodayCount, 1);
   });
 
+  it('tracks needs with age and status changes', async () => {
+    const created = await json(`${base}/api/needs`, {
+      method: 'POST',
+      body: JSON.stringify({
+        item: 'Scan-tool subscription',
+        foundDate: '2026-08-20',
+        estimatedCost: 850,
+        status: 'Pending Review'
+      })
+    });
+    assert.equal(created.status, 201);
+    assert.match(created.body.id, /^NEED-20260820-001$/);
+    assert.equal(created.body.status, 'Pending Review');
+    assert.equal(created.body.ageDays, 0);
+
+    const listed = await json(`${base}/api/needs?date=2026-08-29`);
+    const saved = listed.body.rows.find((row) => row.id === created.body.id);
+    assert.equal(saved.ageDays, 9);
+    assert.equal(saved.estimatedCost, 850);
+
+    const updated = await json(`${base}/api/needs/${created.body.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'Order Pending' })
+    });
+    assert.equal(updated.body.status, 'Order Pending');
+
+    const summary = await json(`${base}/api/summary?date=2026-08-29`);
+    assert.ok(summary.body.needs.openCount >= 1);
+    assert.ok(summary.body.needs.open.some((row) => row.item === 'Scan-tool subscription'));
+  });
+
+  it('rejects a need without an item', async () => {
+    const result = await json(`${base}/api/needs`, {
+      method: 'POST',
+      body: JSON.stringify({ estimatedCost: 100 })
+    });
+    assert.equal(result.status, 400);
+  });
+
   it('rejects a heat case without an issue', async () => {
     const result = await json(`${base}/api/heat-cases`, {
       method: 'POST',
@@ -155,6 +194,8 @@ describe('API', () => {
     assert.doesNotMatch(html, /<\?/);
     assert.match(html, /var SEED = \{/);
     assert.doesNotMatch(html, /var SEED = null;/);
+    assert.match(html, /Needs list/);
+    assert.match(html, /id="needItem"/);
   });
 
   it('rolls month-to-date opened and closed across saved days', async () => {

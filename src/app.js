@@ -23,6 +23,7 @@ export function createApp(store) {
       roster: store.roster(),
       summary: snapshot,
       heat: store.listHeatCases('all'),
+      needs: store.listNeeds('all', date),
       cached: true
     };
     const html = readFileSync(path.join(__dirname, '..', 'apps-script', 'SMR_App.html'), 'utf8')
@@ -98,6 +99,32 @@ export function createApp(store) {
     } catch (error) {
       const status = error.message.includes('not found') ? 404 : 400;
       res.status(status).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/needs', (req, res) => {
+    res.json({ rows: store.listNeeds(req.query.status || 'all', req.query.date) });
+  });
+
+  app.post('/api/needs', (req, res) => {
+    try {
+      res.status(201).json(store.addNeed(req.body || {}));
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch('/api/needs/:id', (req, res) => {
+    try {
+      const status = req.body?.status;
+      if (!status) {
+        res.status(400).json({ error: 'status is required.' });
+        return;
+      }
+      res.json(store.updateNeed(req.params.id, status));
+    } catch (error) {
+      const code = error.message.includes('not found') ? 404 : 400;
+      res.status(code).json({ error: error.message });
     }
   });
 

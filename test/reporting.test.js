@@ -11,7 +11,11 @@ import {
   mergeHoursWithRoster,
   mondayOfWeek,
   monthKey,
+  needAgeDays,
+  needsSummary,
   nextHeatCaseId,
+  nextNeedId,
+  normalizeNeedStatus,
   payrollWeekRange,
   rollupRepairOrders,
   rollupWeekHours,
@@ -185,6 +189,25 @@ describe('heat cases', () => {
     const fromOwner = heatAssignment({ owner: 'Cody Raffary' });
     assert.equal(fromOwner.advisor, 'Cody Raffary');
     assert.equal(fromOwner.technician, '');
+  });
+});
+
+describe('needs list', () => {
+  it('computes age from found date and keeps an open list like heat cases', () => {
+    assert.equal(normalizeNeedStatus('order pending'), 'Order Pending');
+    assert.equal(needAgeDays('2026-08-01', '2026-08-29'), 28);
+    assert.equal(needAgeDays('2026-08-29', '2026-08-29'), 0);
+    assert.match(nextNeedId([], '2026-08-29'), /^NEED-20260829-001$/);
+    const summary = needsSummary([
+      { item: 'Scan tool', foundDate: '2026-08-20', estimatedCost: 850, status: 'Pending Review' },
+      { item: 'Lift arm', foundDate: '2026-07-15', estimatedCost: 2400, status: 'Order Pending' },
+      { item: 'Denied hose', foundDate: '2026-06-01', estimatedCost: 90, status: 'Denied' }
+    ], '2026-08-29');
+    assert.equal(summary.openCount, 2);
+    assert.equal(summary.pendingReviewCount, 1);
+    assert.equal(summary.estimatedCost, 3250);
+    assert.equal(summary.open[0].ageDays, 9);
+    assert.equal(summary.open[1].ageDays, 45);
   });
 });
 

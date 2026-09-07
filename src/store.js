@@ -7,9 +7,12 @@ import {
   buildDailySnapshot,
   filterByDate,
   monthKey,
+  attachNeedAge,
   heatAssignment,
   nextHeatCaseId,
+  nextNeedId,
   normalizeHeatStatus,
+  normalizeNeedStatus,
   normalizeSeverity,
   toDateKey,
   toNumber
@@ -32,6 +35,7 @@ export function emptyStore() {
     techHours: [],
     gross: [],
     heatCases: [],
+    needs: [],
     repairOrders: [],
     roster: [...DEFAULT_ROSTER],
     config: {
@@ -56,6 +60,7 @@ export function createStore(filePath) {
       grossEntries: state.gross,
       repairOrders: state.repairOrders,
       heatCases: state.heatCases,
+      needs: state.needs,
       roster: state.roster
     });
   }
@@ -177,6 +182,48 @@ export function createStore(filePath) {
       persist();
       return next;
     },
+    listNeeds(status = 'all', asOfDate) {
+      const asOf = toDateKey(asOfDate || new Date());
+      const rows = state.needs.map((row) => attachNeedAge(row, asOf));
+      if (status === 'open') {
+        return rows.filter((row) => normalizeNeedStatus(row.status) !== 'Denied');
+      }
+      if (status === 'denied' || status === 'closed') {
+        return rows.filter((row) => normalizeNeedStatus(row.status) === 'Denied');
+      }
+      return rows;
+    },
+    addNeed(payload) {
+      const foundDate = toDateKey(payload.foundDate || payload.date);
+      const item = {
+        id: payload.id || nextNeedId(state.needs, foundDate),
+        item: String(payload.item || payload.issue || '').trim(),
+        foundDate,
+        estimatedCost: toNumber(payload.estimatedCost),
+        status: normalizeNeedStatus(payload.status || 'Pending Review'),
+        updatedAt: payload.updatedAt || new Date().toISOString()
+      };
+      if (!item.item) {
+        throw new Error('Need item or fix is required.');
+      }
+      state.needs.push(item);
+      persist();
+      return attachNeedAge(item, foundDate);
+    },
+    updateNeed(id, status) {
+      const index = state.needs.findIndex((row) => row.id === id);
+      if (index === -1) {
+        throw new Error(`Need ${id} was not found.`);
+      }
+      const next = {
+        ...state.needs[index],
+        status: normalizeNeedStatus(status),
+        updatedAt: new Date().toISOString()
+      };
+      state.needs[index] = next;
+      persist();
+      return attachNeedAge(next, next.foundDate);
+    },
     listRepairOrders(fromDate, toDate) {
       return inRange(state.repairOrders, fromDate, toDate);
     },
@@ -249,6 +296,7 @@ function load(filePath) {
     techHours: raw.techHours || [],
     gross: raw.gross || [],
     heatCases: raw.heatCases || [],
+    needs: raw.needs || [],
     repairOrders: raw.repairOrders || [],
     roster: raw.roster || [...DEFAULT_ROSTER],
     config: { ...emptyStore().config, ...(raw.config || {}) }
@@ -416,6 +464,33 @@ export function seedStore() {
       resolvedAt: '2026-08-26T11:20:00.000Z',
       resolutionNotes: 'Called customer, waived alignment, rebooked for Friday with shuttle.',
       updatedAt: '2026-08-26T11:20:00.000Z'
+    }
+  );
+
+  store.needs.push(
+    {
+      id: 'NEED-20260715-001',
+      item: 'Alignment rack turntable rebuild',
+      foundDate: '2026-07-15',
+      estimatedCost: 2400,
+      status: 'Order Pending',
+      updatedAt: '2026-08-20T14:00:00.000Z'
+    },
+    {
+      id: 'NEED-20260820-001',
+      item: 'OEM scan-tool software subscription renewal',
+      foundDate: '2026-08-20',
+      estimatedCost: 850,
+      status: 'Pending Review',
+      updatedAt: '2026-08-20T09:30:00.000Z'
+    },
+    {
+      id: 'NEED-20260602-001',
+      item: 'A/C machine vacuum pump replacement',
+      foundDate: '2026-06-02',
+      estimatedCost: 1800,
+      status: 'Delayed',
+      updatedAt: '2026-08-12T16:10:00.000Z'
     }
   );
 

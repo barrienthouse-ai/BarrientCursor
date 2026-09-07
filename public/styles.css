@@ -69,6 +69,7 @@ textarea { min-height: 84px; resize: vertical; }
 .critical .value { color: var(--danger); }
 .good .value { color: var(--ok); }
 .heat .value { color: var(--accent); }
+.needs .value { color: #7eb6ff; }
 
 .panel { padding: 18px; }
 .hidden { display: none; }
@@ -90,6 +91,12 @@ th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spa
 .pill.critical, .pill.high { background: #5a2428; }
 .pill.medium { background: #5a4314; }
 .pill.low { background: #1d3d4f; }
+.pill.pending-review { background: #5a4314; }
+.pill.acknowledged { background: #1d3d4f; }
+.pill.order-pending { background: #5a4314; }
+.pill.approved { background: #245c3c; }
+.pill.denied { background: #5a2428; }
+.pill.delayed { background: #5a4314; }
 .compat { font-size: 13px; color: var(--muted); line-height: 1.55; }
 .compat strong { color: var(--text); }
 

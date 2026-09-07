@@ -58,7 +58,7 @@ They should **not** get the sales log workbook link.
 
 ## What this does and does not do
 
-- Writes `SMR_TechHours`, `SMR_Gross`, `SMR_RepairOrders`, `SMR_HeatCases`, `SMR_Dashboard`, `SMR_Roster`, `SMR_Config` in the live workbook.
+- Writes `SMR_TechHours`, `SMR_Gross`, `SMR_RepairOrders`, `SMR_HeatCases`, `SMR_Needs`, `SMR_Dashboard`, `SMR_Roster`, `SMR_Config` in the live workbook.
 - Does not write `SERVICE BOARD`, `SVC_RO`, `HOME`, `SUMMARY`, or any other existing tab.
 - Snapshot cache is per Apps Script project. The in-sheet menu and this link share the same tabs; after a save on one, **Recall day** on the other reloads from those tabs.
 

@@ -56,6 +56,11 @@ describe('SMR load-speed contract', () => {
     assert.match(html, /id="hoursTable"/);
     assert.match(html, /Shop sold labor hours today/);
     assert.match(html, /BarrientCursor · Fixed operations/);
+    assert.match(html, /onclick="setTab\('needs'\)"/);
+    assert.match(html, /id="needItem"/);
+    assert.match(html, /id="openNeedsList"/);
+    assert.match(html, /Pending Review/);
+    assert.match(html, /Order Pending/);
   });
 
   it('loads a briefing from SMR_ properties before touching SMR sheets', () => {
@@ -72,10 +77,14 @@ describe('SMR load-speed contract', () => {
     assert.match(api, /function SMR_recallRoFast_/);
     assert.match(api, /hoursPerRo/);
     assert.match(api, /unappliedHours/);
+    assert.match(api, /function SMR_listNeeds/);
+    assert.match(api, /function SMR_addNeed/);
+    assert.match(api, /SMR_SHEETS\.NEEDS/);
   });
 
   it('keeps snapshot helpers on SMR_ keys only', () => {
     const sheets = read('SMR_Sheets.gs');
+    assert.match(sheets, /SMR_SHEETS\.NEEDS/);
     assert.match(sheets, /SMR_BRIEF_PROP_PREFIX_ = 'SMR_b_'/);
     assert.match(sheets, /SMR_ROSTER_PROP_KEY_ = 'SMR_roster'/);
     assert.match(sheets, /SpreadsheetApp\.openById\(id\)/);
