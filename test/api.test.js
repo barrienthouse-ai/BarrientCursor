@@ -198,6 +198,7 @@ describe('API', () => {
     assert.match(html, /Parts Manager Report/);
     assert.match(html, /True dollar value/);
     assert.match(html, /GM RIM/);
+    assert.match(html, /Prev day/);
     assert.match(html, /var SEED = /);
   });
 });

@@ -24,6 +24,15 @@ function todayInputValue() {
   return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 10);
 }
 
+function shiftDateKey(dateKey, days) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  date.setDate(date.getDate() + Number(days || 0));
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 async function api(path, options) {
   const response = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
@@ -291,7 +300,27 @@ async function init() {
     $('dailyStatus').textContent = `Recalled ${$('reportDate').value}.`;
     $('dailyStatus').className = 'notice';
   });
+  $('prevDay').addEventListener('click', async () => {
+    $('reportDate').value = shiftDateKey($('reportDate').value, -1);
+    await loadDay();
+  });
+  $('nextDay').addEventListener('click', async () => {
+    $('reportDate').value = shiftDateKey($('reportDate').value, 1);
+    await loadDay();
+  });
+  $('latestBtn').addEventListener('click', async () => {
+    const { rows } = await api('/api/history');
+    if (!rows.length) {
+      $('dailyStatus').textContent = 'No saved days yet.';
+      return;
+    }
+    $('reportDate').value = rows[rows.length - 1].date;
+    await loadDay();
+    $('dailyStatus').textContent = `Loaded latest saved day ${$('reportDate').value}.`;
+    $('dailyStatus').className = 'notice';
+  });
   $('reportDate').addEventListener('change', loadDay);
+  $('reportDate').addEventListener('input', loadDay);
 
   $('saveDaily').addEventListener('click', async () => {
     $('dailyStatus').textContent = 'Saving…';
