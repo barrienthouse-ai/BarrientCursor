@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Service Manager Report</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BarrientCursor · Fixed operations</p>
+        <h1>Service Manager Report</h1>
+        <p class="sub">Daily briefing for Geaux Chevrolet service. Writes only to SMR_ tabs. SERVICE BOARD, SVC_RO, SUMMARY, HOME, and the rest of GEAUXCHEVROLETSALESLOG stay untouched.</p>
+      </div>
+      <div class="date-box">
+        <label for="reportDate">Report date</label>
+        <input type="date" id="reportDate" />
+        <div class="actions">
+          <button class="btn" id="recallBtn" type="button">Recall day</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Sections">
+      <button class="active" data-tab="briefing" type="button">Briefing</button>
+      <button data-tab="daily" type="button">Daily entry</button>
+      <button data-tab="heat" type="button">Heat cases</button>
+      <button data-tab="history" type="button">History</button>
+      <button data-tab="compat" type="button">Sheet safety</button>
+    </nav>
+
+    <section id="briefing" class="tab-page">
+      <div class="grid kpis prod-board">
+        <article class="card">
+          <div class="label">Sold hours</div>
+          <div class="value" id="prodSold">—</div>
+          <div class="meta">Shop sold labor hours today</div>
+        </article>
+        <article class="card">
+          <div class="label">ELR</div>
+          <div class="value" id="prodElr">—</div>
+          <div class="meta">Labor gross ÷ sold hours</div>
+        </article>
+        <article class="card">
+          <div class="label">Hours / RO</div>
+          <div class="value" id="prodHoursRo">—</div>
+          <div class="meta">Sold hours ÷ ROs closed</div>
+        </article>
+        <article class="card">
+          <div class="label">Unapplied time</div>
+          <div class="value" id="prodUnapplied">—</div>
+          <div class="meta">Clock − sold</div>
+        </article>
+      </div>
+      <div class="grid kpis" style="margin-top:14px">
+        <article class="card">
+          <div class="label">Sold / clock hours</div>
+          <div class="value" id="kpiHours">—</div>
+          <div class="meta" id="kpiEfficiency">Efficiency —</div>
+        </article>
+        <article class="card">
+          <div class="label">Service gross today</div>
+          <div class="value" id="kpiGross">—</div>
+          <div class="meta" id="kpiGrossMonth">MTD —</div>
+        </article>
+        <article class="card">
+          <div class="label" id="kpiWeekLabel">Sold week (Mon–Fri)</div>
+          <div class="value" id="kpiWeek">—</div>
+          <div class="meta" id="kpiWeekNote">Weekly hours from saved daily entries</div>
+        </article>
+        <article class="card heat" id="kpiHeatCard">
+          <div class="label">Open heat cases</div>
+          <div class="value" id="kpiHeat">—</div>
+          <div class="meta" id="kpiHeatNote">Awaiting briefing —</div>
+        </article>
+      </div>
+      <div class="grid kpis" style="margin-top:14px">
+        <article class="card">
+          <div class="label">Open ROs</div>
+          <div class="value" id="roOpen">—</div>
+          <div class="meta">Store open repair orders</div>
+        </article>
+        <article class="card">
+          <div class="label">Opened today</div>
+          <div class="value" id="roOpened">—</div>
+          <div class="meta" id="roOpenedMtd">MTD opened —</div>
+        </article>
+        <article class="card">
+          <div class="label">Closed today</div>
+          <div class="value" id="roClosed">—</div>
+          <div class="meta" id="roClosedMtd">MTD closed —</div>
+        </article>
+        <article class="card">
+          <div class="label">MTD opened / closed</div>
+          <div class="value" id="roMtd">—</div>
+          <div class="meta">Month-to-date store totals</div>
+        </article>
+      </div>
+
+      <div class="grid two" style="margin-top:14px">
+        <article class="panel">
+          <h2>Hours by technician</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Tech</th><th>Clock</th><th>Sold</th><th>Unapplied</th><th>Eff.</th></tr>
+              </thead>
+              <tbody id="hoursTable"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <h2>Needs briefing</h2>
+          <div id="openHeatList"></div>
+        </article>
+      </div>
+      <article class="panel" style="margin-top:14px">
+        <h2>Resolved on this day</h2>
+        <div id="resolvedHeatList"></div>
+      </article>
+    </section>
+
+    <section id="daily" class="tab-page hidden">
+      <article class="panel">
+        <h2>Store repair orders</h2>
+        <p class="meta">Shop-wide counts for the report date. Open ROs is the current store open count. Opened and closed today roll into the month-to-date totals on the briefing.</p>
+        <div class="row" style="grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom:0">
+          <label>Open ROs <input id="openRos" type="number" min="0" step="1" /></label>
+          <label>Opened today <input id="openedRos" type="number" min="0" step="1" /></label>
+          <label>Closed today <input id="closedRos" type="number" min="0" step="1" /></label>
+        </div>
+      </article>
+      <article class="panel" style="margin-top:14px">
+        <h2>Technician hours</h2>
+        <p class="meta">Names come from the service roster. Enter today’s clock and sold hours. Toggle sold week (Monday–Friday) or payroll clock hours (last Tuesday through this Monday).</p>
+        <div class="actions" style="margin-top:0">
+          <button class="btn primary" id="weekSoldBtn" type="button">Sold week Mon–Fri</button>
+          <button class="btn ghost" id="weekPayrollBtn" type="button">Payroll Tue–Mon</button>
+        </div>
+        <p class="meta" id="weekRangeLabel"></p>
+        <div id="techHourRows"></div>
+      </article>
+      <div class="grid two" style="margin-top:14px">
+        <article class="panel">
+          <h2>Service department gross</h2>
+          <p class="meta">Service only. Parts gross is tracked in a separate tool.</p>
+          <div class="row">
+            <label>Service labor <input id="laborGross" type="number" step="0.01" /></label>
+            <label>Other service <input id="otherGross" type="number" step="0.01" /></label>
+            <label>Period
+              <select id="grossPeriod">
+                <option value="daily">Daily</option>
+                <option value="monthly">Monthly override</option>
+              </select>
+            </label>
+          </div>
+          <label>Gross notes <textarea id="grossNotes"></textarea></label>
+        </article>
+        <article class="panel">
+          <h2>Week hours</h2>
+          <p class="meta">Sold week is Monday–Friday. Payroll hours are clock hours from last Tuesday through the current week’s Monday.</p>
+          <div class="row">
+            <label>Sold week total <input id="weekSoldTotal" type="number" readonly /></label>
+            <label>Payroll week total <input id="weekPayrollTotal" type="number" readonly /></label>
+          </div>
+        </article>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="saveDaily" type="button">Save daily report</button>
+        <span class="notice" id="dailyStatus"></span>
+      </div>
+    </section>
+
+    <section id="heat" class="tab-page hidden">
+      <article class="panel">
+        <h2>Log a heat case</h2>
+        <div class="row">
+          <label>Customer <input id="heatCustomer" /></label>
+          <label>Assigned advisor
+            <input id="heatAdvisor" list="advisorList" placeholder="Cody Raffary" />
+            <datalist id="advisorList"></datalist>
+          </label>
+          <label>Assigned technician
+            <select id="heatTechnician"></select>
+          </label>
+          <label>RO number <input id="heatRo" /></label>
+        </div>
+        <div class="row">
+          <label>Vehicle <input id="heatVehicle" /></label>
+          <label>Severity
+            <select id="heatSeverity">
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </label>
+          <label style="grid-column: span 2">Issue <input id="heatIssue" /></label>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="addHeat" type="button">Add heat case</button>
+          <span class="notice" id="heatStatus"></span>
+        </div>
+      </article>
+      <article class="panel" style="margin-top:14px">
+        <h2>Case board</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Customer</th><th>Advisor</th><th>Tech</th><th>Issue</th><th>Severity</th><th>Status</th><th>Resolved</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="heatTable"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="history" class="tab-page hidden">
+      <div class="grid two">
+        <article class="panel">
+          <h2>Previously reported hours</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Tech</th><th>Clock</th><th>Sold</th></tr></thead>
+              <tbody id="historyHours"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <h2>Gross and RO history</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Gross</th><th>Open</th><th>Closed</th><th>Opened</th></tr></thead>
+              <tbody id="historyOps"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="compat" class="tab-page hidden">
+      <article class="panel compat">
+        <h2>GEAUXCHEVROLETSALESLOG stays intact</h2>
+        <p>The live workbook is readable. It already has 69 tabs, including a weekly <code>SERVICE BOARD</code> and hidden <code>SVC_RO</code> / <code>SVC_RO_LINES</code> tables. Apps Script source is not in a Sheet export, so install still avoids reserved trigger names.</p>
+        <ul>
+          <li><strong>No reserved triggers.</strong> This project never defines <code>onOpen</code>, <code>onEdit</code>, <code>doGet</code>, or <code>doPost</code>.</li>
+          <li><strong>Namespaced only.</strong> Every function, menu handler, and ScriptProperty key starts with <code>SMR_</code>.</li>
+          <li><strong>Dedicated tabs only.</strong> Writes go to <code>SMR_Dashboard</code>, <code>SMR_TechHours</code>, <code>SMR_Gross</code>, <code>SMR_HeatCases</code>, <code>SMR_RepairOrders</code>, <code>SMR_Roster</code>, and <code>SMR_Config</code>.</li>
+          <li><strong>Protected live tabs.</strong> <code>SERVICE BOARD</code>, <code>SVC_RO</code>, <code>SUMMARY</code>, <code>HOME</code>, parts/accounting JSON tabs, and AutoCrat are read-only to SMR.</li>
+        </ul>
+        <p>In Apps Script, add <code>SMR_onOpen();</code> to your existing <code>onOpen</code>, then run <code>SMR_install()</code>. Optional: <code>SMR_importRosterFromServiceBoard()</code> copies the shop nicknames into <code>SMR_Roster</code> only.</p>
+      </article>
+    </section>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
