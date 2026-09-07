@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base target="_top" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; background: #0e1624; color: #eef3fb; min-height: 100%; }
+    .wrap { padding: 16px 18px 20px; max-width: 1280px; margin: 0 auto; }
+    .topbar { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
+    .eyebrow { color: #f0b429; letter-spacing: 0.12em; text-transform: uppercase; font-size: 11px; font-weight: 700; margin: 0 0 4px; }
+    h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.03em; }
+    h2 { margin: 0 0 10px; font-size: 15px; }
+    .sub, .meta, .label { color: #9aadc8; font-size: 12px; }
+    .label { text-transform: uppercase; letter-spacing: 0.08em; }
+    .date-box { background: #162236; border: 1px solid #2d3f5c; border-radius: 12px; padding: 12px 14px; min-width: 200px; }
+    .tabs { display: flex; gap: 8px; margin: 0 0 14px; flex-wrap: wrap; }
+    .tabs button { border: 1px solid #2d3f5c; background: #1c2b44; color: #eef3fb; }
+    .tabs button.active { background: #f0b429; color: #1b1403; border-color: #f0b429; }
+    .hidden { display: none; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0 0 12px; }
+    .grid-two { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 10px; }
+    .card, .panel { background: #162236; border: 1px solid #2d3f5c; border-radius: 12px; padding: 12px 14px; }
+    .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .crit .value { color: #ef6b6b; }
+    .warn .value, .heat .value { color: #f0b429; }
+    .good .value { color: #5dcc86; }
+    label { display: block; font-size: 12px; margin: 6px 0; }
+    input, select, textarea, button { font: inherit; }
+    input, select, textarea { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 8px; border: 1px solid #2d3f5c; background: #0e1624; color: #eef3fb; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button { border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; background: #f0b429; color: #1b1403; font-weight: 700; }
+    button.secondary { background: #1c2b44; color: #eef3fb; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #2d3f5c; vertical-align: top; }
+    th { color: #9aadc8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .notice { color: #4cc9c0; font-size: 12px; }
+    .error { color: #ef6b6b; font-size: 12px; }
+    .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; background: #5a4314; font-size: 11px; text-transform: uppercase; }
+    .pill.open, .pill.rec, .pill.outstanding, .pill.critical, .pill.crit { background: #5a2428; }
+    .pill.ok, .pill.installed, .pill.returned, .pill.closed { background: #245c3c; }
+    .flag { border-left: 4px solid #f0b429; padding: 8px 10px; margin: 0 0 8px; background: #1c2b44; }
+    .flag.crit { border-left-color: #ef6b6b; }
+    .cdk { color: #f0b429; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <p class="eyebrow">BarrientCursor · Fixed operations</p>
+        <h1>Parts Manager Report</h1>
+        <p class="sub">Daily GM briefing. Writes only to PMR_ tabs. CDK: MGR→INV, RSM/RST, SOP→RO, LSL, IRE, ORD, CRA.</p>
+      </div>
+      <div class="date-box">
+        <label>Report date <input id="reportDate" type="date" /></label>
+        <div class="actions" style="margin-top:8px">
+          <button type="button" class="secondary" onclick="shiftDay(-1)">Prev day</button>
+          <button type="button" class="secondary" onclick="shiftDay(1)">Next day</button>
+          <button type="button" class="secondary" onclick="recallDay()">Recall day</button>
+        </div>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button type="button" class="active" id="tab-briefing" onclick="setTab('briefing')">Briefing</button>
+      <button type="button" id="tab-daily" onclick="setTab('daily')">Daily entry</button>
+      <button type="button" id="tab-boards" onclick="setTab('boards')">Boards</button>
+    </nav>
+    <span class="notice" id="status"></span>
+
+    <section id="page-briefing">
+      <div class="kpis">
+        <div class="card" id="kpiInventoryCard"><div class="label">True dollar value</div><div class="value" id="kpiInventory">—</div><div class="meta" id="kpiCapital">vs capital —</div></div>
+        <div class="card" id="kpiN6mCard"><div class="label">N6M / 90+ day</div><div class="value" id="kpiN6m">—</div><div class="meta" id="kpiN3m">N3M —</div></div>
+        <div class="card" id="kpiRimCard"><div class="label">GM RIM</div><div class="value" id="kpiRim">—</div><div class="meta" id="kpiRimNote">Target —</div></div>
+        <div class="card" id="kpiWaitCard"><div class="label">Counter wait</div><div class="value" id="kpiWait">—</div><div class="meta">Flag over 5–7 min</div></div>
+      </div>
+      <div class="kpis">
+        <div class="card"><div class="label">Parts sales</div><div class="value" id="kpiSales">—</div><div class="meta" id="kpiSalesMonth">MTD —</div></div>
+        <div class="card"><div class="label">Lost sales</div><div class="value" id="kpiLost">—</div><div class="meta" id="kpiLostNote">LSL —</div></div>
+        <div class="card" id="kpiSopCard"><div class="label">SOP aged 14+</div><div class="value" id="kpiSop">—</div><div class="meta" id="kpiSopNote">REC —</div></div>
+        <div class="card" id="kpiCoreCard"><div class="label">Outstanding cores</div><div class="value" id="kpiCores">—</div><div class="meta" id="kpiCoreNote">CRA</div></div>
+      </div>
+      <div class="grid-two">
+        <div class="panel"><h2>GM flags</h2><div id="flagList"></div></div>
+        <div class="panel"><h2>Holds</h2><div id="holdList"></div></div>
+      </div>
+    </section>
+
+    <section id="page-daily" class="hidden">
+      <div class="panel">
+        <h2>Daily CDK numbers</h2>
+        <p class="meta"><span class="cdk">MGR→INV</span> on-hand. <span class="cdk">RSM/RST</span> N3M/N6M. <span class="cdk">LSL</span> lost sales. <span class="cdk">SOP→RO</span> REC. <span class="cdk">IRE</span> RIM. <span class="cdk">ORD</span> CSO. <span class="cdk">CRA</span> cores.</p>
+        <div class="row">
+          <label>Inventory $ <input id="inventoryValue" type="number" /></label>
+          <label>Capital limit $ <input id="capitalLimit" type="number" /></label>
+          <label>N3M $ <input id="n3mValue" type="number" /></label>
+          <label>N6M $ <input id="n6mValue" type="number" /></label>
+        </div>
+        <div class="row">
+          <label>Overstock $ <input id="overstockValue" type="number" /></label>
+          <label>Payables $ <input id="payablesOpen" type="number" /></label>
+          <label>Retail sales $ <input id="retailSales" type="number" /></label>
+          <label>Wholesale sales $ <input id="wholesaleSales" type="number" /></label>
+        </div>
+        <div class="row">
+          <label>Internal sales $ <input id="internalSales" type="number" /></label>
+          <label>Wait minutes <input id="counterWaitMinutes" type="number" /></label>
+          <label>Lost sales $ <input id="lostSalesDollars" type="number" /></label>
+          <label>Lost sales count <input id="lostSalesCount" type="number" /></label>
+        </div>
+        <div class="row">
+          <label>SOP received <input id="sopReceivedCount" type="number" /></label>
+          <label>SOP aged 14+ <input id="sopAgedCount" type="number" /></label>
+          <label>RIM % <input id="rimCompliancePercent" type="number" /></label>
+          <label>RIM target % <input id="rimTargetPercent" type="number" /></label>
+        </div>
+        <div class="row">
+          <label>Emergency / CSO <input id="emergencyOrderCount" type="number" /></label>
+          <label>Freight $ <input id="emergencyFreightCost" type="number" /></label>
+          <label>Cores $ <input id="outstandingCoresValue" type="number" /></label>
+          <label>Hot-shots <input id="hotshotRuns" type="number" /></label>
+        </div>
+        <div class="row">
+          <label>Wholesale stops <input id="wholesaleStops" type="number" /></label>
+          <label>Fuel $ <input id="deliveryFuelCost" type="number" /></label>
+          <label>SOP aged $ <input id="sopAgedValue" type="number" /></label>
+          <label>Report email <input id="reportEmail" type="email" /></label>
+        </div>
+        <label>Notes <textarea id="notes"></textarea></label>
+        <div class="actions">
+          <button type="button" onclick="saveDay()">Save daily report</button>
+          <button type="button" class="secondary" onclick="emailDay()">Email GM recap</button>
+          <span class="notice" id="dailyStatus"></span>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-boards" class="hidden">
+      <div class="panel">
+        <h2>Lost sales · SOP · backorders · cores</h2>
+        <div class="row">
+          <label>LSL part <input id="lostPart" /></label>
+          <label>Description <input id="lostDesc" /></label>
+          <label>Requested by <input id="lostBy" /></label>
+          <label>Dollars <input id="lostDollars" type="number" /></label>
+        </div>
+        <div class="actions"><button type="button" onclick="addLost()">Add lost sale</button></div>
+        <table><thead><tr><th>Part</th><th>Who</th><th>$</th><th>Status</th><th></th></tr></thead><tbody id="lostTable"></tbody></table>
+        <div class="row" style="margin-top:12px">
+          <label>SOP part <input id="sopPart" /></label>
+          <label>Customer <input id="sopCustomer" /></label>
+          <label>RO <input id="sopRo" /></label>
+          <label>Dollars <input id="sopDollars" type="number" /></label>
+        </div>
+        <div class="actions"><button type="button" onclick="addSop()">Add SOP</button></div>
+        <table><thead><tr><th>Part</th><th>Customer</th><th>Age</th><th>Status</th><th></th></tr></thead><tbody id="sopTable"></tbody></table>
+        <div class="row" style="margin-top:12px">
+          <label>Backorder part <input id="boPart" /></label>
+          <label>Vehicle / hold <input id="boVehicle" /></label>
+          <label>Core part <input id="corePart" /></label>
+          <label>Core $ <input id="coreDollars" type="number" /></label>
+        </div>
+        <div class="actions">
+          <button type="button" onclick="addBo()">Add backorder</button>
+          <button type="button" class="secondary" onclick="addCore()">Add core</button>
+        </div>
+        <table><thead><tr><th>Backorder</th><th>Hold</th><th></th></tr></thead><tbody id="boTable"></tbody></table>
+        <table><thead><tr><th>Core</th><th>Who</th><th>$</th><th></th></tr></thead><tbody id="coreTable"></tbody></table>
+      </div>
+    </section>
+  </div>
+  <script>
+    var SEED = null;
+    var lastSummary = null;
+    var FIELDS = ['inventoryValue','capitalLimit','n3mValue','n6mValue','overstockValue','payablesOpen','retailSales','wholesaleSales','internalSales','counterWaitMinutes','lostSalesDollars','lostSalesCount','sopReceivedCount','sopAgedCount','rimCompliancePercent','rimTargetPercent','emergencyOrderCount','emergencyFreightCost','outstandingCoresValue','hotshotRuns','wholesaleStops','deliveryFuelCost','sopAgedValue','notes'];
+    function today() {
+      var now = new Date();
+      var off = now.getTimezoneOffset();
+      return new Date(now.getTime() - off * 60000).toISOString().slice(0, 10);
+    }
+    function money(value) {
+      return '$' + Math.round(Number(value) || 0).toLocaleString('en-US');
+    }
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, function (ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    }
+    function setStatus(text, isError) {
+      var el = document.getElementById('status');
+      el.className = isError ? 'error' : 'notice';
+      el.textContent = text || '';
+      document.getElementById('dailyStatus').className = el.className;
+      document.getElementById('dailyStatus').textContent = text || '';
+    }
+    function setTab(name) {
+      ['briefing', 'daily', 'boards'].forEach(function (id) {
+        document.getElementById('page-' + id).className = id === name ? '' : 'hidden';
+        document.getElementById('tab-' + id).className = id === name ? 'active' : '';
+      });
+      if (name === 'boards') loadBoards();
+    }
+    function run(name, args, ok) {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        if (SEED && SEED.summary && name === 'PMR_loadBriefing') { ok(SEED); }
+        return;
+      }
+      var runner = google.script.run.withFailureHandler(function (err) {
+        setStatus(err.message || String(err), true);
+      }).withSuccessHandler(ok);
+      runner[name].apply(runner, args || []);
+    }
+    function setCard(id, level) {
+      var el = document.getElementById(id);
+      el.className = 'card' + (level ? ' ' + level : '');
+    }
+    function renderSummary(summary) {
+      lastSummary = summary;
+      var c = summary.capital || {};
+      var s = summary.sales || {};
+      var r = summary.report || {};
+      var rim = summary.rim || {};
+      document.getElementById('kpiInventory').textContent = money(c.inventoryValue);
+      document.getElementById('kpiCapital').textContent = (c.overCapital ? 'OVER ' : 'vs ') + money(c.capitalLimit);
+      setCard('kpiInventoryCard', c.overCapital ? 'crit' : 'good');
+      document.getElementById('kpiN6m').textContent = money(c.n6mValue);
+      document.getElementById('kpiN3m').textContent = 'N3M ' + money(c.n3mValue);
+      document.getElementById('kpiRim').textContent = (rim.actual || 0) + '%';
+      document.getElementById('kpiRimNote').textContent = rim.onTarget ? 'On target' : 'Short of ' + rim.target + '%';
+      setCard('kpiRimCard', rim.onTarget ? 'good' : 'warn');
+      document.getElementById('kpiWait').textContent = (r.counterWaitMinutes || 0) + ' min';
+      setCard('kpiWaitCard', summary.wait === 'ok' ? 'good' : summary.wait);
+      document.getElementById('kpiSales').textContent = money(s.totalSales);
+      document.getElementById('kpiSalesMonth').textContent = 'MTD ' + money(summary.month && summary.month.sales && summary.month.sales.totalSales);
+      document.getElementById('kpiLost').textContent = money(r.lostSalesDollars);
+      document.getElementById('kpiLostNote').textContent = (summary.lostSales && summary.lostSales.openCount || 0) + ' open LSL';
+      document.getElementById('kpiSop').textContent = String(summary.sop && summary.sop.agedCount || 0);
+      document.getElementById('kpiSopNote').textContent = (summary.sop && summary.sop.recCount || 0) + ' in REC';
+      setCard('kpiSopCard', summary.sop && summary.sop.agedCount ? 'crit' : '');
+      document.getElementById('kpiCores').textContent = money(summary.cores && summary.cores.dollars);
+      document.getElementById('kpiCoreNote').textContent = (summary.cores && summary.cores.openCount || 0) + ' outstanding';
+      var flags = (summary.flags && summary.flags.alerts) || [];
+      document.getElementById('flagList').innerHTML = flags.length
+        ? flags.map(function (item) { return '<div class="flag ' + item.level + '"><strong>' + escapeHtml(item.title) + '</strong><div class="meta">' + escapeHtml(item.detail) + '</div></div>'; }).join('')
+        : '<p class="meta">No flags for this day.</p>';
+      var holds = [];
+      ((summary.sop && summary.sop.rec) || []).forEach(function (item) {
+        holds.push('<p><strong>' + escapeHtml(item.partNumber) + '</strong> SOP ' + (item.ageDays || 0) + 'd · ' + escapeHtml(item.customer || '') + '</p>');
+      });
+      ((summary.backorders && summary.backorders.critical) || []).forEach(function (item) {
+        holds.push('<p><strong>' + escapeHtml(item.partNumber) + '</strong> ' + escapeHtml(item.reason || item.vehicle || '') + '</p>');
+      });
+      document.getElementById('holdList').innerHTML = holds.length ? holds.join('') : '<p class="meta">No SOP or backorder holds.</p>';
+      FIELDS.forEach(function (field) {
+        var el = document.getElementById(field);
+        if (el) el.value = r[field] != null ? r[field] : '';
+      });
+    }
+    function readDaily() {
+      var payload = { date: document.getElementById('reportDate').value, to: document.getElementById('reportEmail').value };
+      FIELDS.forEach(function (field) {
+        payload[field] = document.getElementById(field).value;
+      });
+      return payload;
+    }
+    function applyPayload(payload, fromSeed) {
+      if (payload && payload.summary) {
+        renderSummary(payload.summary);
+        setStatus(fromSeed || payload.cached ? 'Opened instantly from last save.' : 'Loaded ' + payload.summary.date);
+      }
+      renderBoards(payload || {});
+    }
+    function shiftDay(days) {
+      var current = document.getElementById('reportDate').value || today();
+      var parts = current.split('-');
+      var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      date.setDate(date.getDate() + Number(days || 0));
+      var month = date.getMonth() + 1;
+      var day = date.getDate();
+      document.getElementById('reportDate').value = date.getFullYear() + '-' + (month < 10 ? '0' + month : month) + '-' + (day < 10 ? '0' + day : day);
+      recallDay();
+    }
+    function recallDay() {
+      setStatus('Loading saved numbers…');
+      run('PMR_loadBriefing', [document.getElementById('reportDate').value], function (payload) {
+        applyPayload(payload, false);
+      });
+    }
+    function saveDay() {
+      run('PMR_saveDailyReport', [readDaily()], function (summary) {
+        renderSummary(summary);
+        setStatus('Saved ' + summary.date + '.');
+        setTab('briefing');
+      });
+    }
+    function emailDay() {
+      run('PMR_emailReport', [readDaily()], function (result) {
+        if (result && result.snapshot) renderSummary(result.snapshot);
+        setStatus(result && result.message ? result.message : (result && result.sent ? 'Emailed ' + result.to : 'Saved recap.'));
+      });
+    }
+    function renderBoards(payload) {
+      var lost = payload.lostSales || (SEED && SEED.lostSales) || [];
+      var sop = payload.sopItems || (SEED && SEED.sopItems) || [];
+      var bo = payload.backorders || (SEED && SEED.backorders) || [];
+      var cores = payload.cores || (SEED && SEED.cores) || [];
+      document.getElementById('lostTable').innerHTML = lost.map(function (row) {
+        return '<tr><td>' + escapeHtml(row.partNumber) + '</td><td>' + escapeHtml(row.requestedBy || '') + '</td><td>' + money(row.dollars) + '</td><td><span class="pill ' + escapeHtml(row.status) + '">' + escapeHtml(row.status) + '</span></td><td>' +
+          (row.status === 'open' ? '<button class="secondary" type="button" onclick="boardAct(\'PMR_updateLostSale\',\'' + escapeHtml(row.id) + '\',\'stock\')">Stock it</button>' : '') + '</td></tr>';
+      }).join('');
+      document.getElementById('sopTable').innerHTML = sop.map(function (row) {
+        return '<tr><td>' + escapeHtml(row.partNumber) + '</td><td>' + escapeHtml(row.customer || '') + '</td><td>' + (row.ageDays || 0) + 'd</td><td><span class="pill ' + escapeHtml(row.status) + '">' + escapeHtml(row.status) + '</span></td><td>' +
+          (row.status === 'rec' ? '<button class="secondary" type="button" onclick="boardAct(\'PMR_updateSop\',\'' + escapeHtml(row.id) + '\',\'install\')">Installed</button>' : '') + '</td></tr>';
+      }).join('');
+      document.getElementById('boTable').innerHTML = bo.map(function (row) {
+        return '<tr><td>' + escapeHtml(row.partNumber) + '</td><td>' + escapeHtml(row.vehicle || row.reason || '') + '</td><td>' +
+          (row.status !== 'closed' ? '<button class="secondary" type="button" onclick="boardAct(\'PMR_updateBackorder\',\'' + escapeHtml(row.id) + '\',\'close\')">Close</button>' : '') + '</td></tr>';
+      }).join('');
+      document.getElementById('coreTable').innerHTML = cores.map(function (row) {
+        return '<tr><td>' + escapeHtml(row.partNumber) + '</td><td>' + escapeHtml(row.accountOrTech || '') + '</td><td>' + money(row.dollars) + '</td><td>' +
+          (row.status === 'outstanding' ? '<button class="secondary" type="button" onclick="boardAct(\'PMR_updateCore\',\'' + escapeHtml(row.id) + '\',\'return\')">Returned</button>' : '') + '</td></tr>';
+      }).join('');
+    }
+    function loadBoards() {
+      run('PMR_loadBriefing', [document.getElementById('reportDate').value], function (payload) {
+        applyPayload(payload, false);
+      });
+    }
+    function addLost() {
+      run('PMR_addLostSale', [{ openedDate: document.getElementById('reportDate').value, partNumber: document.getElementById('lostPart').value, description: document.getElementById('lostDesc').value, requestedBy: document.getElementById('lostBy').value, dollars: document.getElementById('lostDollars').value }], function () { setStatus('Lost sale logged.'); loadBoards(); });
+    }
+    function addSop() {
+      run('PMR_addSop', [{ receivedDate: document.getElementById('reportDate').value, partNumber: document.getElementById('sopPart').value, customer: document.getElementById('sopCustomer').value, roNumber: document.getElementById('sopRo').value, dollars: document.getElementById('sopDollars').value }], function () { setStatus('SOP logged.'); loadBoards(); });
+    }
+    function addBo() {
+      run('PMR_addBackorder', [{ openedDate: document.getElementById('reportDate').value, partNumber: document.getElementById('boPart').value, vehicle: document.getElementById('boVehicle').value, reason: 'service bay', severity: 'critical' }], function () { setStatus('Backorder logged.'); loadBoards(); });
+    }
+    function addCore() {
+      run('PMR_addCore', [{ openedDate: document.getElementById('reportDate').value, partNumber: document.getElementById('corePart').value, dollars: document.getElementById('coreDollars').value }], function () { setStatus('Core logged.'); loadBoards(); });
+    }
+    function boardAct(fn, id, action) {
+      run(fn, [id, action, ''], function () { loadBoards(); });
+    }
+    document.getElementById('reportDate').value = today();
+    document.getElementById('reportDate').onchange = recallDay;
+    if (SEED && SEED.summary) {
+      applyPayload(SEED, true);
+    } else {
+      recallDay();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parts Manager Report</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BarrientCursor · Fixed operations</p>
+        <h1>Parts Manager Report</h1>
+        <p class="sub">Daily briefing for Geaux Chevrolet parts. The manager pulls CDK (MGR→INV, RSM/RST, SOP→RO, LSL, IRE, ORD, CRA) and leadership sees capital, service-drive wait, GM RIM, and cores without opening the sales log. Writes only to PMR_ tabs.</p>
+      </div>
+      <div class="date-box">
+        <label for="reportDate">Report date</label>
+        <input type="date" id="reportDate" />
+        <div class="actions">
+          <button class="btn ghost" id="prevDay" type="button">Prev day</button>
+          <button class="btn ghost" id="nextDay" type="button">Next day</button>
+          <button class="btn" id="latestBtn" type="button">Latest saved</button>
+          <button class="btn" id="recallBtn" type="button">Recall day</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Sections">
+      <button class="active" data-tab="briefing" type="button">Briefing</button>
+      <button data-tab="daily" type="button">Daily entry</button>
+      <button data-tab="boards" type="button">Boards</button>
+      <button data-tab="history" type="button">History</button>
+      <button data-tab="compat" type="button">Sheet safety</button>
+    </nav>
+
+    <section id="briefing" class="tab-page">
+      <div class="grid kpis prod-board">
+        <article class="card" id="kpiInventoryCard">
+          <div class="label">True dollar value</div>
+          <div class="value" id="kpiInventory">—</div>
+          <div class="meta" id="kpiCapital">vs capital limit —</div>
+        </article>
+        <article class="card" id="kpiN6mCard">
+          <div class="label">N6M / 90+ day</div>
+          <div class="value" id="kpiN6m">—</div>
+          <div class="meta" id="kpiN3m">N3M —</div>
+        </article>
+        <article class="card" id="kpiRimCard">
+          <div class="label">GM RIM compliance</div>
+          <div class="value" id="kpiRim">—</div>
+          <div class="meta" id="kpiRimNote">Target —</div>
+        </article>
+        <article class="card" id="kpiWaitCard">
+          <div class="label">Tech counter wait</div>
+          <div class="value" id="kpiWait">—</div>
+          <div class="meta">Flag if over 5–7 minutes</div>
+        </article>
+      </div>
+      <div class="grid kpis" style="margin-top:14px">
+        <article class="card">
+          <div class="label">Parts sales today</div>
+          <div class="value" id="kpiSales">—</div>
+          <div class="meta" id="kpiSalesMonth">MTD —</div>
+        </article>
+        <article class="card" id="kpiLostCard">
+          <div class="label">Lost sales</div>
+          <div class="value" id="kpiLost">—</div>
+          <div class="meta" id="kpiLostNote">LSL open —</div>
+        </article>
+        <article class="card" id="kpiSopCard">
+          <div class="label">SOP aged 14+</div>
+          <div class="value" id="kpiSop">—</div>
+          <div class="meta" id="kpiSopNote">REC sitting —</div>
+        </article>
+        <article class="card" id="kpiCoreCard">
+          <div class="label">Outstanding cores</div>
+          <div class="value" id="kpiCores">—</div>
+          <div class="meta" id="kpiCoreNote">Uncollected cash</div>
+        </article>
+      </div>
+      <div class="grid kpis" style="margin-top:14px">
+        <article class="card">
+          <div class="label">Pad / overstock</div>
+          <div class="value" id="kpiOverstock">—</div>
+          <div class="meta">RIM/PDI pad vs cash flow</div>
+        </article>
+        <article class="card">
+          <div class="label">Emergency / CSO</div>
+          <div class="value" id="kpiCso">—</div>
+          <div class="meta" id="kpiFreight">Premium freight —</div>
+        </article>
+        <article class="card" id="kpiBoCard">
+          <div class="label">Critical backorders</div>
+          <div class="value" id="kpiBo">—</div>
+          <div class="meta" id="kpiBoNote">Stop-sale / bay holds</div>
+        </article>
+        <article class="card">
+          <div class="label">Wholesale route</div>
+          <div class="value" id="kpiRoute">—</div>
+          <div class="meta" id="kpiFuel">Hot-shots &amp; fuel</div>
+        </article>
+      </div>
+
+      <div class="grid two" style="margin-top:14px">
+        <article class="panel">
+          <h2>GM flags for today</h2>
+          <div id="flagList"></div>
+        </article>
+        <article class="panel">
+          <h2>Repeat lost sales (this week)</h2>
+          <div id="repeatList"></div>
+        </article>
+      </div>
+      <div class="grid two" style="margin-top:14px">
+        <article class="panel">
+          <h2>SOP received, not installed</h2>
+          <div id="sopList"></div>
+        </article>
+        <article class="panel">
+          <h2>Critical backorders &amp; aged cores</h2>
+          <div id="holdList"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="daily" class="tab-page hidden">
+      <article class="panel">
+        <h2>Inventory &amp; capital health</h2>
+        <p class="meta"><span class="cdk">CDK MGR → INV</span> for on-hand dollars and payables. <span class="cdk">RSM / RST</span> for N3M and N6M by source. Pad/overstock is the extra buy for GM RIM/PDI that is not shop demand.</p>
+        <div class="row">
+          <label>Inventory on hand $ <input id="inventoryValue" type="number" step="0.01" /></label>
+          <label>Monthly capital limit $ <input id="capitalLimit" type="number" step="0.01" /></label>
+          <label>Open parts payables $ <input id="payablesOpen" type="number" step="0.01" /></label>
+          <label>Pad / overstock $ <input id="overstockValue" type="number" step="0.01" /></label>
+        </div>
+        <div class="row">
+          <label>N3M (no 3-month) $ <input id="n3mValue" type="number" step="0.01" /></label>
+          <label>N6M / 90+ day $ <input id="n6mValue" type="number" step="0.01" /></label>
+          <label>Retail sales $ <input id="retailSales" type="number" step="0.01" /></label>
+          <label>Wholesale sales $ <input id="wholesaleSales" type="number" step="0.01" /></label>
+        </div>
+        <div class="row">
+          <label>Internal / service sales $ <input id="internalSales" type="number" step="0.01" /></label>
+          <label>Counter wait (minutes) <input id="counterWaitMinutes" type="number" step="0.1" /></label>
+          <label>Lost sales count <input id="lostSalesCount" type="number" step="1" /></label>
+          <label>Lost sales $ <input id="lostSalesDollars" type="number" step="0.01" /></label>
+        </div>
+      </article>
+      <article class="panel" style="margin-top:14px">
+        <h2>Service drive, OEM, wholesale</h2>
+        <p class="meta"><span class="cdk">SOP → RO</span> for REC aging. <span class="cdk">LSL</span> for lost sales. <span class="cdk">IRE</span> for RIM receipts. <span class="cdk">ORD</span> for emergency/CSO. <span class="cdk">CRA</span> for cores.</p>
+        <div class="row">
+          <label>SOP received (REC) <input id="sopReceivedCount" type="number" step="1" /></label>
+          <label>SOP aged 14+ count <input id="sopAgedCount" type="number" step="1" /></label>
+          <label>SOP aged 14+ $ <input id="sopAgedValue" type="number" step="0.01" /></label>
+          <label>RIM compliance % <input id="rimCompliancePercent" type="number" step="0.1" /></label>
+        </div>
+        <div class="row">
+          <label>RIM target % <input id="rimTargetPercent" type="number" step="0.1" /></label>
+          <label>Emergency / CSO count <input id="emergencyOrderCount" type="number" step="1" /></label>
+          <label>Premium freight $ <input id="emergencyFreightCost" type="number" step="0.01" /></label>
+          <label>Outstanding cores $ <input id="outstandingCoresValue" type="number" step="0.01" /></label>
+        </div>
+        <div class="row">
+          <label>Wholesale stops <input id="wholesaleStops" type="number" step="1" /></label>
+          <label>Hot-shot runs <input id="hotshotRuns" type="number" step="1" /></label>
+          <label>Delivery fuel $ <input id="deliveryFuelCost" type="number" step="0.01" /></label>
+          <label>Report email <input id="reportEmail" type="email" placeholder="gm@geauxchevrolet.com" /></label>
+        </div>
+        <label>Notes <textarea id="notes" placeholder="What leadership needs to know today."></textarea></label>
+      </article>
+      <div class="actions">
+        <button class="btn primary" id="saveDaily" type="button">Save daily report</button>
+        <button class="btn" id="emailReport" type="button">Email GM recap</button>
+        <a class="btn ghost" id="emailPreview" href="/api/email-preview" target="_blank" rel="noreferrer">Preview email</a>
+        <span class="notice" id="dailyStatus"></span>
+      </div>
+    </section>
+
+    <section id="boards" class="tab-page hidden">
+      <article class="panel">
+        <h2>Lost sales log <span class="cdk">LSL</span></h2>
+        <p class="meta">If the same part number appears more than once this week, override the CDK ordering matrix and stock it.</p>
+        <div class="row">
+          <label>Part number <input id="lostPart" /></label>
+          <label>Description <input id="lostDesc" /></label>
+          <label>Requested by <input id="lostBy" placeholder="Advisor, tech, or retail" /></label>
+          <label>Source
+            <select id="lostSource">
+              <option value="service">Service</option>
+              <option value="retail">Retail</option>
+              <option value="wholesale">Wholesale</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label>Times requested <input id="lostTimes" type="number" min="1" value="1" /></label>
+          <label>Dollars <input id="lostDollars" type="number" step="0.01" /></label>
+          <label style="grid-column: span 2">Notes <input id="lostNotes" /></label>
+        </div>
+        <div class="actions" style="margin-top:0">
+          <button class="btn primary" id="addLost" type="button">Add lost sale</button>
+          <span class="notice" id="lostStatus"></span>
+        </div>
+        <div class="table-wrap" style="margin-top:12px">
+          <table>
+            <thead><tr><th>Part</th><th>Who</th><th>Hits</th><th>$</th><th>Status</th><th></th></tr></thead>
+            <tbody id="lostTable"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel" style="margin-top:14px">
+        <h2>Special order parts aging <span class="cdk">SOP → RO</span></h2>
+        <p class="meta">REC over 7–10 days is a bay bottleneck. Past 14 days risks a non-returnable write-off.</p>
+        <div class="row">
+          <label>Part number <input id="sopPart" /></label>
+          <label>Description <input id="sopDesc" /></label>
+          <label>Customer <input id="sopCustomer" /></label>
+          <label>RO number <input id="sopRo" /></label>
+        </div>
+        <div class="row">
+          <label>Received date <input id="sopReceived" type="date" /></label>
+          <label>Dollars <input id="sopDollars" type="number" step="0.01" /></label>
+          <label style="grid-column: span 2">Notes <input id="sopNotes" /></label>
+        </div>
+        <div class="actions" style="margin-top:0">
+          <button class="btn primary" id="addSop" type="button">Add SOP</button>
+          <span class="notice" id="sopStatus"></span>
+        </div>
+        <div class="table-wrap" style="margin-top:12px">
+          <table>
+            <thead><tr><th>Part</th><th>Customer / RO</th><th>Age</th><th>$</th><th>Status</th><th></th></tr></thead>
+            <tbody id="sopTable"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <div class="grid two" style="margin-top:14px">
+        <article class="panel">
+          <h2>Backorders &amp; constraints</h2>
+          <div class="row" style="grid-template-columns: 1fr 1fr;">
+            <label>Part number <input id="boPart" /></label>
+            <label>Severity
+              <select id="boSeverity">
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+              </select>
+            </label>
+          </div>
+          <label>Description <input id="boDesc" /></label>
+          <label>Vehicle / location <input id="boVehicle" placeholder="Stop-sale, body, or bay" /></label>
+          <div class="row" style="grid-template-columns: 1fr 1fr;">
+            <label>Reason <input id="boReason" placeholder="stop-sale / body shop" /></label>
+            <label>ETA <input id="boEta" /></label>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="addBo" type="button">Add backorder</button>
+            <span class="notice" id="boStatus"></span>
+          </div>
+          <div class="table-wrap" style="margin-top:12px">
+            <table>
+              <thead><tr><th>Part</th><th>Hold</th><th>Status</th><th></th></tr></thead>
+              <tbody id="boTable"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <h2>Outstanding cores <span class="cdk">CRA</span></h2>
+          <div class="row" style="grid-template-columns: 1fr 1fr;">
+            <label>Part number <input id="corePart" /></label>
+            <label>Dollars <input id="coreDollars" type="number" step="0.01" /></label>
+          </div>
+          <label>Description <input id="coreDesc" /></label>
+          <label>Tech or wholesale account <input id="coreAccount" /></label>
+          <div class="actions">
+            <button class="btn primary" id="addCore" type="button">Add core</button>
+            <span class="notice" id="coreStatus"></span>
+          </div>
+          <div class="table-wrap" style="margin-top:12px">
+            <table>
+              <thead><tr><th>Part</th><th>Who</th><th>$</th><th>Status</th><th></th></tr></thead>
+              <tbody id="coreTable"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="history" class="tab-page hidden">
+      <article class="panel">
+        <h2>Previously reported days</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th><th>On-hand</th><th>N6M</th><th>Sales</th><th>Wait</th><th>RIM</th><th>Cores</th><th>CSO</th>
+              </tr>
+            </thead>
+            <tbody id="historyRows"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="compat" class="tab-page hidden">
+      <article class="panel compat">
+        <h2>GEAUXCHEVROLETSALESLOG stays intact</h2>
+        <p>This is the same collision-safe pattern as Sales (SLM), Service (SMR), and Fleet (FLM). Parts tickets already in the workbook stay operational — this tool is the daily GM briefing, not a replacement for CDK or PARTS_TICKETS.</p>
+        <ul>
+          <li><strong>No reserved triggers.</strong> This project never defines <code>onOpen</code>, <code>onEdit</code>, <code>doGet</code>, or <code>doPost</code>.</li>
+          <li><strong>Namespaced only.</strong> Every function, menu handler, and ScriptProperty key starts with <code>PMR_</code>.</li>
+          <li><strong>Dedicated tabs only.</strong> Writes go to <code>PMR_Dashboard</code>, <code>PMR_Daily</code>, <code>PMR_LostSales</code>, <code>PMR_Sop</code>, <code>PMR_Backorders</code>, <code>PMR_Cores</code>, and <code>PMR_Config</code>.</li>
+          <li><strong>Protected live tabs.</strong> <code>PARTS_ITEMS</code>, <code>PARTS_TICKETS</code>, <code>SVC_PARTS_REQUESTS</code>, <code>SERVICE BOARD</code>, <code>SUMMARY</code>, <code>HOME</code>, and existing <code>SLM_</code> / <code>SMR_</code> / <code>FLM_</code> tabs are read-only to PMR.</li>
+        </ul>
+        <p>In Apps Script, add <code>PMR_onOpen();</code> to your existing <code>onOpen</code>, then run <code>PMR_install()</code>. Optional: send the parts manager the standalone web-app URL so they never open the sales log.</p>
+        <div id="compatAudit" class="meta" style="margin-top:12px"></div>
+      </article>
+    </section>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
