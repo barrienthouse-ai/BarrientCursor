@@ -42,14 +42,26 @@ function SMR_install() {
 
 function SMR_briefingHtml_() {
   var template = HtmlService.createTemplateFromFile('SMR_App');
-  var stored = SMR_briefStoreGet_(SMR_todayKey_());
-  template.seedJson = stored && stored.summary ? SMR_safeJson_(stored) : 'null';
+  var seedJson = 'null';
+  try {
+    if (typeof SMR_briefStoreGet_ === 'function') {
+      var stored = SMR_briefStoreGet_(SMR_todayKey_());
+      if (stored && stored.summary) {
+        seedJson = SMR_safeJson_(stored);
+      }
+    }
+  } catch (ignore) {}
+  template.seedJson = seedJson;
   return template.evaluate().setTitle('Service Manager Report');
 }
 
 function SMR_openBriefing() {
-  var html = SMR_briefingHtml_().setWidth(1240).setHeight(860);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Service Manager Report');
+  try {
+    var html = SMR_briefingHtml_().setWidth(1240).setHeight(860);
+    SpreadsheetApp.getUi().showModalDialog(html, 'Service Manager Report');
+  } catch (err) {
+    SpreadsheetApp.getUi().alert('Service Manager Report could not open: ' + (err.message || err));
+  }
 }
 
 function SMR_ensureOpenTrigger_() {

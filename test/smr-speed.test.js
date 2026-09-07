@@ -18,7 +18,9 @@ describe('SMR load-speed contract', () => {
     assert.match(menu, /seedJson/);
 
     const html = read('SMR_App.html');
-    assert.match(html, /var SEED = <\?!= seedJson \?>;/);
+    assert.match(html, /id="smr-seed"/);
+    assert.match(html, /<\?!= seedJson \?>/);
+    assert.match(html, /var SEED = null;/);
     assert.match(html, /function overlaySummary\(/);
     assert.match(html, /Opened instantly from last save/);
     assert.match(html, /if \(SEED && SEED\.summary\)/);

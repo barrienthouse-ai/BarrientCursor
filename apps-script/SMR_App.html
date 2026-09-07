@@ -175,8 +175,22 @@
       </div>
     </section>
   </div>
+  <script id="smr-seed" type="application/json"><?!= seedJson ?></script>
   <script>
-    var SEED = <?!= seedJson ?>;
+    var SEED = null;
+    (function () {
+      var el = document.getElementById('smr-seed');
+      if (!el) {
+        return;
+      }
+      var raw = String(el.textContent || '').replace(/^\s+|\s+$/g, '');
+      if (!raw || raw.indexOf('<?') !== -1 || raw === 'null') {
+        return;
+      }
+      try {
+        SEED = JSON.parse(raw);
+      } catch (ignore) {}
+    })();
     var lastSummary = null;
     var lastHeat = [];
     var weekMode = 'sold';
