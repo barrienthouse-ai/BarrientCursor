@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #000; background: #fff; }
+    @media screen {
+      body { background: #777; }
+      .print-btn-bar {
+        width: 8.5in; margin: 12px auto 8px auto;
+        display: flex; gap: 10px; justify-content: flex-end;
+      }
+      .print-btn-bar button {
+        padding: 8px 22px; font-size: 13px; font-weight: bold;
+        border: none; border-radius: 4px; cursor: pointer;
+      }
+      .btn-p { background: #1a3a5c; color: white; }
+      .btn-c { background: #ea4335; color: white; }
+      .page {
+        width: 8.5in; min-height: 11in; margin: 0 auto 24px auto;
+        background: white; padding: 0.45in 0.55in 0.4in 0.55in;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      }
+    }
+    @media print {
+      body { background: white; }
+      .print-btn-bar { display: none !important; }
+      .page { padding: 0.35in 0.45in; }
+    }
+    .hdr {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 7pt; padding-bottom: 5pt; border-bottom: 2px solid #000;
+    }
+    .logo-GEAUX { font-size: 28pt; font-style: italic; font-weight: bold; line-height: 1; }
+    .logo-group { font-size: 10pt; letter-spacing: 3px; margin-top: 2pt; }
+    .hdr-right { font-size: 9pt; text-align: right; }
+    .hdr-right .hdr-row { display: flex; justify-content: flex-end; align-items: baseline; gap: 5pt; margin-bottom: 3pt; }
+    .hdr-right .lbl { font-weight: bold; white-space: nowrap; font-size: 8pt; }
+    .hdr-right .val { border-bottom: 1px solid #000; min-width: 170pt; padding: 0 3pt 1pt 3pt; font-size: 9pt; text-align: left; }
+    .internal-banner {
+      text-align: center; font-size: 8pt; font-weight: bold; letter-spacing: 2px;
+      border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 2pt 0; margin: 5pt 0 7pt 0;
+    }
+    .sec-hdr {
+      font-size: 9pt; font-weight: bold; background: #e0e0e0; padding: 2pt 5pt;
+      border: 1px solid #999; margin-bottom: 4pt; text-transform: uppercase;
+    }
+    .cust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4pt 14pt; margin-bottom: 7pt; }
+    .cf { display: flex; align-items: baseline; gap: 4pt; font-size: 8.5pt; }
+    .cf .lbl { font-weight: bold; font-size: 7.5pt; text-transform: uppercase; white-space: nowrap; }
+    .cf .val { border-bottom: 1px solid #000; flex: 1; min-width: 50pt; padding: 0 2pt 1pt 2pt; font-size: 9pt; }
+    .cust-full { grid-column: 1 / -1; }
+    .veh-row { display: flex; gap: 10pt; margin-bottom: 4pt; flex-wrap: wrap; }
+    .vc { display: flex; align-items: baseline; gap: 3pt; font-size: 8.5pt; }
+    .vc .lbl { font-weight: bold; font-size: 7.5pt; text-transform: uppercase; white-space: nowrap; }
+    .vc .val { border-bottom: 1px solid #000; min-width: 45pt; padding: 0 2pt 1pt 2pt; font-size: 9pt; }
+    .vc .val.w { min-width: 90pt; }
+    .vc .val.xw { min-width: 150pt; }
+    .vc .val.vin { min-width: 170pt; font-size: 8pt; }
+    hr.div { border: none; border-top: 1px solid #999; margin: 5pt 0 6pt 0; }
+    .pt { width: 100%; border-collapse: collapse; margin-bottom: 5pt; }
+    .pt td { padding: 2.5pt 4pt; border-bottom: 1px solid #e0e0e0; font-size: 13pt; }
+    .pt .lc { text-align: right; padding-right: 10pt; color: #222; width: 58%; }
+    .pt .ac { text-align: right; border-bottom: 1px solid #000; min-width: 95pt; padding-right: 6pt; }
+    .pt tr.bold-row td { font-weight: bold; font-size: 14pt; }
+    .pt tr.sub td { font-weight: bold; font-size: 14pt; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding-top: 4pt; padding-bottom: 4pt; }
+    .pt tr.sp td { font-weight: bold; font-size: 17pt; border-top: 2px solid #000; border-bottom: 2.5px solid #000; padding-top: 5pt; padding-bottom: 5pt; }
+    .pt tr.disc td { font-size: 13.5pt; font-style: italic; }
+    .pt tr.grand td { font-weight: bold; font-size: 18pt; border-top: 2.5px solid #000; border-bottom: 3px double #000; padding-top: 6pt; padding-bottom: 6pt; background: #f5f5f5; }
+    .pt .indent { padding-left: 22pt; }
+    .ttl { text-align: center; font-size: 9pt; font-weight: bold; letter-spacing: 1px; margin: 3pt 0 8pt 0; padding-top: 4pt; border-top: 1px solid #bbb; }
+    .sig-row { display: flex; justify-content: space-between; gap: 20pt; margin-top: 14pt; }
+    .sig-block { flex: 1; }
+    .sig-block .sig-lbl { font-size: 8pt; font-weight: bold; margin-bottom: 4pt; }
+    .disclaimer { font-size: 7pt; color: #333; line-height: 1.55; margin-top: 8pt; }
+    .for-info { font-size: 7.5pt; font-style: italic; margin-top: 5pt; color: #555; }
+  </style>
+</head>
+<body>
+  <div class="print-btn-bar">
+    <button class="btn-p" onclick="window.print()">PRINT</button>
+    <button class="btn-c" onclick="window.close()">CLOSE</button>
+  </div>
+  <div class="page">
+    <div class="hdr">
+      <div>
+        <div class="logo-GEAUX">GEAUX</div>
+        <div class="logo-group">AUTOMOTIVE GROUP</div>
+      </div>
+      <div class="hdr-right">
+        <div class="hdr-row"><span class="lbl">DATE:</span><span class="val" id="p_date"></span></div>
+        <div class="hdr-row"><span class="lbl">SALESPERSON:</span><span class="val" id="p_salesperson"></span></div>
+        <div class="hdr-row"><span class="lbl">MANAGER:</span><span class="val" id="p_manager"></span></div>
+        <div class="hdr-row"><span class="lbl">DEAL NUMBER:</span><span class="val" id="p_dealNumber"></span></div>
+      </div>
+    </div>
+    <div class="internal-banner">FOR INTERNAL USE ONLY — DO NOT RELEASE TO CUSTOMER</div>
+
+    <div class="sec-hdr">Customer</div>
+    <div class="cust-grid">
+      <div class="cf cust-full"><span class="lbl">PURCHASER:</span><span class="val" id="p_customerName"></span></div>
+      <div class="cf cust-full"><span class="lbl">ADDRESS:</span><span class="val" id="p_address"></span></div>
+      <div class="cf"><span class="lbl">HOME PHONE:</span><span class="val" id="p_homePhone"></span></div>
+      <div class="cf"><span class="lbl">DOB:</span><span class="val" id="p_dob"></span></div>
+      <div class="cf"><span class="lbl">WORK PHONE:</span><span class="val" id="p_workPhone"></span></div>
+      <div class="cf"><span class="lbl">EMAIL ADDRESS:</span><span class="val" id="p_email"></span></div>
+      <div class="cf"><span class="lbl">CELL PHONE:</span><span class="val" id="p_cellPhone"></span></div>
+    </div>
+    <hr class="div">
+
+    <div class="sec-hdr">Vehicle</div>
+    <div class="veh-row">
+      <div class="vc"><span class="lbl">STOCK #:</span><span class="val" id="p_stockNum"></span></div>
+      <div class="vc"><span class="lbl">NEW/USED:</span><span class="val" id="p_newUsed"></span></div>
+      <div class="vc"><span class="lbl">VIN:</span><span class="val vin" id="p_vin"></span></div>
+      <div class="vc"><span class="lbl">MILEAGE:</span><span class="val" id="p_mileage"></span></div>
+    </div>
+    <div class="veh-row">
+      <div class="vc"><span class="lbl">VEHICLE:</span><span class="val" id="p_year"></span></div>
+      <div class="vc"><span class="val" id="p_make"></span></div>
+      <div class="vc"><span class="val w" id="p_model"></span></div>
+      <div class="vc"><span class="lbl">COLOR:</span><span class="val" id="p_color"></span></div>
+    </div>
+    <div class="veh-row">
+      <div class="vc"><span class="lbl">TYPE:</span><span class="val" id="p_vehicleType"></span></div>
+    </div>
+    <hr class="div">
+
+    <div class="sec-hdr">Trade In</div>
+    <div class="veh-row">
+      <div class="vc"><span class="lbl">PAYOFF:</span><span class="val" id="p_tradePayoff"></span></div>
+      <div class="vc"><span class="lbl">VIN:</span><span class="val vin" id="p_tradeVin"></span></div>
+      <div class="vc"><span class="lbl">MILEAGE:</span><span class="val" id="p_tradeMileage"></span></div>
+    </div>
+    <div class="veh-row">
+      <div class="vc"><span class="lbl">VEHICLE:</span><span class="val xw" id="p_tradeVehicle"></span></div>
+      <div class="vc"><span class="lbl">COLOR:</span><span class="val" id="p_tradeColor"></span></div>
+    </div>
+    <div class="veh-row">
+      <div class="vc"><span class="lbl">TYPE:</span><span class="val" id="p_tradeType"></span></div>
+    </div>
+    <hr class="div">
+
+    <table class="pt">
+      <tbody>
+        <tr class="bold-row"><td class="lc">MARKET VALUE:</td><td class="ac" id="p_marketValue"></td></tr>
+        <tr id="row_savings" class="bold-row" style="display:none;"><td class="lc">GEAUX CHEVROLET SAVINGS:</td><td class="ac" id="p_savings"></td></tr>
+        <tr id="row_rebate1" style="display:none;"><td class="lc indent" id="lbl_rebate1">REBATE 1:</td><td class="ac" id="p_rebate1"></td></tr>
+        <tr id="row_rebate2" style="display:none;"><td class="lc indent" id="lbl_rebate2">REBATE 2:</td><td class="ac" id="p_rebate2"></td></tr>
+        <tr id="row_rebate3" style="display:none;"><td class="lc indent" id="lbl_rebate3">REBATE 3:</td><td class="ac" id="p_rebate3"></td></tr>
+        <tr id="row_rebate4" style="display:none;"><td class="lc indent" id="lbl_rebate4">REBATE 4:</td><td class="ac" id="p_rebate4"></td></tr>
+        <tr id="row_rebate5" style="display:none;"><td class="lc indent" id="lbl_rebate5">REBATE 5:</td><td class="ac" id="p_rebate5"></td></tr>
+        <tr id="row_autoguard" style="display:none;"><td class="lc indent" id="lbl_autoguard">AUTOGUARD</td><td class="ac" id="p_autoguard"></td></tr>
+        <tr id="row_acc1" style="display:none;"><td class="lc indent" id="lbl_acc1">ACC 1</td><td class="ac" id="p_acc1"></td></tr>
+        <tr id="row_acc2" style="display:none;"><td class="lc indent" id="lbl_acc2">ACC 2</td><td class="ac" id="p_acc2"></td></tr>
+        <tr id="row_acc3" style="display:none;"><td class="lc indent" id="lbl_acc3">ACC 3</td><td class="ac" id="p_acc3"></td></tr>
+        <tr class="sub"><td class="lc">ADJUSTED MARKET VALUE:</td><td class="ac" id="p_adjMV"></td></tr>
+        <tr id="row_tradeAllowance" style="display:none;"><td class="lc">TRADE ALLOWANCE:</td><td class="ac" id="p_tradeAllowance"></td></tr>
+        <tr id="row_tradeDiff" class="sub" style="display:none;"><td class="lc">TRADE DIFFERENCE:</td><td class="ac" id="p_tradeDiff"></td></tr>
+        <tr id="row_balanceToRelease" style="display:none;"><td class="lc">BALANCE TO RELEASE TRADE TITLE:</td><td class="ac" id="p_balanceToRelease"></td></tr>
+        <tr id="row_cashDeposit" style="display:none;"><td class="lc">CASH DEPOSIT:</td><td class="ac" id="p_cashDeposit"></td></tr>
+        <tr class="sp"><td class="lc">SALES PRICE:</td><td class="ac" id="p_salesPrice"></td></tr>
+        <tr id="row_tax" style="display:none;" class="disc"><td class="lc indent">SALES TAX:</td><td class="ac" id="p_tax"></td></tr>
+        <tr id="row_fees" style="display:none;" class="disc"><td class="lc indent">TITLE, LICENSE &amp; FEES:</td><td class="ac" id="p_fees"></td></tr>
+        <tr id="row_total" style="display:none;" class="grand"><td class="lc">TOTAL AMOUNT:</td><td class="ac" id="p_total"></td></tr>
+      </tbody>
+    </table>
+    <div class="ttl" id="ttl_line">PLUS (T.T.L. AND TRADE TITLE/PAYOFF)</div>
+    <hr class="div">
+    <div class="sig-row">
+      <div class="sig-block">
+        <div class="sig-lbl">MANAGER APPROVAL:</div>
+        <div style="height:20pt; border-bottom:1px solid #000;"></div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-lbl">SALESPERSON:</div>
+        <div style="height:20pt; border-bottom:1px solid #000;"></div>
+      </div>
+    </div>
+    <div class="disclaimer">
+      Internal worksheet only. Not a contract of sale and not a credit application. Customer personally identifiable numbers (SSN) are not printed on this form.
+    </div>
+    <div class="for-info">For information only. This is not an offer or contract of sale.</div>
+  </div>
+
+  <script>
+    var DESK_DATA = __DESK_DATA_PLACEHOLDER__;
+    if (typeof DESK_DATA === 'string') {
+      try { DESK_DATA = JSON.parse(DESK_DATA); } catch (e) { DESK_DATA = {}; }
+    }
+
+    function pf(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+    function fmtMoney(v) {
+      var n = parseFloat(v);
+      if (isNaN(n) || n === 0) return '';
+      var sign = n < 0 ? '-' : '';
+      return sign + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function parseLocalDate(v) {
+      if (!v) return '';
+      if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
+        return (v.getMonth()+1) + '/' + v.getDate() + '/' + v.getFullYear();
+      }
+      var s = String(v).trim();
+      var iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+      if (iso) return Number(iso[2]) + '/' + Number(iso[3]) + '/' + iso[1];
+      var us = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
+      if (us) return s;
+      return s;
+    }
+    function set(id, val) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = val || '';
+    }
+    function showRow(rowId, val) {
+      var n = parseFloat(val);
+      var el = document.getElementById(rowId);
+      if (el) el.style.display = (!isNaN(n) && n !== 0) ? '' : 'none';
+    }
+
+    (function populate() {
+      var d = DESK_DATA || {};
+      if (!d || (typeof d === 'object' && !Object.keys(d).length)) {
+        document.body.insertAdjacentHTML('afterbegin',
+          '<div style="background:#721c24;color:white;text-align:center;padding:8px;">Print data missing — close and print again from the desking tool.</div>');
+        return;
+      }
+      var c = d._calc || {};
+      set('p_date', parseLocalDate(d.date));
+      set('p_salesperson', d.salesperson);
+      set('p_manager', d.manager);
+      set('p_dealNumber', d.dealNumber);
+      set('p_customerName', d.customerName);
+      set('p_address', d.address);
+      set('p_dob', d.dob);
+      set('p_homePhone', d.homePhone);
+      set('p_workPhone', d.workPhone);
+      set('p_cellPhone', d.cellPhone);
+      set('p_email', d.email);
+      set('p_stockNum', d.stockNum || d.stockNumber);
+      set('p_newUsed', d.newUsed);
+      set('p_vin', d.vin);
+      set('p_mileage', d.mileage);
+      set('p_year', d.year);
+      set('p_make', d.make);
+      set('p_model', d.model);
+      set('p_color', d.color);
+      set('p_vehicleType', d.vehicleType);
+      set('p_tradePayoff', fmtMoney(d.tradePayoff));
+      set('p_tradeVin', d.tradeVin);
+      set('p_tradeMileage', d.tradeMileage);
+      set('p_tradeVehicle', d.tradeVehicle);
+      set('p_tradeColor', d.tradeColor);
+      set('p_tradeType', d.tradeType);
+
+      var mv = pf(d.marketValue);
+      var sav = pf(d.savings);
+      var reb1 = pf(d.rebate1), reb2 = pf(d.rebate2), reb3 = pf(d.rebate3), reb4 = pf(d.rebate4), reb5 = pf(d.rebate5);
+      var ag = pf(d.autoguardPrice), a1 = pf(d.acc1Price), a2 = pf(d.acc2Price), a3 = pf(d.acc3Price);
+      var trAlw = pf(d.tradeAllowance), balRel = pf(d.balanceToRelease), cashDep = pf(d.cashDeposit);
+      var adjMV = c.adjMV != null ? c.adjMV : (mv - sav - reb1 - reb2 - reb3 - reb4 - reb5 + ag + a1 + a2 + a3);
+      var tradeDiff = adjMV - trAlw;
+      var sp = c.salesPrice != null ? c.salesPrice : (adjMV - trAlw + balRel);
+      var tax = c.tax != null ? c.tax : 0;
+      var fees = c.fees != null ? c.fees : 0;
+      var totalAmt = c.totalPlusTtl != null ? c.totalPlusTtl : (sp + tax + fees);
+
+      set('p_marketValue', fmtMoney(mv));
+      set('p_adjMV', fmtMoney(adjMV));
+      set('p_salesPrice', fmtMoney(sp));
+      showRow('row_savings', sav); set('p_savings', fmtMoney(sav));
+      showRow('row_rebate1', reb1); set('p_rebate1', fmtMoney(reb1)); if (d.rebate1Label) set('lbl_rebate1', d.rebate1Label + ':');
+      showRow('row_rebate2', reb2); set('p_rebate2', fmtMoney(reb2)); if (d.rebate2Label) set('lbl_rebate2', d.rebate2Label + ':');
+      showRow('row_rebate3', reb3); set('p_rebate3', fmtMoney(reb3)); if (d.rebate3Label) set('lbl_rebate3', d.rebate3Label + ':');
+      showRow('row_rebate4', reb4); set('p_rebate4', fmtMoney(reb4)); if (d.rebate4Label) set('lbl_rebate4', d.rebate4Label + ':');
+      showRow('row_rebate5', reb5); set('p_rebate5', fmtMoney(reb5)); if (d.rebate5Label) set('lbl_rebate5', d.rebate5Label + ':');
+      showRow('row_autoguard', ag); set('p_autoguard', fmtMoney(ag)); if (d.autoguardLabel) set('lbl_autoguard', d.autoguardLabel);
+      showRow('row_acc1', a1); set('p_acc1', fmtMoney(a1)); if (d.acc1Label) set('lbl_acc1', d.acc1Label);
+      showRow('row_acc2', a2); set('p_acc2', fmtMoney(a2)); if (d.acc2Label) set('lbl_acc2', d.acc2Label);
+      showRow('row_acc3', a3); set('p_acc3', fmtMoney(a3)); if (d.acc3Label) set('lbl_acc3', d.acc3Label);
+      showRow('row_tradeAllowance', trAlw); set('p_tradeAllowance', fmtMoney(trAlw));
+      if (trAlw > 0) {
+        document.getElementById('row_tradeDiff').style.display = '';
+        set('p_tradeDiff', fmtMoney(tradeDiff));
+      }
+      showRow('row_balanceToRelease', balRel); set('p_balanceToRelease', fmtMoney(balRel));
+      showRow('row_cashDeposit', cashDep); set('p_cashDeposit', fmtMoney(cashDep));
+
+      var withTaxFees = d.printWithTaxFees === true || d.printWithTaxFees === 'true';
+      var ttlEl = document.getElementById('ttl_line');
+      if (withTaxFees) {
+        document.getElementById('row_tax').style.display = '';
+        document.getElementById('row_fees').style.display = '';
+        document.getElementById('row_total').style.display = '';
+        set('p_tax', fmtMoney(tax));
+        set('p_fees', fmtMoney(fees));
+        set('p_total', fmtMoney(totalAmt));
+        if (ttlEl) ttlEl.style.display = 'none';
+      }
+    })();
+  </script>
+</body>
+</html>

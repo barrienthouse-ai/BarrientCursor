@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Personalized Quote</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold: #c8a84b; --dark: #0d1f33; --mid: #1a3a5c; --light: #e8f0f8;
+    --green: #1e7e34; --red: #c0392b; --border: #c5cdd8; --text: #1a1a1a; --muted: #5f6368;
+  }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: var(--text); font-size: 15px; line-height: 1.5; }
+  .site-header { background: var(--dark); color: white; position: sticky; top: 0; z-index: 100; }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 14px 24px; display: flex; justify-content: space-between; gap: 16px; }
+  .logo-name { font-size: 26px; font-weight: 900; font-style: italic; color: var(--gold); line-height: 1; }
+  .logo-sub { font-size: 10px; letter-spacing: 4px; color: #aac4e0; margin-top: 2px; text-transform: uppercase; }
+  .header-meta { text-align: right; font-size: 12px; color: #aac4e0; }
+  .header-meta strong { color: white; }
+  .payment-hero { background: linear-gradient(135deg, var(--mid), var(--dark)); color: white; padding: 28px 24px; text-align: center; }
+  .hero-label { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #aac4e0; }
+  .hero-payment { font-size: 64px; font-weight: 900; color: #7dffb0; line-height: 1; }
+  .hero-sub { font-size: 14px; color: #aac4e0; margin-top: 6px; }
+  .hero-pills { display: flex; justify-content: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  .hero-pill { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 5px 14px; font-size: 12px; }
+  .hero-pill span { color: var(--gold); font-weight: bold; }
+  .main-wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+  @media (max-width: 860px) { .main-wrap { grid-template-columns: 1fr; } }
+  .card { background: white; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.12); overflow: hidden; margin-bottom: 20px; }
+  .card-header { background: var(--mid); color: white; padding: 10px 18px; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+  .card-body { padding: 18px; }
+  .veh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+  .veh-field.full { grid-column: 1 / -1; }
+  .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+  .val { font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+  .credit-tier-wrap, .term-rate-wrap, .down-payment-wrap {
+    background: var(--light); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;
+  }
+  .credit-tier-wrap { background: #fff8e1; border-color: var(--gold); }
+  select, input[type="number"] { width: 100%; padding: 10px 14px; border: 2px solid var(--border); border-radius: 6px; font-size: 15px; font-weight: 700; }
+  .tr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .protection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 600px) { .protection-grid { grid-template-columns: 1fr; } }
+  .pkg-toggle, .acc-item {
+    border: 2px solid var(--border); border-radius: 8px; padding: 12px 14px; cursor: pointer; background: white; user-select: none;
+  }
+  .pkg-toggle.active, .acc-item.active { border-color: var(--green); background: #f0fff4; }
+  .pkg-name, .acc-name { font-size: 13px; font-weight: 700; }
+  .pkg-desc, .acc-desc { font-size: 11px; color: var(--muted); }
+  .pkg-price, .acc-price { font-size: 14px; font-weight: 700; color: var(--mid); margin-top: 6px; }
+  .acc-list { display: flex; flex-direction: column; gap: 8px; }
+  .acc-item { display: flex; align-items: center; gap: 12px; }
+  .acc-info { flex: 1; }
+  .sticky-quote { position: sticky; top: 80px; }
+  .quote-table { width: 100%; border-collapse: collapse; }
+  .quote-table td { padding: 7px 4px; font-size: 14px; border-bottom: 1px solid #f0f0f0; }
+  .quote-table td:last-child { text-align: right; font-weight: 600; }
+  .quote-table tr.section-head td { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); padding-top: 14px; border: none; }
+  .quote-table tr.subtotal td { font-weight: 700; border-top: 2px solid var(--mid); border-bottom: 2px solid var(--mid); }
+  .quote-table tr.total-row td { font-weight: 900; font-size: 17px; border-top: 3px solid var(--dark); }
+  .quote-table tr.deduction td:last-child { color: var(--red); }
+  .payment-box { background: linear-gradient(135deg, var(--mid), var(--dark)); color: white; border-radius: 8px; padding: 18px; text-align: center; margin-top: 16px; }
+  .pb-amount { font-size: 52px; font-weight: 900; color: #7dffb0; line-height: 1; }
+  .payment-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .pd-item { background: rgba(255,255,255,0.08); border-radius: 6px; padding: 8px; }
+  .pd-lbl { font-size: 10px; color: #aac4e0; text-transform: uppercase; }
+  .disclaimer { max-width: 1100px; margin: 0 auto 32px; padding: 16px; font-size: 11px; color: var(--muted); }
+  .print-bar { max-width: 1100px; margin: 0 auto 20px; padding: 0 16px; text-align: right; }
+  .btn-print-quote, .btn-submit {
+    background: var(--mid); color: white; border: none; border-radius: 6px; padding: 10px 24px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .submit-section { max-width: 1100px; margin: 0 auto 32px; padding: 0 16px; display: none; }
+  .submit-card { background: linear-gradient(135deg, #0d1f33, #1a3a5c); border-radius: 12px; padding: 28px; color: white; text-align: center; }
+  .submit-card h3 { color: var(--gold); margin-bottom: 8px; }
+  .submit-notes { width: 100%; max-width: 560px; background: rgba(255,255,255,0.08); border: 1px solid rgba(200,168,75,0.4); border-radius: 8px; padding: 12px; color: white; min-height: 80px; margin: 16px auto; display: block; }
+  .btn-submit { background: var(--gold); color: var(--dark); padding: 16px 48px; font-size: 17px; }
+  .btn-submit:disabled { background: #888; }
+  #shareLinkBar { display: none; background: #1a3a5c; border-bottom: 2px solid var(--gold); padding: 10px 24px; text-align: center; color: #aac4e0; font-size: 13px; }
+  #confirmationScreen { display: none; position: fixed; inset: 0; background: var(--dark); z-index: 9999; overflow-y: auto; }
+  .confirm-inner { max-width: 640px; margin: 60px auto; padding: 0 24px 60px; text-align: center; color: white; }
+  .confirm-pmt { background: var(--gold); border-radius: 10px; padding: 20px; color: var(--dark); margin: 24px 0; }
+  .confirm-pmt-amount { font-size: 42px; font-weight: 900; }
+  .confirm-summary { background: #1a3a5c; border-radius: 10px; padding: 20px; text-align: left; }
+  .confirm-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.08); color: #c8d8e8; }
+  .badge { display: inline-block; background: var(--gold); color: var(--dark); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; margin-left: 6px; }
+  .selected-bar { background: var(--light); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 12px; margin-top: 10px; }
+  .dp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  input[type="range"] { width: 100%; }
+  .preview-note { display: none; background: #fff3cd; color: #856404; text-align: center; padding: 8px; font-size: 12px; font-weight: 700; }
+  @media print {
+    .print-bar, .submit-section, #shareLinkBar, .preview-note { display: none !important; }
+    .sticky-quote { position: static; }
+    .main-wrap { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="preview-note" id="previewNote">Manager preview — this page is not the customer link. Catalog, rates, and store info come from the spreadsheet sheets, not from code.</div>
+<header class="site-header">
+  <div class="header-inner">
+    <div>
+      <div class="logo-name" id="hdr_store">GEAUX CHEVROLET</div>
+      <div class="logo-sub" id="hdr_city">—</div>
+    </div>
+    <div class="header-meta">
+      <div><strong id="hdr_customer">Your Personalized Quote</strong></div>
+      <div>Quote Date: <strong id="hdr_date">—</strong> | Deal #: <strong id="hdr_deal">—</strong></div>
+      <div>Salesperson: <strong id="hdr_sales">—</strong></div>
+    </div>
+  </div>
+</header>
+<div id="shareLinkBar">Your personalized quote link: <a id="shareLinkAnchor" href="#"></a>
+  <button type="button" onclick="copyShareLink()" style="background:var(--gold);color:var(--dark);border:none;border-radius:4px;padding:4px 12px;font-weight:700;margin-left:8px;cursor:pointer;">Copy Link</button>
+</div>
+
+<div id="confirmationScreen">
+  <div class="confirm-inner">
+    <div class="logo-name" id="confirm_store">GEAUX CHEVROLET</div>
+    <div class="logo-sub" id="confirm_city">—</div>
+    <div class="confirm-title" style="font-size:28px;font-weight:900;margin:32px 0 12px;">Your Selections Are In!</div>
+    <p>Thank you, <strong id="confirm_name"></strong>. Your selections have been sent to the dealership. A team member will follow up shortly.</p>
+    <div class="confirm-pmt">
+      <div>Your Estimated Monthly Payment</div>
+      <div class="confirm-pmt-amount">$<span id="confirm_payment"></span></div>
+      <div><span id="confirm_term"></span> months @ <span id="confirm_apr"></span>% APR</div>
+    </div>
+    <div class="confirm-summary">
+      <div class="confirm-row"><span>Vehicle</span><strong id="confirm_vehicle"></strong></div>
+      <div class="confirm-row"><span>Down Payment</span><strong id="confirm_down"></strong></div>
+      <div class="confirm-row"><span>Amount Financed</span><strong id="confirm_financed"></strong></div>
+      <div class="confirm-row"><span>Protection Packages</span><strong id="confirm_protection"></strong></div>
+      <div class="confirm-row"><span>Accessories</span><strong id="confirm_accessories"></strong></div>
+    </div>
+    <p id="confirm_contact" style="margin-top:24px;color:#7a9bb5;"></p>
+  </div>
+</div>
+
+<div class="payment-hero">
+  <div class="hero-label">Your Estimated Monthly Payment</div>
+  <div class="hero-payment"><span id="hero_payment">—</span></div>
+  <div class="hero-sub">per month | <span id="hero_term">—</span> months | <span id="hero_rate">—</span>% APR</div>
+  <div class="hero-pills">
+    <div class="hero-pill">Vehicle: <span id="pill_vehicle">—</span></div>
+    <div class="hero-pill">Amount Financed: <span id="pill_financed">—</span></div>
+    <div class="hero-pill">Down Payment: <span id="pill_down">—</span></div>
+  </div>
+</div>
+<div class="print-bar"><button class="btn-print-quote" type="button" onclick="window.print()">Print / Save Quote</button></div>
+
+<div class="main-wrap">
+  <div>
+    <div class="card">
+      <div class="card-header">Vehicle Information</div>
+      <div class="card-body">
+        <div class="veh-grid">
+          <div class="veh-field full"><div class="lbl">Vehicle</div><div class="val" id="v_fullname" style="font-size:18px;">—</div></div>
+          <div class="veh-field"><div class="lbl">Stock #</div><div class="val" id="v_stock">—</div></div>
+          <div class="veh-field"><div class="lbl">Condition</div><div class="val" id="v_newused">—</div></div>
+          <div class="veh-field"><div class="lbl">VIN</div><div class="val" id="v_vin" style="font-size:12px;">—</div></div>
+          <div class="veh-field"><div class="lbl">Color</div><div class="val" id="v_color">—</div></div>
+          <div class="veh-field"><div class="lbl">MSRP / Market Value</div><div class="val" id="v_msrp">—</div></div>
+          <div class="veh-field"><div class="lbl">Mileage</div><div class="val" id="v_mileage">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-tier-wrap">
+      <label class="lbl">Select Your Credit Rating — Adjusts Interest Rate</label>
+      <select id="creditTierSelect" onchange="onCreditTierChange()"></select>
+      <p style="font-size:11px;color:var(--muted);margin-top:6px;">Rates come from the dealership rate matrix. Final rate is subject to lender approval.</p>
+      <div>Estimated APR: <strong id="creditRateDisplay">—</strong></div>
+    </div>
+
+    <div class="term-rate-wrap">
+      <div class="lbl" style="margin-bottom:8px;">Loan Term &amp; Rate</div>
+      <div class="tr-grid">
+        <div>
+          <label class="lbl">Loan Term (months)</label>
+          <select id="termSelect" onchange="onTermChange()"></select>
+        </div>
+        <div>
+          <label class="lbl">Interest Rate (APR %)</label>
+          <input type="number" id="rateDisplay" readonly>
+        </div>
+      </div>
+    </div>
+
+    <div class="down-payment-wrap">
+      <div class="dp-header">
+        <div class="lbl">Adjust Your Down Payment</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span>$</span>
+          <input type="number" id="downPaymentInput" min="0" step="100" value="0" style="width:120px;" oninput="onDownPaymentInput()">
+        </div>
+      </div>
+      <input type="range" id="downPaymentSlider" min="0" max="20000" step="100" value="0" oninput="onDownPaymentSlider()">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);"><span>$0</span><span id="dp_max_label">$20,000</span></div>
+      <div id="dp_effect_msg" style="margin-top:8px;font-size:12px;color:var(--green);text-align:center;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Protection Packages <span class="badge">Optional</span></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Select packages to include. Edit names and prices on the QUOTE_CATALOG sheet.</p>
+        <div class="protection-grid" id="protectionGrid"></div>
+        <div class="selected-bar" id="protectionSummary">No protection packages selected.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">Accessories &amp; Add-Ons <span class="badge">Optional</span></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Catalog is loaded from the spreadsheet. Items already on the desk as ACC 1–3 are hidden so they are not double-sold.</p>
+        <div class="acc-list" id="accessoryList"></div>
+        <div class="selected-bar" id="accessorySummary">No accessories selected.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-col">
+    <div class="sticky-quote">
+      <div class="card">
+        <div class="card-header">Your Live Quote Breakdown</div>
+        <div class="card-body" style="padding:14px;">
+          <table class="quote-table">
+            <tbody>
+              <tr class="section-head"><td colspan="2">Vehicle Pricing</td></tr>
+              <tr><td>Market Value (MSRP)</td><td id="qt_msrp">—</td></tr>
+              <tr class="deduction" id="qt_savings_row"><td>GEAUX Savings</td><td id="qt_savings">—</td></tr>
+              <tr class="deduction" id="qt_reb1_row"><td id="qt_reb1_lbl">Rebate</td><td id="qt_reb1">—</td></tr>
+              <tr class="deduction" id="qt_reb2_row"><td id="qt_reb2_lbl">Rebate 2</td><td id="qt_reb2">—</td></tr>
+              <tr class="deduction" id="qt_reb3_row"><td id="qt_reb3_lbl">Rebate 3</td><td id="qt_reb3">—</td></tr>
+              <tr class="deduction" id="qt_reb4_row"><td id="qt_reb4_lbl">Rebate 4</td><td id="qt_reb4">—</td></tr>
+              <tr class="deduction" id="qt_reb5_row"><td id="qt_reb5_lbl">Rebate 5</td><td id="qt_reb5">—</td></tr>
+              <tr id="qt_autoguard_row"><td id="qt_autoguard_lbl">AutoGuard</td><td id="qt_autoguard">—</td></tr>
+              <tr id="qt_acc1_row"><td id="qt_acc1_lbl">ACC 1</td><td id="qt_acc1">—</td></tr>
+              <tr id="qt_acc2_row"><td id="qt_acc2_lbl">ACC 2</td><td id="qt_acc2">—</td></tr>
+              <tr id="qt_acc3_row"><td id="qt_acc3_lbl">ACC 3</td><td id="qt_acc3">—</td></tr>
+              <tr class="subtotal"><td>Adjusted Market Value</td><td id="qt_adjprice">—</td></tr>
+              <tr class="section-head"><td colspan="2">Quote Add-Ons</td></tr>
+              <tr id="qt_prot_row"><td>Protection Packages</td><td id="qt_prot_total">$0.00</td></tr>
+              <tr id="qt_acc_row"><td>Accessories</td><td id="qt_acc_total">$0.00</td></tr>
+              <tr class="section-head"><td colspan="2">Trade-In</td></tr>
+              <tr class="deduction" id="qt_trade_row"><td>Trade-In Allowance</td><td id="qt_trade">—</td></tr>
+              <tr id="qt_payoff_row"><td>Trade Payoff (info)</td><td id="qt_payoff">—</td></tr>
+              <tr class="subtotal"><td>Sales Price</td><td id="qt_salesprice">—</td></tr>
+              <tr class="section-head"><td colspan="2">Tax &amp; Fees</td></tr>
+              <tr><td>Sales Tax (<span id="qt_taxrate_lbl">—</span>%)</td><td id="qt_tax">—</td></tr>
+              <tr id="qt_doc_row"><td>Doc Fee</td><td id="qt_docfee">—</td></tr>
+              <tr class="section-head"><td colspan="2">Down Payment</td></tr>
+              <tr class="deduction"><td>Your Down Payment</td><td id="qt_downpmt">—</td></tr>
+              <tr class="total-row"><td>Total Amount Financed</td><td id="qt_financed">—</td></tr>
+            </tbody>
+          </table>
+          <div class="payment-box">
+            <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#aac4e0;">Estimated Monthly Payment</div>
+            <div class="pb-amount" id="pb_payment">—</div>
+            <div style="font-size:12px;color:#aac4e0;"><span id="pb_term">—</span> months @ <span id="pb_rate">—</span>% APR</div>
+            <div class="payment-details">
+              <div class="pd-item"><div class="pd-lbl">Amount Financed</div><div id="pd_financed">—</div></div>
+              <div class="pd-item"><div class="pd-lbl">Down Payment</div><div id="pd_down">—</div></div>
+              <div class="pd-item"><div class="pd-lbl">Term</div><div id="pd_term">—</div></div>
+              <div class="pd-item"><div class="pd-lbl">Est. APR</div><div id="pd_rate">—</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="submit-section" id="submitSection">
+  <div class="submit-card">
+    <h3>Ready to Send Your Selections?</h3>
+    <p>Send this worksheet to the dealership. It is not a contract. Payment is an estimate.</p>
+    <textarea class="submit-notes" id="customerNotes" placeholder="Notes or questions (optional)"></textarea>
+    <button class="btn-submit" id="btnSubmit" type="button" onclick="submitSelections()">Send My Selections</button>
+  </div>
+</div>
+<div class="disclaimer" id="disclaimer">This quote is for informational purposes only and does not constitute a binding offer or contract. Actual financing terms are subject to lender approval.</div>
+
+<script>
+const DESK = __DESK_DATA_PLACEHOLDER__;
+const QUOTE_CONFIG = __QUOTE_CONFIG_PLACEHOLDER__;
+
+function toNumber(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function roundMoney(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+function fmt(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  var sign = n < 0 ? '-' : '';
+  return sign + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function setText(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
+function showRow(id, val) { var el = document.getElementById(id); if (el) el.style.display = (val && val !== 0) ? '' : 'none'; }
+
+function catalogTotals(ids, catalog) {
+  var total = 0, taxable = 0, items = [];
+  (ids || []).forEach(function(id) {
+    for (var i = 0; i < (catalog || []).length; i++) {
+      var item = catalog[i];
+      if (String(item.id) !== String(id)) continue;
+      var price = toNumber(item.price);
+      total += price;
+      if (item.taxable !== false && String(item.taxable).toUpperCase() !== 'FALSE') taxable += price;
+      items.push(item);
+      break;
+    }
+  });
+  return { total: roundMoney(total), taxable: roundMoney(taxable), items: items };
+}
+
+function calculateDeal(desk, options) {
+  options = options || {};
+  var mv = toNumber(desk.marketValue);
+  var sav = toNumber(desk.savings);
+  var rebates = toNumber(desk.rebate1)+toNumber(desk.rebate2)+toNumber(desk.rebate3)+toNumber(desk.rebate4)+toNumber(desk.rebate5);
+  var deskProducts = toNumber(desk.autoguardPrice)+toNumber(desk.acc1Price)+toNumber(desk.acc2Price)+toNumber(desk.acc3Price);
+  var adjMV = mv - sav - rebates + deskProducts;
+  var prot = catalogTotals(options.protectionIds, options.protectionCatalog);
+  var acc = catalogTotals(options.accessoryIds, options.accessoryCatalog);
+  var extra = prot.total + acc.total;
+  var tradeAllow = toNumber(desk.tradeAllowance);
+  var balRelease = toNumber(desk.balanceToRelease);
+  var down = options.downPayment != null ? toNumber(options.downPayment) : toNumber(desk.cashDeposit);
+  var priceAfterTrade = adjMV + extra - tradeAllow + balRelease;
+  var taxRate = toNumber(desk.taxRate) / 100;
+  var taxBase = adjMV + prot.taxable + acc.taxable;
+  var tax = taxBase * taxRate;
+  if (String(desk.creditYN || 'Y').toUpperCase() === 'Y') tax = Math.max(0, tax - tradeAllow * taxRate);
+  var fees = toNumber(desk.docFee)+toNumber(desk.titleFee)+toNumber(desk.licenseFee)+toNumber(desk.recordationFee)+
+    toNumber(desk.tempTag)+toNumber(desk.wasteTire)+toNumber(desk.stateInspection)+toNumber(desk.handlingFee)+
+    toNumber(desk.notaryFee)+toNumber(desk.convenienceFee);
+  var totalPlusTtl = priceAfterTrade + tax + fees;
+  var totalFinanced = Math.max(0, totalPlusTtl - down);
+  var rate = options.apr != null ? toNumber(options.apr) : toNumber(desk.rate);
+  var term = options.term != null ? toNumber(options.term) : toNumber(desk.term);
+  var useOddDays = options.useOddDays !== false;
+  var extraDays = useOddDays ? Math.max(0, toNumber(desk.daysToFirst) - 30) : 0;
+  var extraInterest = totalFinanced * (rate / 100 / 365) * extraDays;
+  var principal = totalFinanced + extraInterest;
+  var r = rate / 100 / 12;
+  var pmt = 0;
+  if (term > 0 && principal > 0) {
+    pmt = r === 0 ? principal / term : principal * (r * Math.pow(1+r, term)) / (Math.pow(1+r, term) - 1);
+  }
+  return {
+    adjMV: roundMoney(adjMV), protectionTotal: prot.total, accessoriesTotal: acc.total,
+    protectionItems: prot.items, accessoryItems: acc.items,
+    salesPrice: roundMoney(priceAfterTrade), tax: roundMoney(tax), fees: roundMoney(fees),
+    totalPlusTtl: roundMoney(totalPlusTtl), totalFinanced: roundMoney(totalFinanced),
+    downPayment: roundMoney(down), payment: roundMoney(pmt), rate: roundMoney(rate), term: term, taxRate: toNumber(desk.taxRate)
+  };
+}
+
+function getRateFromMatrix(matrix, term, tier) {
+  if (!matrix) return null;
+  var row = matrix[String(term)] || matrix[term];
+  if (!row) return null;
+  var rate = row[tier];
+  if (rate === undefined || rate === null || rate === '') return null;
+  var n = parseFloat(rate);
+  return isNaN(n) ? null : n;
+}
+function getValidTerms(matrix, tier) {
+  return Object.keys(matrix || {}).map(Number).filter(function(t) { return getRateFromMatrix(matrix, t, tier) !== null; }).sort(function(a,b){ return a-b; });
+}
+
+var CFG = (QUOTE_CONFIG && QUOTE_CONFIG.settings) ? QUOTE_CONFIG : { settings: {}, protection: [], accessories: [], rates: {}, tiers: [] };
+var state = {
+  downPayment: 0,
+  currentTerm: (CFG.settings && CFG.settings.defaultTerm) || 72,
+  currentTierKey: (CFG.settings && CFG.settings.defaultCreditTier) || 'a1',
+  selectedProtection: new Set(CFG.preselectedProtection || []),
+  selectedAccessories: new Set(CFG.preselectedAccessories || [])
+};
+
+function currentApr() {
+  var r = getRateFromMatrix(CFG.rates, state.currentTerm, state.currentTierKey);
+  return r == null ? 0 : r;
+}
+
+function liveCalc() {
+  return calculateDeal(DESK || {}, {
+    protectionIds: Array.from(state.selectedProtection),
+    accessoryIds: Array.from(state.selectedAccessories),
+    protectionCatalog: CFG.protection,
+    accessoryCatalog: CFG.accessories,
+    downPayment: state.downPayment,
+    apr: currentApr(),
+    term: state.currentTerm,
+    useOddDays: CFG.settings.useOddDaysOnQuote !== false
+  });
+}
+
+function fillSelect(sel, items, getVal, getLabel, current) {
+  sel.innerHTML = '';
+  items.forEach(function(item) {
+    var opt = document.createElement('option');
+    opt.value = getVal(item);
+    opt.textContent = getLabel(item);
+    sel.appendChild(opt);
+  });
+  if (current != null) sel.value = String(current);
+}
+
+function refreshTermDropdown() {
+  var valid = getValidTerms(CFG.rates, state.currentTierKey);
+  var sel = document.getElementById('termSelect');
+  fillSelect(sel, valid, function(t){ return String(t); }, function(t){ return t + ' months'; }, state.currentTerm);
+  if (valid.indexOf(state.currentTerm) === -1 && valid.length) {
+    state.currentTerm = valid[valid.length - 1];
+    sel.value = String(state.currentTerm);
+  }
+  sel.disabled = CFG.settings.allowTermChange === false;
+}
+
+function renderCatalog() {
+  var grid = document.getElementById('protectionGrid');
+  grid.innerHTML = '';
+  (CFG.protection || []).forEach(function(pkg) {
+    var div = document.createElement('div');
+    var on = state.selectedProtection.has(pkg.id);
+    div.className = 'pkg-toggle' + (on ? ' active' : '');
+    div.onclick = function() { toggleSet(state.selectedProtection, pkg.id); renderCatalog(); recalculate(); };
+    div.innerHTML = '<div class="pkg-name"></div><div class="pkg-desc"></div><div class="pkg-price"></div>';
+    div.querySelector('.pkg-name').textContent = pkg.name;
+    div.querySelector('.pkg-desc').textContent = pkg.description || '';
+    div.querySelector('.pkg-price').textContent = fmt(pkg.price);
+    grid.appendChild(div);
+  });
+  var list = document.getElementById('accessoryList');
+  list.innerHTML = '';
+  (CFG.accessories || []).forEach(function(acc) {
+    var div = document.createElement('div');
+    var on = state.selectedAccessories.has(acc.id);
+    div.className = 'acc-item' + (on ? ' active' : '');
+    div.onclick = function() { toggleSet(state.selectedAccessories, acc.id); renderCatalog(); recalculate(); };
+    div.innerHTML = '<div class="acc-info"><div class="acc-name"></div><div class="acc-desc"></div></div><div class="acc-price"></div>';
+    div.querySelector('.acc-name').textContent = acc.name;
+    div.querySelector('.acc-desc').textContent = acc.description || '';
+    div.querySelector('.acc-price').textContent = fmt(acc.price);
+    list.appendChild(div);
+  });
+  summarize('protectionSummary', state.selectedProtection, CFG.protection, 'No protection packages selected.');
+  summarize('accessorySummary', state.selectedAccessories, CFG.accessories, 'No accessories selected.');
+}
+
+function toggleSet(set, id) { if (set.has(id)) set.delete(id); else set.add(id); }
+function summarize(elId, set, catalog, empty) {
+  var bar = document.getElementById(elId);
+  if (!set.size) { bar.textContent = empty; return; }
+  var names = [], total = 0;
+  set.forEach(function(id) {
+    (catalog || []).forEach(function(item) {
+      if (item.id === id) { names.push(item.name); total += toNumber(item.price); }
+    });
+  });
+  bar.textContent = names.join(', ') + ' — Total: ' + fmt(total);
+}
+
+function insertAfterRow(rowId, items, className) {
+  var row = document.getElementById(rowId);
+  if (!row) return;
+  var parent = row.parentNode;
+  var cursor = row.nextSibling;
+  while (cursor) {
+    if (cursor.nodeType !== 1) { cursor = cursor.nextSibling; continue; }
+    if (!cursor.classList || !cursor.classList.contains(className)) break;
+    var next = cursor.nextSibling;
+    parent.removeChild(cursor);
+    cursor = next;
+  }
+  var after = row;
+  (items || []).forEach(function(item) {
+    var tr = document.createElement('tr');
+    tr.className = className;
+    var td1 = document.createElement('td'); td1.textContent = '  ' + (item.name || item[0]);
+    var td2 = document.createElement('td'); td2.textContent = item.price != null ? fmt(item.price) : fmt(item[1]);
+    tr.appendChild(td1); tr.appendChild(td2);
+    parent.insertBefore(tr, after.nextSibling);
+    after = tr;
+  });
+}
+
+function recalculate() {
+  var d = DESK || {};
+  var c = liveCalc();
+  setText('qt_msrp', fmt(toNumber(d.marketValue)));
+  showRow('qt_savings_row', toNumber(d.savings)); setText('qt_savings', toNumber(d.savings) ? '-' + fmt(toNumber(d.savings)) : '—');
+  [['reb1', d.rebate1, d.rebate1Label],['reb2', d.rebate2, d.rebate2Label],['reb3', d.rebate3, d.rebate3Label],['reb4', d.rebate4, d.rebate4Label],['reb5', d.rebate5, d.rebate5Label]].forEach(function(row) {
+    showRow('qt_' + row[0] + '_row', toNumber(row[1]));
+    setText('qt_' + row[0], toNumber(row[1]) ? '-' + fmt(toNumber(row[1])) : '—');
+    if (row[2]) setText('qt_' + row[0] + '_lbl', row[2]);
+  });
+  showRow('qt_autoguard_row', toNumber(d.autoguardPrice)); setText('qt_autoguard', fmt(toNumber(d.autoguardPrice)));
+  if (d.autoguardLabel) setText('qt_autoguard_lbl', d.autoguardLabel);
+  showRow('qt_acc1_row', toNumber(d.acc1Price)); setText('qt_acc1', fmt(toNumber(d.acc1Price))); if (d.acc1Label) setText('qt_acc1_lbl', d.acc1Label);
+  showRow('qt_acc2_row', toNumber(d.acc2Price)); setText('qt_acc2', fmt(toNumber(d.acc2Price))); if (d.acc2Label) setText('qt_acc2_lbl', d.acc2Label);
+  showRow('qt_acc3_row', toNumber(d.acc3Price)); setText('qt_acc3', fmt(toNumber(d.acc3Price))); if (d.acc3Label) setText('qt_acc3_lbl', d.acc3Label);
+  setText('qt_adjprice', fmt(c.adjMV));
+  setText('qt_prot_total', fmt(c.protectionTotal));
+  setText('qt_acc_total', fmt(c.accessoriesTotal));
+  insertAfterRow('qt_prot_row', c.protectionItems, 'prot-item');
+  insertAfterRow('qt_acc_row', c.accessoryItems, 'acc-item');
+  showRow('qt_trade_row', toNumber(d.tradeAllowance)); setText('qt_trade', toNumber(d.tradeAllowance) ? '-' + fmt(toNumber(d.tradeAllowance)) : '—');
+  showRow('qt_payoff_row', toNumber(d.tradePayoff)); setText('qt_payoff', fmt(toNumber(d.tradePayoff)));
+  setText('qt_salesprice', fmt(c.salesPrice));
+  setText('qt_taxrate_lbl', Number(c.taxRate).toFixed(2));
+  setText('qt_tax', fmt(c.tax));
+  setText('qt_docfee', fmt(toNumber(d.docFee)));
+  var feeItems = [['Title Fee', d.titleFee],['License Fee', d.licenseFee],['Recordation Fee', d.recordationFee],['Temp Tag', d.tempTag],['Waste Tire', d.wasteTire],['State Inspection', d.stateInspection],['Handling Fee', d.handlingFee],['Notary Fee', d.notaryFee],['Convenience Fee', d.convenienceFee]]
+    .filter(function(f) { return toNumber(f[1]) > 0; })
+    .map(function(f) { return { name: f[0], price: toNumber(f[1]) }; });
+  insertAfterRow('qt_doc_row', feeItems, 'fee-item');
+  setText('qt_downpmt', c.downPayment ? '-' + fmt(c.downPayment) : '$0.00');
+  setText('qt_financed', fmt(c.totalFinanced));
+  var pmtStr = c.payment.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  setText('pb_payment', pmtStr);
+  setText('hero_payment', pmtStr);
+  setText('pb_term', c.term); setText('hero_term', c.term);
+  setText('pb_rate', Number(c.rate).toFixed(2)); setText('hero_rate', Number(c.rate).toFixed(2));
+  setText('pd_financed', fmt(c.totalFinanced)); setText('pill_financed', fmt(c.totalFinanced));
+  setText('pd_down', fmt(c.downPayment)); setText('pill_down', fmt(c.downPayment));
+  setText('pd_term', c.term + ' mo'); setText('pd_rate', Number(c.rate).toFixed(2) + '%');
+  setText('creditRateDisplay', Number(c.rate).toFixed(2) + '%');
+  document.getElementById('rateDisplay').value = Number(c.rate).toFixed(2);
+  if (c.downPayment > 0) {
+    var orig = calculateDeal(d, {
+      protectionIds: Array.from(state.selectedProtection), accessoryIds: Array.from(state.selectedAccessories),
+      protectionCatalog: CFG.protection, accessoryCatalog: CFG.accessories, downPayment: 0,
+      apr: currentApr(), term: state.currentTerm, useOddDays: CFG.settings.useOddDaysOnQuote !== false
+    });
+    document.getElementById('dp_effect_msg').textContent = 'This down payment lowers the estimated payment by about ' + fmt(orig.payment - c.payment) + '/month.';
+  } else {
+    document.getElementById('dp_effect_msg').textContent = '';
+  }
+}
+
+function onCreditTierChange() {
+  state.currentTierKey = document.getElementById('creditTierSelect').value;
+  refreshTermDropdown();
+  recalculate();
+}
+function onTermChange() {
+  state.currentTerm = parseInt(document.getElementById('termSelect').value, 10) || state.currentTerm;
+  recalculate();
+}
+function onDownPaymentInput() {
+  var val = Math.max(0, parseInt(document.getElementById('downPaymentInput').value, 10) || 0);
+  state.downPayment = val;
+  document.getElementById('downPaymentSlider').value = Math.min(val, document.getElementById('downPaymentSlider').max);
+  recalculate();
+}
+function onDownPaymentSlider() {
+  var val = parseInt(document.getElementById('downPaymentSlider').value, 10) || 0;
+  state.downPayment = val;
+  document.getElementById('downPaymentInput').value = val;
+  recalculate();
+}
+
+function init() {
+  var d = DESK || {};
+  var s = CFG.settings || {};
+  setText('hdr_store', s.storeName || 'GEAUX CHEVROLET');
+  setText('hdr_city', s.storeCity || '');
+  setText('confirm_store', s.storeName || 'GEAUX CHEVROLET');
+  setText('confirm_city', s.storeCity || '');
+  setText('confirm_contact', [s.storeName, s.storeCity, s.storePhone].filter(Boolean).join(' • '));
+  setText('hdr_customer', d.customerName || 'Your Personalized Quote');
+  setText('hdr_date', d.date || '—');
+  setText('hdr_deal', d.dealNumber || '—');
+  setText('hdr_sales', d.salesperson || '—');
+  var veh = [d.year, d.make, d.model].filter(Boolean).join(' ');
+  setText('v_fullname', veh || '—');
+  setText('v_stock', d.stockNum || '—');
+  setText('v_newused', d.newUsed || '—');
+  setText('v_vin', d.vin || '—');
+  setText('v_color', d.color || '—');
+  setText('v_msrp', fmt(toNumber(d.marketValue)));
+  setText('v_mileage', d.mileage ? Number(d.mileage).toLocaleString() + ' mi' : '—');
+  setText('pill_vehicle', veh || '—');
+  document.title = (s.storeName || 'Quote') + ' — Your Personalized Quote';
+
+  fillSelect(document.getElementById('creditTierSelect'), CFG.tiers || [], function(t){ return t.key; }, function(t){ return t.label + (t.ficoRange ? ' | ' + t.ficoRange : ''); }, state.currentTierKey);
+  refreshTermDropdown();
+
+  state.downPayment = toNumber(d.cashDeposit);
+  document.getElementById('downPaymentInput').value = state.downPayment;
+  var maxDown = Math.max(20000, Math.round(toNumber(d.marketValue) * 0.5 / 1000) * 1000);
+  var slider = document.getElementById('downPaymentSlider');
+  slider.max = maxDown;
+  slider.value = Math.min(state.downPayment, maxDown);
+  setText('dp_max_label', '$' + maxDown.toLocaleString());
+
+  var isWebApp = !!(d._webAppUrl && String(d._webAppUrl).indexOf('YOUR_DEPLOYMENT_ID') === -1);
+  document.getElementById('submitSection').style.display = isWebApp ? '' : 'none';
+  if (d._isManagerPreview) document.getElementById('previewNote').style.display = 'block';
+  if (d._shareLink && !isWebApp) {
+    var bar = document.getElementById('shareLinkBar');
+    var a = document.getElementById('shareLinkAnchor');
+    a.href = d._shareLink; a.textContent = d._shareLink; bar.style.display = 'block';
+  }
+  var disc = document.getElementById('disclaimer');
+  disc.textContent = 'This quote is for informational purposes only and is not a contract. Payments are estimates based on the selected credit tier and the dealership rate matrix. Actual terms are subject to lender approval. Tax, title, license, and fees are estimates. ' + [s.storeName, s.storeCity].filter(Boolean).join(' • ');
+
+  renderCatalog();
+  recalculate();
+}
+
+function submitSelections() {
+  var d = DESK || {};
+  var webAppUrl = d._webAppUrl || null;
+  var btn = document.getElementById('btnSubmit');
+  btn.disabled = true;
+  var payload = {
+    token: d._token || '',
+    creditTier: state.currentTierKey,
+    term: state.currentTerm,
+    downPayment: state.downPayment,
+    protectionIds: Array.from(state.selectedProtection),
+    accessoryIds: Array.from(state.selectedAccessories),
+    protectionPackages: Array.from(state.selectedProtection),
+    accessories: Array.from(state.selectedAccessories),
+    customerNotes: document.getElementById('customerNotes').value.trim()
+  };
+  function ok(res) {
+    btn.disabled = false;
+    if (res && res.success) {
+      var sub = res.submission || liveCalc();
+      showConfirmation(sub);
+    } else {
+      alert('There was an issue sending your selections. Please try again or contact the dealership.');
+    }
+  }
+  function fail() {
+    btn.disabled = false;
+    alert('Connection error. Please try again or contact the dealership.');
+  }
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run.withSuccessHandler(ok).withFailureHandler(fail).receiveCustomerSubmission(JSON.stringify(payload));
+    return;
+  }
+  if (!webAppUrl || String(webAppUrl).indexOf('YOUR_DEPLOYMENT_ID') !== -1) {
+    btn.disabled = false;
+    alert('To send selections, open the personalized link from your salesperson.');
+    return;
+  }
+  fetch(webAppUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) })
+    .then(function(r) { return r.json(); })
+    .then(ok)
+    .catch(fail);
+}
+
+function showConfirmation(sub) {
+  var d = DESK || {};
+  var c = sub.monthlyPayment != null ? sub : liveCalc();
+  setText('confirm_name', d.customerName || 'Valued Customer');
+  setText('confirm_payment', Number(c.monthlyPayment != null ? c.monthlyPayment : c.payment).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  setText('confirm_term', c.term);
+  setText('confirm_apr', c.apr != null ? c.apr : c.rate);
+  setText('confirm_vehicle', [d.year, d.make, d.model].filter(Boolean).join(' ') || '—');
+  setText('confirm_down', fmt(c.downPayment));
+  setText('confirm_financed', fmt(c.amountFinanced != null ? c.amountFinanced : c.totalFinanced));
+  setText('confirm_protection', (c.protectionPackages && c.protectionPackages.length) ? c.protectionPackages.join(', ') : (liveCalc().protectionItems.map(function(i){return i.name;}).join(', ') || 'None'));
+  setText('confirm_accessories', (c.accessories && c.accessories.length) ? c.accessories.join(', ') : (liveCalc().accessoryItems.map(function(i){return i.name;}).join(', ') || 'None'));
+  document.getElementById('confirmationScreen').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function copyShareLink() {
+  var link = document.getElementById('shareLinkAnchor').href;
+  if (navigator.clipboard) navigator.clipboard.writeText(link).then(function() { alert('Link copied.'); });
+  else { alert(link); }
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  if (!DESK || typeof DESK !== 'object' || Array.isArray(DESK)) {
+    document.body.innerHTML = '<p style="padding:40px;text-align:center;">Quote data missing. Ask your salesperson for a new link.</p>';
+    return;
+  }
+  init();
+});
+</script>
+</body>
+</html>

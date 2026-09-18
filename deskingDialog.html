@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      :root {
+        --primary: #1a3a5c;
+        --accent:  #1a73e8;
+        --border:  #bbb;
+        --bg:      #eef2f7;
+        --text:    #202124;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        width: 100%; height: 100%; overflow: hidden;
+        font-family: Arial, sans-serif; color: var(--text); background: var(--bg); font-size: 11px;
+      }
+      .topbar {
+        background: var(--primary); color: white; padding: 4px 10px;
+        display: flex; align-items: center; justify-content: space-between; height: 32px;
+      }
+      .topbar .btn-group { display: flex; gap: 5px; }
+      .topbar button {
+        padding: 3px 10px; border: none; border-radius: 3px;
+        font-weight: bold; font-size: 10px; cursor: pointer; height: 22px;
+      }
+      .btn-save  { background: #34a853; color: white; }
+      .btn-print { background: #fbbc04; color: #202124; }
+      .btn-quote { background: #c8a84b; color: #0d1f33; }
+      .btn-clear { background: #ea4335; color: white; }
+      .btn-close { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.4) !important; }
+      .topbar button:hover { opacity: 0.85; }
+      #statusMsg { padding: 2px 10px; font-weight: bold; text-align: center; display: none; font-size: 10px; height: 20px; }
+      .success { background: #d4edda; color: #155724; }
+      .error   { background: #f8d7da; color: #721c24; }
+      .info    { background: #d1ecf1; color: #0c5460; }
+      .setup-strip {
+        background: white; border-bottom: 2px solid var(--primary); padding: 4px 10px;
+        display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; height: 42px;
+      }
+      .setup-strip .sf { display: flex; flex-direction: column; }
+      .setup-strip .sf label { font-size: 8px; font-weight: bold; color: #5f6368; text-transform: uppercase; margin-bottom: 1px; }
+      .setup-strip .sf input, .setup-strip .sf select {
+        padding: 2px 4px; border: 1px solid var(--border); border-radius: 2px; font-size: 10px; height: 20px;
+      }
+      .setup-strip .sf.w60 input, .setup-strip .sf.w60 select { width: 60px; }
+      .setup-strip .sf.w90 input, .setup-strip .sf.w90 select { width: 90px; }
+      .setup-strip .sf.w180 input, .setup-strip .sf.w180 select { width: 180px; }
+      .setup-strip .vdiv { width: 1px; height: 28px; background: #ccc; flex-shrink: 0; }
+      .summary-strip {
+        background: #1a3a5c; padding: 3px 10px; display: flex; align-items: center; gap: 14px; height: 34px;
+      }
+      .deal-recall { display: flex; align-items: center; gap: 4px; }
+      .deal-recall label { font-weight: bold; font-size: 9px; color: #ccc; }
+      .deal-recall input { width: 70px; padding: 2px 4px; border: 1px solid #aaa; border-radius: 2px; font-size: 10px; height: 18px; }
+      .btn-recall { padding: 2px 7px; background: #fbbc04; color: #202124; border: none; border-radius: 2px; cursor: pointer; font-size: 9px; font-weight: bold; height: 18px; }
+      .sdivider { width: 1px; height: 22px; background: rgba(255,255,255,0.3); }
+      .summary-item { text-align: center; }
+      .summary-item .lbl { font-size: 8px; color: #aac4e0; font-weight: bold; }
+      .summary-item .val { font-size: 13px; font-weight: bold; color: white; }
+      .summary-item.payment .val { font-size: 16px; color: #7dffb0; }
+      .main { display: flex; gap: 5px; padding: 5px; align-items: flex-start; height: calc(100vh - 130px); overflow: hidden; }
+      .col { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; height: 100%; }
+      .col-a { flex: 0 0 230px; }
+      .col-b { flex: 0 0 220px; }
+      .col-c { flex: 0 0 340px; }
+      .col-d { flex: 1; }
+      .section { background: white; border: 1px solid #d0d7e2; border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+      .section-title { background: var(--primary); color: white; padding: 2px 7px; font-weight: bold; font-size: 9px; text-transform: uppercase; }
+      .section-body { padding: 4px 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 6px; }
+      .section-body.one { grid-template-columns: 1fr; }
+      .full { grid-column: 1 / -1; }
+      .field { display: flex; flex-direction: column; }
+      .field label { font-size: 8px; font-weight: bold; color: #5f6368; margin-bottom: 1px; text-transform: uppercase; }
+      .field input, .field select { padding: 2px 4px; border: 1px solid var(--border); border-radius: 2px; font-size: 10px; width: 100%; height: 20px; }
+      .field input[readonly] { background: #eef2ff; font-weight: bold; border-color: #aaa; }
+      .price-row { display: flex; align-items: center; justify-content: space-between; padding: 1px 7px; border-bottom: 1px solid #f0f0f0; }
+      .price-label { font-size: 11px; color: #3c4043; display: flex; align-items: center; gap: 3px; flex: 1; }
+      .price-label.bold-label { font-weight: bold; font-size: 12px; color: #1a3a5c; }
+      .price-label input[type="text"] { width: 130px; padding: 1px 3px; border: 1px solid #ddd; border-radius: 2px; font-size: 10px; font-weight: bold; height: 18px; }
+      .price-row input[type="number"] { width: 95px; text-align: right; padding: 1px 4px; border: 1px solid var(--border); border-radius: 2px; font-size: 12px; height: 20px; }
+      .price-row.subtotal { background: #eef2ff; font-weight: bold; padding: 3px 7px; border-top: 1px solid #aaa; margin: 2px 0; }
+      .price-row.grand { background: #1a3a5c; font-weight: bold; padding: 4px 7px; margin: 2px 0; }
+      .price-row.grand .price-label { font-size: 13px; font-weight: bold; color: white; }
+      .price-row.grand input[type="number"] { font-weight: bold; font-size: 14px; background: #7dffb0; color: #1a3a5c; }
+      .sign.plus { color: #34a853; font-weight: bold; }
+      .sign.minus { color: #ea4335; font-weight: bold; }
+      .sign.eq { color: var(--primary); font-weight: bold; }
+      .fees-grid { padding: 4px 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; }
+      .fee-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+      .fee-row label { font-size: 10px; font-weight: bold; color: #5f6368; white-space: nowrap; min-width: 80px; }
+      .fee-row input { width: 72px; text-align: right; padding: 1px 4px; border: 1px solid var(--border); border-radius: 2px; font-size: 11px; height: 20px; }
+      .fees-total { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 4px 0 0; border-top: 1px solid var(--primary); margin-top: 3px; font-weight: bold; font-size: 12px; }
+      .fees-total input { width: 80px; text-align: right; border: none; background: #dce8ff; font-weight: bold; font-size: 12px; height: 22px; }
+      .search-panel { padding: 4px 6px; }
+      .search-row { display: flex; gap: 4px; margin-bottom: 4px; }
+      .search-row input { flex: 1; padding: 2px 5px; border: 1px solid var(--border); border-radius: 2px; font-size: 10px; height: 20px; }
+      .search-row button { padding: 2px 7px; background: var(--primary); color: white; border: none; border-radius: 2px; cursor: pointer; font-size: 9px; font-weight: bold; height: 20px; }
+      .search-results { max-height: 150px; overflow-y: auto; border: 1px solid #ddd; border-radius: 2px; background: #fafafa; }
+      .search-result-item { padding: 3px 6px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 9px; line-height: 1.4; }
+      .search-result-item:hover { background: #e8f0fe; }
+      .sr-deal { font-weight: bold; color: var(--primary); }
+      .sr-name { font-weight: bold; }
+      .sr-detail { color: #5f6368; }
+      .search-no-results { padding: 6px; text-align: center; color: #888; font-size: 9px; font-style: italic; }
+      .print-options { padding: 4px 6px; }
+      .print-opt-row { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: bold; }
+      .quote-opt { padding: 4px 6px; }
+      .quote-opt .qo-row { display: flex; gap: 6px; margin-bottom: 4px; }
+      .quote-opt label { font-size: 9px; font-weight: bold; color: #5f6368; }
+      .quote-opt select, .quote-opt input { font-size: 10px; height: 20px; }
+      .quote-checks { max-height: 90px; overflow-y: auto; border: 1px solid #eee; padding: 4px; font-size: 10px; }
+      .quote-checks label { display: flex; align-items: center; gap: 4px; font-weight: normal; margin: 2px 0; text-transform: none; }
+      .col::-webkit-scrollbar { width: 4px; }
+      .col::-webkit-scrollbar-thumb { background: #bbb; border-radius: 2px; }
+      @media print {
+        .topbar, #statusMsg, .setup-strip, .summary-strip, #costSection { display: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.5px;">GEAUX</span>
+        <span style="font-size:11px;font-weight:bold;letter-spacing:0.5px;opacity:0.75;">DESKING TOOL</span>
+      </div>
+      <div class="btn-group">
+        <button class="btn-save"  onclick="saveDesk()">SAVE DEAL</button>
+        <button class="btn-print" onclick="printPresentation()">PRINT</button>
+        <button class="btn-quote" onclick="openCustomerQuote()">CUSTOMER QUOTE</button>
+        <button class="btn-clear" onclick="clearForm()">CLEAR</button>
+        <button class="btn-close" onclick="google.script.host.close()">CLOSE</button>
+      </div>
+    </div>
+    <div id="statusMsg"></div>
+
+    <div class="setup-strip">
+      <div class="sf w90"><label>Date</label><input type="date" id="date" onchange="calculate()"></div>
+      <div class="vdiv"></div>
+      <div class="sf w180"><label>Salesperson</label><select id="salesperson" onchange="autoSaveStaging()"></select></div>
+      <div class="sf w180"><label>Manager</label><select id="manager" onchange="autoSaveStaging()"></select></div>
+      <div class="vdiv"></div>
+      <div class="sf w60"><label>Rate (%)</label><input type="number" id="rate" step="0.01" value="7.00" onchange="calculate()"></div>
+      <div class="sf w60"><label>Term (mo)</label><input type="number" id="term" value="72" onchange="calculate()"></div>
+      <div class="sf w60"><label>Tax Rate (%)</label><input type="number" id="taxRate" step="0.01" value="9.50" onchange="calculate()"></div>
+      <div class="vdiv"></div>
+      <div class="sf w60"><label>Days to 1st</label><input type="number" id="daysToFirst" value="45" onchange="calculate()" oninput="calculate()"></div>
+      <div class="sf w90"><label>1st Pmt Date</label><input type="text" id="firstPaymentDate" readonly style="background:#dce8ff;font-weight:bold;color:#1a3a5c;"></div>
+    </div>
+
+    <div class="summary-strip">
+      <div class="deal-recall">
+        <label>DEAL #:</label>
+        <input type="text" id="dealNumber" placeholder="Deal #">
+        <button class="btn-recall" onclick="recallDesk()">RECALL</button>
+      </div>
+      <div class="sdivider"></div>
+      <div class="summary-item"><div class="lbl">Adj Market Value</div><div class="val" id="displayAdjMV">$0.00</div></div>
+      <div class="sdivider"></div>
+      <div class="summary-item"><div class="lbl">Total Plus T.T.L.</div><div class="val" id="displaySalesPrice">$0.00</div></div>
+      <div class="sdivider"></div>
+      <div class="summary-item"><div class="lbl">Total Financed</div><div class="val" id="displayTotalFinanced">$0.00</div></div>
+      <div class="sdivider"></div>
+      <div class="summary-item payment"><div class="lbl">Monthly Payment</div><div class="val" id="displayPayment">$0.00</div></div>
+    </div>
+
+    <div class="main">
+      <div class="col col-a">
+        <div class="section">
+          <div class="section-title">Customer</div>
+          <div class="section-body one">
+            <div class="field"><label>Purchaser Name</label><input type="text" id="customerName" oninput="autoSaveStaging()"></div>
+            <div class="field"><label>Address</label><input type="text" id="address" oninput="autoSaveStaging()"></div>
+          </div>
+          <div class="section-body">
+            <div class="field"><label>Cell Phone</label><input type="text" id="cellPhone" oninput="autoSaveStaging()"></div>
+            <div class="field"><label>Home Phone</label><input type="text" id="homePhone" oninput="autoSaveStaging()"></div>
+            <div class="field"><label>Work Phone</label><input type="text" id="workPhone" oninput="autoSaveStaging()"></div>
+            <div class="field"><label>Email</label><input type="email" id="email" oninput="autoSaveStaging()"></div>
+            <div class="field"><label>SSN</label><input type="password" id="ssn" autocomplete="off" oninput="autoSaveStaging()"></div>
+            <div class="field"><label>DOB</label><input type="text" id="dob" oninput="autoSaveStaging()"></div>
+          </div>
+        </div>
+        <div class="section" id="costSection">
+          <div class="section-title">Dealer Cost (Internal)</div>
+          <div class="price-row"><div class="price-label">Invoice Cost</div><input type="number" id="msrpCost" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><input type="text" id="autoguardCostLabel" value="AUTOGUARD"> Cost</div><input type="number" id="autoguardCost" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label">ACC 1 Cost</div><input type="number" id="acc1Cost" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label">ACC 2 Cost</div><input type="number" id="acc2Cost" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label">ACC 3 Cost</div><input type="number" id="acc3Cost" step="0.01" onchange="calculate()"></div>
+          <div class="price-row subtotal"><div class="price-label"><span class="sign eq">=</span> Gross Profit</div><input type="number" id="calcGross" readonly></div>
+        </div>
+      </div>
+
+      <div class="col col-b">
+        <div class="section">
+          <div class="section-title">Vehicle</div>
+          <div class="section-body">
+            <div class="field full" style="flex-direction:row; align-items:flex-end; gap:5px;">
+              <div class="field" style="flex:1;"><label>Stock #</label><input type="text" id="stockNum" onkeydown="if(event.key==='Enter')fetchVehicle()"></div>
+              <button onclick="fetchVehicle()" style="padding:2px 8px; background:var(--primary); color:white; border:none; border-radius:2px; cursor:pointer; font-weight:bold; font-size:9px; height:20px;">GET</button>
+            </div>
+            <div class="field"><label>New / Used</label><input type="text" id="newUsed"></div>
+            <div class="field"><label>Year</label><input type="text" id="year"></div>
+            <div class="field"><label>Make</label><input type="text" id="make"></div>
+            <div class="field"><label>Model</label><input type="text" id="model"></div>
+            <div class="field"><label>Color</label><input type="text" id="color"></div>
+            <div class="field"><label>Mileage</label><input type="text" id="mileage"></div>
+            <div class="field full"><label>VIN</label><input type="text" id="vin"></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Trade-In</div>
+          <div class="section-body one">
+            <div class="field"><label>Trade Vehicle (Year Make Model)</label><input type="text" id="tradeVehicle" placeholder="e.g. 2020 CHEV SILVERADO"></div>
+            <div class="field"><label>Trade VIN</label><input type="text" id="tradeVin"></div>
+          </div>
+          <div class="section-body">
+            <div class="field"><label>Trade Mileage</label><input type="text" id="tradeMileage"></div>
+            <div class="field"><label>Trade Color</label><input type="text" id="tradeColor"></div>
+            <div class="field"><label>Trade Payoff</label><input type="number" id="tradePayoff" step="0.01"></div>
+            <div class="field"><label>Trade ACV</label><input type="number" id="tradeAcv" step="0.01" onchange="calculate()"></div>
+            <div class="field full">
+              <label>Tax Credit for Trade-In</label>
+              <select id="creditYN" onchange="calculate()" style="font-weight:bold;">
+                <option value="Y">YES — Apply Trade Tax Credit</option>
+                <option value="N">NO — Tax Full Sale Price</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col col-c">
+        <div class="section">
+          <div class="section-title">Pricing</div>
+          <div class="price-row"><div class="price-label bold-label">Market Value (MSRP)</div><input type="number" id="marketValue" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label bold-label"><span class="sign minus">−</span> GEAUX Savings</div><input type="number" id="savings" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign minus">−</span><input type="text" id="rebate1Label" value="REBATE 1"></div><input type="number" id="rebate1" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign minus">−</span><input type="text" id="rebate2Label" value="REBATE 2"></div><input type="number" id="rebate2" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign minus">−</span><input type="text" id="rebate3Label" value="REBATE 3"></div><input type="number" id="rebate3" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign minus">−</span><input type="text" id="rebate4Label" value="REBATE 4"></div><input type="number" id="rebate4" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign minus">−</span><input type="text" id="rebate5Label" value="REBATE 5"></div><input type="number" id="rebate5" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign plus">+</span><input type="text" id="autoguardLabel" value="AUTOGUARD"></div><input type="number" id="autoguardPrice" step="0.01" value="495.00" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign plus">+</span><input type="text" id="acc1Label" value="ACC 1"></div><input type="number" id="acc1Price" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign plus">+</span><input type="text" id="acc2Label" value="ACC 2"></div><input type="number" id="acc2Price" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign plus">+</span><input type="text" id="acc3Label" value="ACC 3"></div><input type="number" id="acc3Price" step="0.01" onchange="calculate()"></div>
+          <div class="price-row subtotal"><div class="price-label"><span class="sign eq">=</span> Adj Market Value</div><input type="number" id="adjustedMarketValue" readonly></div>
+          <div class="price-row"><div class="price-label"><span class="sign minus">−</span> Trade Allowance</div><input type="number" id="tradeAllowance" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign plus">+</span> Balance to Release</div><input type="number" id="balanceToRelease" step="0.01" onchange="calculate()"></div>
+          <div class="price-row"><div class="price-label"><span class="sign minus">−</span> Cash Deposit</div><input type="number" id="cashDeposit" step="0.01" onchange="calculate()"></div>
+          <div class="price-row subtotal"><div class="price-label"><span class="sign eq">=</span> Sales Price</div><input type="number" id="calcSalesPrice" readonly></div>
+          <div class="price-row"><div class="price-label"><span class="sign plus">+</span> Tax</div><input type="number" id="calcTax" readonly></div>
+          <div class="price-row"><div class="price-label"><span class="sign plus">+</span> Total Fees</div><input type="number" id="calcFeesDisplay" readonly></div>
+          <div class="price-row grand"><div class="price-label">= Total Financed</div><input type="number" id="calcTotalFinanced" readonly></div>
+        </div>
+      </div>
+
+      <div class="col col-d">
+        <div class="section">
+          <div class="section-title">Fees (Editable Per Deal)</div>
+          <div class="fees-grid">
+            <div class="fee-row"><label>Doc Fee</label><input type="number" id="docFee" step="0.01" onchange="calculate()"></div>
+            <div class="fee-row"><label>Title Fee</label><input type="number" id="titleFee" step="0.01" onchange="calculate()"></div>
+            <div class="fee-row"><label>License Fee</label><input type="number" id="licenseFee" step="0.01" onchange="calculate()"></div>
+            <div class="fee-row"><label>Recordation</label><input type="number" id="recordationFee" step="0.01" onchange="calculate()"></div>
+            <div class="fee-row"><label>Temp Tag</label><input type="number" id="tempTag" step="0.01" onchange="calculate()"></div>
+            <div class="fee-row"><label>Waste Tire</label><input type="number" id="wasteTire" step="0.01" onchange="calculate()"></div>
+            <div class="fee-row"><label>State Insp.</label><input type="number" id="stateInspection" step="0.01" onchange="calculate()"></div>
+            <div class="fee-row"><label>Handling</label><input type="number" id="handlingFee" step="0.01" onchange="calculate()"></div>
+            <div class="fee-row"><label>Notary</label><input type="number" id="notaryFee" step="0.01" onchange="calculate()"></div>
+            <div class="fee-row"><label>Convenience</label><input type="number" id="convenienceFee" step="0.01" onchange="calculate()"></div>
+            <div class="fees-total"><label>TOTAL FEES</label><input type="number" id="totalFees" readonly></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Customer Quote Options</div>
+          <div class="quote-opt">
+            <p style="font-size:9px;color:#5f6368;margin-bottom:4px;">Catalog prices/rates live in QUOTE_CATALOG and QUOTE_RATES. These settings travel with this quote only.</p>
+            <div class="qo-row">
+              <div class="field" style="flex:1;"><label>Quote default term</label><select id="quoteDefaultTerm"></select></div>
+              <div class="field" style="flex:1;"><label>Customer can change term?</label>
+                <select id="quoteAllowTermChange"><option value="yes">Yes</option><option value="no">No — lock term</option></select>
+              </div>
+            </div>
+            <div class="field full"><label>Starting credit tier</label><select id="quoteDefaultTier"></select></div>
+            <label>Pre-select protection</label>
+            <div class="quote-checks" id="quoteProtChecks"></div>
+            <label>Pre-select accessories</label>
+            <div class="quote-checks" id="quoteAccChecks"></div>
+            <input type="hidden" id="quotePreselectedProtection">
+            <input type="hidden" id="quotePreselectedAccessories">
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Recall Deal</div>
+          <div class="search-panel">
+            <div class="search-row">
+              <input type="text" id="searchQuery" placeholder="Deal #, Name, or Stock #" onkeydown="if(event.key==='Enter')searchDeals()">
+              <button onclick="searchDeals()">SEARCH</button>
+            </div>
+            <div id="searchResults"></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Print Options</div>
+          <div class="print-options">
+            <div class="print-opt-row">
+              <input type="checkbox" id="printWithTaxFees">
+              <label for="printWithTaxFees">Include Tax &amp; Fees on Print</label>
+            </div>
+          </div>
+        </div>
+        <input type="hidden" id="vehicleType">
+        <input type="hidden" id="tradeType">
+      </div>
+    </div>
+
+    <script>
+      function escapeHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      }
+      function addOption(select, value, text) {
+        var opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = text;
+        select.appendChild(opt);
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('date').valueAsDate = new Date();
+        google.script.run
+          .withSuccessHandler(function(d) {
+            populateDropdowns(d);
+            setDefaultFees(d.defaultFees);
+            renderQuoteOptions(d);
+            calculate();
+          })
+          .withFailureHandler(function(e) { showStatus('Load error: ' + e.message, 'error'); })
+          .getDeskingInitialData();
+      });
+
+      function populateDropdowns(d) {
+        var sp = document.getElementById('salesperson');
+        var mg = document.getElementById('manager');
+        sp.innerHTML = '';
+        mg.innerHTML = '';
+        addOption(sp, '', '-- Salesperson --');
+        addOption(mg, '', '-- Manager --');
+        (d.salespeople || []).forEach(function(s) { addOption(sp, s, s); });
+        (d.managers || []).forEach(function(m) { addOption(mg, m, m); });
+      }
+
+      function setDefaultFees(f) {
+        if (!f) return;
+        ['docFee','titleFee','licenseFee','recordationFee','tempTag','wasteTire','stateInspection','handlingFee','notaryFee','convenienceFee','autoguardPrice','taxRate'].forEach(function(k) {
+          if (f[k] != null) document.getElementById(k).value = f[k];
+        });
+      }
+
+      function renderQuoteOptions(d) {
+        var termSel = document.getElementById('quoteDefaultTerm');
+        termSel.innerHTML = '';
+        var terms = (d.rateTerms && d.rateTerms.length) ? d.rateTerms : [36,48,60,72,84];
+        var defTerm = (d.quoteSettings && d.quoteSettings.defaultTerm) || 72;
+        terms.forEach(function(t) { addOption(termSel, String(t), t + ' months'); });
+        termSel.value = String(defTerm);
+        document.getElementById('term').value = defTerm;
+        document.getElementById('quoteAllowTermChange').value = (d.quoteSettings && d.quoteSettings.allowTermChange === false) ? 'no' : 'yes';
+        var tierSel = document.getElementById('quoteDefaultTier');
+        tierSel.innerHTML = '';
+        (d.tiers || []).forEach(function(t) {
+          addOption(tierSel, t.key, t.label + (t.ficoRange ? ' | ' + t.ficoRange : ''));
+        });
+        if (d.quoteSettings && d.quoteSettings.defaultCreditTier) tierSel.value = d.quoteSettings.defaultCreditTier;
+        var cat = d.quoteCatalog || {};
+        fillChecks('quoteProtChecks', cat.protection || [], 'prot');
+        fillChecks('quoteAccChecks', cat.accessories || [], 'acc');
+        syncQuoteHidden();
+      }
+
+      function fillChecks(containerId, items, prefix) {
+        var el = document.getElementById(containerId);
+        el.textContent = '';
+        if (!items.length) {
+          el.textContent = 'None in QUOTE_CATALOG. Add rows on that sheet.';
+          return;
+        }
+        items.forEach(function(item) {
+          var lab = document.createElement('label');
+          var cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.value = item.id;
+          cb.checked = !!item.defaultOn;
+          cb.addEventListener('change', syncQuoteHidden);
+          lab.appendChild(cb);
+          lab.appendChild(document.createTextNode(' ' + item.name + ' ($' + Number(item.price).toFixed(0) + ')'));
+          el.appendChild(lab);
+        });
+      }
+
+      function syncQuoteHidden() {
+        function collected(id) {
+          return Array.prototype.slice.call(document.querySelectorAll('#' + id + ' input[type=checkbox]:checked'))
+            .map(function(c) { return c.value; }).join(',');
+        }
+        document.getElementById('quotePreselectedProtection').value = collected('quoteProtChecks');
+        document.getElementById('quotePreselectedAccessories').value = collected('quoteAccChecks');
+      }
+
+      function getVal(id) {
+        var el = document.getElementById(id);
+        if (!el) return 0;
+        var v = parseFloat(el.value);
+        return isNaN(v) ? 0 : v;
+      }
+      function fmt(n) {
+        return '$' + Number(n).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+      }
+      function setNum(id, val) { document.getElementById(id).value = Number(val).toFixed(2); }
+      function showStatus(msg, type) {
+        var el = document.getElementById('statusMsg');
+        el.textContent = msg;
+        el.className = type;
+        el.style.display = 'block';
+        setTimeout(function() { el.style.display = 'none'; }, 5000);
+      }
+
+      function calculate() {
+        var marketValue = getVal('marketValue');
+        var savings = getVal('savings');
+        var totalRebates = getVal('rebate1')+getVal('rebate2')+getVal('rebate3')+getVal('rebate4')+getVal('rebate5');
+        var autoguard = getVal('autoguardPrice');
+        var acc1 = getVal('acc1Price'), acc2 = getVal('acc2Price'), acc3 = getVal('acc3Price');
+        var adjMV = marketValue - savings - totalRebates + autoguard + acc1 + acc2 + acc3;
+        var tradeAllow = getVal('tradeAllowance');
+        var balRelease = getVal('balanceToRelease');
+        var cashDep = getVal('cashDeposit');
+        var priceAfterTrade = adjMV - tradeAllow + balRelease;
+        var totalFees = getVal('docFee')+getVal('titleFee')+getVal('licenseFee')+getVal('recordationFee')+
+          getVal('tempTag')+getVal('wasteTire')+getVal('stateInspection')+getVal('handlingFee')+
+          getVal('notaryFee')+getVal('convenienceFee');
+        var taxRate = getVal('taxRate') / 100;
+        var creditYN = document.getElementById('creditYN').value;
+        var tax = adjMV * taxRate;
+        if (creditYN === 'Y') tax = Math.max(0, tax - tradeAllow * taxRate);
+        var totalPlusTtl = priceAfterTrade + tax + totalFees;
+        var totalFin = Math.max(0, totalPlusTtl - cashDep);
+        var annualRate = getVal('rate') / 100;
+        var rate = annualRate / 12;
+        var term = getVal('term');
+        var daysToFirst = getVal('daysToFirst') || 0;
+        var extraDays = Math.max(0, daysToFirst - 30);
+        var extraInterest = totalFin * (annualRate / 365) * extraDays;
+        var totalFinForPmt = totalFin + extraInterest;
+        var pmt = 0;
+        if (rate > 0 && term > 0 && totalFinForPmt > 0)
+          pmt = totalFinForPmt * rate * Math.pow(1+rate,term) / (Math.pow(1+rate,term) - 1);
+        else if (term > 0 && totalFinForPmt > 0)
+          pmt = totalFinForPmt / term;
+
+        var dateEl = document.getElementById('date');
+        var fpdEl = document.getElementById('firstPaymentDate');
+        if (dateEl && dateEl.value && fpdEl) {
+          var parts = dateEl.value.split('-');
+          var dealDate = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2]));
+          dealDate.setDate(dealDate.getDate() + Math.round(daysToFirst));
+          fpdEl.value = (dealDate.getMonth()+1) + '/' + dealDate.getDate() + '/' + dealDate.getFullYear();
+        } else if (fpdEl) { fpdEl.value = ''; }
+
+        var gross = marketValue - savings + autoguard + acc1 + acc2 + acc3 - getVal('msrpCost') - getVal('autoguardCost') -
+          getVal('acc1Cost') - getVal('acc2Cost') - getVal('acc3Cost') - tradeAllow + getVal('tradeAcv');
+
+        setNum('adjustedMarketValue', adjMV);
+        setNum('calcSalesPrice', priceAfterTrade);
+        setNum('calcTax', tax);
+        setNum('calcFeesDisplay', totalFees);
+        setNum('calcTotalFinanced', totalFin);
+        setNum('totalFees', totalFees);
+        setNum('calcGross', gross);
+        document.getElementById('displayAdjMV').textContent = fmt(adjMV);
+        document.getElementById('displaySalesPrice').textContent = fmt(totalPlusTtl);
+        document.getElementById('displayTotalFinanced').textContent = fmt(totalFin);
+        document.getElementById('displayPayment').textContent = fmt(pmt);
+        autoSaveStaging();
+      }
+
+      var _saveTimer;
+      function autoSaveStaging() {
+        if (!document.getElementById('manager').value) return;
+        clearTimeout(_saveTimer);
+        _saveTimer = setTimeout(function() {
+          google.script.run
+            .withFailureHandler(function(e) { console.warn('Auto-save failed:', e.message); })
+            .saveDesk(collectFormData(), true);
+        }, 1500);
+      }
+
+      function collectFormData() {
+        syncQuoteHidden();
+        var data = {};
+        document.querySelectorAll('input[id], select[id]').forEach(function(el) {
+          if (el.id === 'searchQuery') return;
+          if (el.type === 'checkbox') data[el.id] = el.checked;
+          else if (el.type !== 'password' || el.id === 'ssn') data[el.id] = el.value;
+        });
+        return data;
+      }
+
+      function requireManager() {
+        if (!document.getElementById('manager').value) {
+          showStatus('Please select a Manager first', 'error');
+          return false;
+        }
+        return true;
+      }
+
+      function fetchVehicle() {
+        var stock = document.getElementById('stockNum').value.trim();
+        if (!stock) { showStatus('Enter a Stock # first', 'error'); return; }
+        showStatus('Looking up stock # ' + stock + '...', 'info');
+        google.script.run
+          .withSuccessHandler(function(v) {
+            if (v) {
+              document.getElementById('newUsed').value = v.newUsed || '';
+              document.getElementById('year').value = v.year || '';
+              document.getElementById('make').value = v.make || '';
+              document.getElementById('model').value = v.model || '';
+              document.getElementById('color').value = v.color || '';
+              document.getElementById('mileage').value = v.mileage || '';
+              document.getElementById('vin').value = v.vin || '';
+              document.getElementById('vehicleType').value = v.type || '';
+              document.getElementById('marketValue').value = v.msrp || '';
+              document.getElementById('msrpCost').value = v.cost || '';
+              calculate();
+              showStatus('Vehicle loaded: ' + v.year + ' ' + v.make + ' ' + v.model, 'success');
+            } else {
+              showStatus('Stock # ' + stock + ' not found in INV', 'error');
+            }
+          })
+          .withFailureHandler(function(e) { showStatus('Error: ' + e.message, 'error'); })
+          .getVehicleByStock(stock);
+      }
+
+      function saveDesk() {
+        if (!requireManager()) return;
+        showStatus('Saving deal...', 'info');
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res.success) {
+              document.getElementById('dealNumber').value = res.dealNumber;
+              showStatus(res.message + '  Deal # ' + res.dealNumber, 'success');
+            }
+          })
+          .withFailureHandler(function(e) { showStatus('Save error: ' + e.message, 'error'); })
+          .saveDesk(collectFormData(), false);
+      }
+
+      function applyDeskObject(data) {
+        if (!data) return;
+        for (var key in data) {
+          if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+          if (key === 'dateDisplay') continue;
+          var el = document.getElementById(key);
+          if (!el) continue;
+          if (el.type === 'checkbox') el.checked = !!data[key];
+          else el.value = data[key] !== null && data[key] !== undefined ? String(data[key]) : '';
+        }
+        calculate();
+      }
+
+      function recallDesk() {
+        var num = document.getElementById('dealNumber').value.trim();
+        if (!num) { showStatus('Enter a deal number to recall', 'error'); return; }
+        showStatus('Recalling deal # ' + num + '...', 'info');
+        google.script.run
+          .withSuccessHandler(function(data) {
+            if (data) {
+              applyDeskObject(data);
+              showStatus('Deal # ' + num + ' recalled successfully', 'success');
+            } else {
+              showStatus('Deal # ' + num + ' not found', 'error');
+            }
+          })
+          .withFailureHandler(function(e) { showStatus('Recall error: ' + e.message, 'error'); })
+          .recallDesk(num);
+      }
+
+      function clearForm() {
+        if (!confirm('Clear all fields and start a new desk?')) return;
+        document.querySelectorAll('input[type="text"], input[type="number"], input[type="email"], input[type="date"], input[type="password"], input[type="hidden"]').forEach(function(el) {
+          if (el.id === 'quoteDefaultTerm' || el.id === 'quoteAllowTermChange' || el.id === 'quoteDefaultTier') return;
+          el.value = '';
+        });
+        document.getElementById('printWithTaxFees').checked = false;
+        document.getElementById('date').valueAsDate = new Date();
+        document.getElementById('rate').value = '7.00';
+        document.getElementById('term').value = '72';
+        document.getElementById('taxRate').value = '9.50';
+        document.getElementById('daysToFirst').value = '45';
+        document.getElementById('creditYN').value = 'Y';
+        document.getElementById('salesperson').value = '';
+        document.getElementById('manager').value = '';
+        document.getElementById('rebate1Label').value = 'REBATE 1';
+        document.getElementById('rebate2Label').value = 'REBATE 2';
+        document.getElementById('rebate3Label').value = 'REBATE 3';
+        document.getElementById('rebate4Label').value = 'REBATE 4';
+        document.getElementById('rebate5Label').value = 'REBATE 5';
+        document.getElementById('autoguardLabel').value = 'AUTOGUARD';
+        document.getElementById('autoguardCostLabel').value = 'AUTOGUARD';
+        document.getElementById('acc1Label').value = 'ACC 1';
+        document.getElementById('acc2Label').value = 'ACC 2';
+        document.getElementById('acc3Label').value = 'ACC 3';
+        document.getElementById('searchResults').textContent = '';
+        google.script.run
+          .withSuccessHandler(function(d) {
+            setDefaultFees(d.defaultFees);
+            renderQuoteOptions(d);
+            calculate();
+          })
+          .getDeskingInitialData();
+        showStatus('Form cleared', 'success');
+      }
+
+      function openBlobHtml(htmlStr, successMsg) {
+        var blob = new Blob([htmlStr], { type: 'text/html' });
+        var url = URL.createObjectURL(blob);
+        var win = window.open(url, '_blank');
+        if (win) {
+          win.addEventListener('load', function() { URL.revokeObjectURL(url); });
+          showStatus(successMsg, 'success');
+          return true;
+        }
+        showStatus('Popup blocked. Use the share link or allow popups, then try again. The deal was still saved.', 'error');
+        URL.revokeObjectURL(url);
+        return false;
+      }
+
+      function openCustomerQuote() {
+        if (!requireManager()) return;
+        var data = collectFormData();
+        showStatus('Generating interactive customer quote...', 'info');
+        google.script.run
+          .withSuccessHandler(function(res) {
+            document.getElementById('dealNumber').value = res.dealNumber;
+            openBlobHtml(res.htmlStr, 'Customer quote opened. Deal # ' + res.dealNumber);
+            if (res.shareLink && res.shareLink.indexOf('YOUR_DEPLOYMENT_ID') === -1) {
+              showShareLinkPanel(res.shareLink, res.dealNumber);
+            } else {
+              showStatus('Customer quote opened. Deal # ' + res.dealNumber + ' — run setWebAppUrl() after deploying the Web App to enable remote sharing.', 'success');
+            }
+          })
+          .withFailureHandler(function(e) { showStatus('Customer quote error: ' + e.message, 'error'); })
+          .getCustomerQuoteHtmlWithSave(data);
+      }
+
+      function showShareLinkPanel(shareLink, dealNumber) {
+        var existing = document.getElementById('shareLinkPanel');
+        if (existing) existing.remove();
+        var panel = document.createElement('div');
+        panel.id = 'shareLinkPanel';
+        panel.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#0d1f33;border-top:3px solid #c8a84b;padding:14px 20px;z-index:9999;display:flex;align-items:center;gap:12px;flex-wrap:wrap;';
+        var title = document.createElement('span');
+        title.style.cssText = 'color:#c8a84b;font-weight:900;font-size:14px;';
+        title.textContent = 'CUSTOMER QUOTE LINK';
+        var hint = document.createElement('span');
+        hint.style.cssText = 'color:#aac4e0;font-size:12px;';
+        hint.textContent = 'Deal #' + dealNumber + ' — text or email this link:';
+        var input = document.createElement('input');
+        input.id = 'shareLinkInput';
+        input.type = 'text';
+        input.readOnly = true;
+        input.value = shareLink;
+        input.style.cssText = 'flex:1;min-width:260px;background:#1a3a5c;border:1px solid #c8a84b;border-radius:5px;color:white;padding:7px 10px;font-size:12px;font-family:monospace;';
+        input.onclick = function() { this.select(); };
+        var copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copy';
+        copyBtn.style.cssText = 'background:#c8a84b;color:#0d1f33;border:none;border-radius:5px;padding:8px 16px;font-weight:900;cursor:pointer;';
+        copyBtn.onclick = copyQuoteLink;
+        var dismiss = document.createElement('button');
+        dismiss.textContent = 'Dismiss';
+        dismiss.style.cssText = 'background:transparent;border:1px solid #555;color:#aac4e0;border-radius:5px;padding:8px 12px;cursor:pointer;';
+        dismiss.onclick = function() { panel.remove(); };
+        panel.appendChild(title);
+        panel.appendChild(hint);
+        panel.appendChild(input);
+        panel.appendChild(copyBtn);
+        panel.appendChild(dismiss);
+        document.body.appendChild(panel);
+      }
+
+      function copyQuoteLink() {
+        var input = document.getElementById('shareLinkInput');
+        if (!input) return;
+        input.select();
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(input.value).then(function() {
+            showStatus('Link copied to clipboard.', 'success');
+          });
+        } else {
+          document.execCommand('copy');
+          showStatus('Link copied.', 'success');
+        }
+      }
+
+      function printPresentation() {
+        if (!requireManager()) return;
+        var data = collectFormData();
+        data.printWithTaxFees = document.getElementById('printWithTaxFees').checked;
+        showStatus('Saving and opening print preview...', 'info');
+        google.script.run
+          .withSuccessHandler(function(res) {
+            document.getElementById('dealNumber').value = res.dealNumber;
+            openBlobHtml(res.htmlStr, 'Print preview opened. Deal # ' + res.dealNumber);
+          })
+          .withFailureHandler(function(e) { showStatus('Print error: ' + e.message, 'error'); })
+          .getDeskPrintHtmlWithSave(data);
+      }
+
+      function searchDeals() {
+        var q = document.getElementById('searchQuery').value.trim();
+        var el = document.getElementById('searchResults');
+        el.textContent = '';
+        if (!q) {
+          var empty = document.createElement('div');
+          empty.className = 'search-no-results';
+          empty.textContent = 'Enter a deal #, name, or stock #.';
+          el.appendChild(empty);
+          return;
+        }
+        var loading = document.createElement('div');
+        loading.className = 'search-no-results';
+        loading.textContent = 'Searching...';
+        el.appendChild(loading);
+        google.script.run
+          .withSuccessHandler(function(results) {
+            el.textContent = '';
+            if (!results || !results.length) {
+              var none = document.createElement('div');
+              none.className = 'search-no-results';
+              none.textContent = 'No deals found for "' + q + '"';
+              el.appendChild(none);
+              return;
+            }
+            window._searchResults = results;
+            results.forEach(function(r, i) {
+              var item = document.createElement('div');
+              item.className = 'search-result-item';
+              item.onclick = function() { loadDealFromSearch(i); };
+              var deal = document.createElement('span');
+              deal.className = 'sr-deal';
+              deal.textContent = 'Deal #' + (r.dealNumber || '');
+              var name = document.createElement('span');
+              name.className = 'sr-name';
+              name.textContent = '  ' + (r.customerName || '(no name)');
+              var detail = document.createElement('div');
+              detail.className = 'sr-detail';
+              detail.textContent = (r.dateDisplay || r.date || '') + ' | Stk: ' + (r.stockNum || 'N/A') + ' | ' +
+                [r.year, r.make, r.model].filter(Boolean).join(' ');
+              item.appendChild(deal);
+              item.appendChild(name);
+              item.appendChild(detail);
+              el.appendChild(item);
+            });
+          })
+          .withFailureHandler(function(e) {
+            el.textContent = '';
+            var err = document.createElement('div');
+            err.className = 'search-no-results';
+            err.textContent = 'Error: ' + e.message;
+            el.appendChild(err);
+          })
+          .searchDeals(q);
+      }
+
+      function loadDealFromSearch(idx) {
+        var data = window._searchResults && window._searchResults[idx];
+        if (!data) return;
+        applyDeskObject(data);
+        showStatus('Deal #' + data.dealNumber + ' loaded', 'success');
+        document.getElementById('searchResults').textContent = '';
+        document.getElementById('searchQuery').value = '';
+      }
+    </script>
+  </body>
+</html>
