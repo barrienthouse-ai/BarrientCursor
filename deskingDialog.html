@@ -52,7 +52,7 @@
       }
       .deal-recall { display: flex; align-items: center; gap: 4px; }
       .deal-recall label { font-weight: bold; font-size: 9px; color: #ccc; }
-      .deal-recall input { width: 70px; padding: 2px 4px; border: 1px solid #aaa; border-radius: 2px; font-size: 10px; height: 18px; }
+      .deal-recall input { width: 160px; padding: 2px 4px; border: 1px solid #aaa; border-radius: 2px; font-size: 10px; height: 18px; }
       .btn-recall { padding: 2px 7px; background: #fbbc04; color: #202124; border: none; border-radius: 2px; cursor: pointer; font-size: 9px; font-weight: bold; height: 18px; }
       .sdivider { width: 1px; height: 22px; background: rgba(255,255,255,0.3); }
       .summary-item { text-align: center; }
@@ -151,8 +151,8 @@
 
     <div class="summary-strip">
       <div class="deal-recall">
-        <label>DEAL #:</label>
-        <input type="text" id="dealNumber" placeholder="Deal #">
+        <label>RECALL:</label>
+        <input type="text" id="dealNumber" placeholder="Deal #, name, or stock #" onkeydown="if(event.key==='Enter')recallDesk()">
         <button class="btn-recall" onclick="recallDesk()">RECALL</button>
       </div>
       <div class="sdivider"></div>
@@ -299,7 +299,7 @@
           <div class="section-title">Recall Deal</div>
           <div class="search-panel">
             <div class="search-row">
-              <input type="text" id="searchQuery" placeholder="Deal #, Name, or Stock #" onkeydown="if(event.key==='Enter')searchDeals()">
+              <input type="text" id="searchQuery" placeholder="Deal #, customer, or stock #" onkeydown="if(event.key==='Enter')searchDeals()">
               <button onclick="searchDeals()">SEARCH</button>
             </div>
             <div id="searchResults"></div>
@@ -574,21 +574,37 @@
         calculate();
       }
 
+      function recallQuery() {
+        return document.getElementById('dealNumber').value.trim() ||
+          document.getElementById('searchQuery').value.trim();
+      }
+
       function recallDesk() {
-        var num = document.getElementById('dealNumber').value.trim();
-        if (!num) { showStatus('Enter a deal number to recall', 'error'); return; }
-        showStatus('Recalling deal # ' + num + '...', 'info');
+        var q = recallQuery();
+        if (!q) { showStatus('Enter a deal #, customer name, or stock # to recall', 'error'); return; }
+        showStatus('Recalling "' + q + '"...', 'info');
         google.script.run
-          .withSuccessHandler(function(data) {
-            if (data) {
-              applyDeskObject(data);
-              showStatus('Deal # ' + num + ' recalled successfully', 'success');
-            } else {
-              showStatus('Deal # ' + num + ' not found', 'error');
-            }
-          })
+          .withSuccessHandler(function(data) { handleRecallResponse(data, q); })
           .withFailureHandler(function(e) { showStatus('Recall error: ' + e.message, 'error'); })
-          .recallDesk(num);
+          .recallDesk(q);
+      }
+
+      function handleRecallResponse(data, q) {
+        var matches = data && data.matches ? data.matches : [];
+        var desk = data && data.desk ? data.desk : null;
+        if (!desk && data && data.dealNumber) desk = data;
+        if (desk) {
+          applyDeskObject(desk);
+          showStatus('Deal #' + (desk.dealNumber || q) + ' recalled', 'success');
+          return;
+        }
+        if (matches.length) {
+          document.getElementById('searchQuery').value = q;
+          renderSearchResults(matches, q);
+          showStatus(matches.length + ' deals match "' + q + '". Click one to load.', 'info');
+          return;
+        }
+        showStatus('No deal found for "' + q + '"', 'error');
       }
 
       function clearForm() {
@@ -750,6 +766,38 @@
           .getDeskPrintHtmlWithSave(data);
       }
 
+      function renderSearchResults(results, q) {
+        var el = document.getElementById('searchResults');
+        el.textContent = '';
+        if (!results || !results.length) {
+          var none = document.createElement('div');
+          none.className = 'search-no-results';
+          none.textContent = 'No deals found for "' + q + '"';
+          el.appendChild(none);
+          return;
+        }
+        window._searchResults = results;
+        results.forEach(function(r, i) {
+          var item = document.createElement('div');
+          item.className = 'search-result-item';
+          item.onclick = function() { loadDealFromSearch(i); };
+          var deal = document.createElement('span');
+          deal.className = 'sr-deal';
+          deal.textContent = 'Deal #' + (r.dealNumber || '');
+          var name = document.createElement('span');
+          name.className = 'sr-name';
+          name.textContent = '  ' + (r.customerName || '(no name)');
+          var detail = document.createElement('div');
+          detail.className = 'sr-detail';
+          detail.textContent = (r.dateDisplay || r.date || '') + ' | Stk: ' + (r.stockNum || 'N/A') + ' | ' +
+            [r.year, r.make, r.model].filter(Boolean).join(' ');
+          item.appendChild(deal);
+          item.appendChild(name);
+          item.appendChild(detail);
+          el.appendChild(item);
+        });
+      }
+
       function searchDeals() {
         var q = document.getElementById('searchQuery').value.trim();
         var el = document.getElementById('searchResults');
@@ -757,7 +805,7 @@
         if (!q) {
           var empty = document.createElement('div');
           empty.className = 'search-no-results';
-          empty.textContent = 'Enter a deal #, name, or stock #.';
+          empty.textContent = 'Enter a deal #, customer name, or stock #.';
           el.appendChild(empty);
           return;
         }
@@ -766,36 +814,7 @@
         loading.textContent = 'Searching...';
         el.appendChild(loading);
         google.script.run
-          .withSuccessHandler(function(results) {
-            el.textContent = '';
-            if (!results || !results.length) {
-              var none = document.createElement('div');
-              none.className = 'search-no-results';
-              none.textContent = 'No deals found for "' + q + '"';
-              el.appendChild(none);
-              return;
-            }
-            window._searchResults = results;
-            results.forEach(function(r, i) {
-              var item = document.createElement('div');
-              item.className = 'search-result-item';
-              item.onclick = function() { loadDealFromSearch(i); };
-              var deal = document.createElement('span');
-              deal.className = 'sr-deal';
-              deal.textContent = 'Deal #' + (r.dealNumber || '');
-              var name = document.createElement('span');
-              name.className = 'sr-name';
-              name.textContent = '  ' + (r.customerName || '(no name)');
-              var detail = document.createElement('div');
-              detail.className = 'sr-detail';
-              detail.textContent = (r.dateDisplay || r.date || '') + ' | Stk: ' + (r.stockNum || 'N/A') + ' | ' +
-                [r.year, r.make, r.model].filter(Boolean).join(' ');
-              item.appendChild(deal);
-              item.appendChild(name);
-              item.appendChild(detail);
-              el.appendChild(item);
-            });
-          })
+          .withSuccessHandler(function(results) { renderSearchResults(results, q); })
           .withFailureHandler(function(e) {
             el.textContent = '';
             var err = document.createElement('div');

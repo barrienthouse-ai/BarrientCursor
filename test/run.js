@@ -440,6 +440,105 @@ test('save, print, and quote succeed with unmatched or blank manager names', fun
   }
 });
 
+function makeDeskRow_(opts) {
+  const row = new Array(73).fill('');
+  row[0] = opts.date || '2026-09-18';
+  row[3] = opts.customerName || '';
+  row[11] = opts.stockNum || '';
+  row[15] = opts.year || '2026';
+  row[16] = opts.make || 'CHEV';
+  row[17] = opts.model || 'TRAVERSE';
+  row[58] = opts.dealNumber;
+  return row;
+}
+
+function makeDeskSheet_(rows) {
+  return {
+    getLastRow: function() { return rows.length; },
+    getLastColumn: function() { return 73; },
+    getRange: function(r, c, nRows, nCols) {
+      return {
+        getValues: function() {
+          const out = [];
+          for (let i = 0; i < nRows; i++) {
+            const src = rows[r - 1 + i] || [];
+            const slice = [];
+            for (let j = 0; j < nCols; j++) slice.push(src[c - 1 + j] !== undefined ? src[c - 1 + j] : '');
+            out.push(slice);
+          }
+          return out;
+        }
+      };
+    }
+  };
+}
+
+test('recall and search find DESKDATA deals by deal #, partial name, and stock', function() {
+  const origSheet = ctx.getDeskSheet_;
+  const rows = [
+    makeDeskRow_({ dealNumber: 1102, customerName: 'Maria Barrient', stockNum: 'SC1001' }),
+    ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+    makeDeskRow_({ customerName: 'Purchaser Name', dealNumber: 'Deal Number', stockNum: 'Stock #' }),
+    makeDeskRow_({ dealNumber: '', customerName: '', stockNum: '' }),
+    makeDeskRow_({ dealNumber: 1102.1, customerName: 'Maria Barrient', stockNum: 'SC1001' }),
+    makeDeskRow_({ dealNumber: '1103', customerName: 'John Smith', stockNum: 'U2044' }),
+    makeDeskRow_({ dealNumber: '1104', customerName: 'Ann Smith', stockNum: 'U3001' })
+  ];
+  ctx.getDeskSheet_ = function() { return makeDeskSheet_(rows); };
+  try {
+    const byName = ctx.searchDeals('barri');
+    assert.strictEqual(byName.length, 2, 'partial customer matches staging and history versions');
+    assert.strictEqual(byName[0].dealNumber, '1102.1');
+    assert.strictEqual(byName[1].dealNumber, '1102');
+
+    const byStock = ctx.searchDeals('u20');
+    assert.strictEqual(byStock.length, 1);
+    assert.strictEqual(byStock[0].customerName, 'John Smith');
+    assert.strictEqual(byStock[0].stockNum, 'U2044');
+
+    const byDeal = ctx.searchDeals('1102');
+    assert.ok(byDeal.some(function(d) { return d.dealNumber === '1102'; }));
+    assert.ok(byDeal.some(function(d) { return d.dealNumber === '1102.1'; }));
+
+    const recalledBase = ctx.recallDesk('1102');
+    assert.ok(recalledBase.desk);
+    assert.strictEqual(recalledBase.desk.dealNumber, '1102.1', 'base deal # loads latest print version');
+    assert.strictEqual(recalledBase.desk.customerName, 'Maria Barrient');
+
+    const recalledExact = ctx.recallDesk('1102.1');
+    assert.strictEqual(recalledExact.desk.dealNumber, '1102.1');
+
+    const recalledStock = ctx.recallDesk('SC1001');
+    assert.ok(recalledStock.desk);
+    assert.strictEqual(recalledStock.desk.stockNum, 'SC1001');
+
+    const recalledName = ctx.recallDesk('john sm');
+    assert.ok(recalledName.desk);
+    assert.strictEqual(recalledName.desk.dealNumber, '1103');
+
+    const ambiguous = ctx.recallDesk('smith');
+    assert.strictEqual(ambiguous.desk, null);
+    assert.strictEqual(ambiguous.matches.length, 2);
+
+    assert.strictEqual(ctx.searchDeals('').length, 0);
+    assert.strictEqual(ctx.recallDesk('zzz-missing').desk, null);
+    assert.strictEqual(ctx.recallDesk('zzz-missing').matches.length, 0);
+  } finally {
+    ctx.getDeskSheet_ = origSheet;
+  }
+});
+
+test('desking dialog recalls by deal #, customer, or stock and lists multiples', function() {
+  const html = fs.readFileSync(path.join(root, 'deskingDialog.html'), 'utf8');
+  assert.ok(html.indexOf('handleRecallResponse') !== -1);
+  assert.ok(html.indexOf('renderSearchResults') !== -1);
+  assert.ok(html.indexOf('Deal #, name, or stock #') !== -1);
+  assert.ok(html.indexOf('Enter a deal #, customer name, or stock # to recall') !== -1);
+  const desk = fs.readFileSync(path.join(root, 'Desking.gs'), 'utf8');
+  assert.ok(desk.indexOf('function deskRowMatchesQuery_') !== -1);
+  assert.ok(desk.indexOf('if (lastRow < 1) return []') !== -1);
+});
+
 // Build preview HTML
 const quoteTpl = fs.readFileSync(path.join(root, 'customerQuote.html'), 'utf8');
 const previewDesk = ctx.redactDeskForCustomer({

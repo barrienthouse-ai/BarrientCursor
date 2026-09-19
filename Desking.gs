@@ -225,7 +225,7 @@ function rowToDesk_(row) {
     dateDisplay: dateDisplay,
     salesperson: row[1],
     manager: row[2],
-    customerName: row[3],
+    customerName: deskValueText_(row[3]),
     address: row[4],
     ssn: row[5],
     email: row[6],
@@ -233,7 +233,7 @@ function rowToDesk_(row) {
     workPhone: row[8],
     cellPhone: row[9],
     dob: row[10],
-    stockNum: row[11],
+    stockNum: deskValueText_(row[11]),
     newUsed: row[12],
     vin: row[13],
     mileage: row[14],
@@ -280,7 +280,7 @@ function rowToDesk_(row) {
     tradeAcv: row[55],
     acc1Label: row[56],
     acc2Label: row[57],
-    dealNumber: row[58],
+    dealNumber: dealNumberText_(row[58]),
     acc3Label: row[59],
     autoguardLabel: row[60],
     rebate1Label: row[61],
@@ -394,42 +394,179 @@ function openDeskPrint(deskData) {
   SpreadsheetApp.getUi().showModalDialog(html, 'Desk Presentation');
 }
 
-function searchDeals(query) {
-  if (!query) return [];
-  var deskSheet = getDeskSheet_();
-  var lastRow = deskSheet.getLastRow();
-  if (lastRow < 5) return [];
-  var width = Math.max(DESK_COL_COUNT, deskSheet.getLastColumn());
-  var data = deskSheet.getRange(5, 1, lastRow - 4, width).getValues();
-  var q = String(query).trim().toLowerCase();
-  var matches = [];
-  for (var i = data.length - 1; i >= 0; i--) {
-    var desk = rowToDesk_(data[i]);
-    var dealNum = String(desk.dealNumber || '').trim();
-    var custName = String(desk.customerName || '').trim().toLowerCase();
-    var stockNum = String(desk.stockNum || '').trim().toLowerCase();
-    var isMatch = dealNum.toLowerCase() === q ||
-      dealNum === String(query).trim() ||
-      custName.indexOf(q) !== -1 ||
-      stockNum.indexOf(q) !== -1;
-    if (isMatch) {
-      matches.push(desk);
-      if (matches.length >= 20) break;
-    }
-  }
-  return matches;
+function deskValueText_(value) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number' && isFinite(value)) return String(value);
+  return String(value).trim();
 }
 
-function recallDesk(dealNumber) {
-  if (!dealNumber) return null;
-  var deskSheet = getDeskSheet_();
-  var lastRow = deskSheet.getLastRow();
-  if (lastRow < 5) return null;
-  var width = Math.max(DESK_COL_COUNT, deskSheet.getLastColumn());
-  var data = deskSheet.getRange(5, 1, lastRow - 4, width).getValues();
-  var target = String(dealNumber).trim();
-  for (var i = data.length - 1; i >= 0; i--) {
-    if (String(data[i][58]).trim() === target) return rowToDesk_(data[i]);
+function dealNumberText_(value) {
+  var text = deskValueText_(value).replace(/,/g, '').trim();
+  if (!text) return '';
+  if (/^[0-9]+\.0+$/.test(text)) return text.split('.')[0];
+  return text;
+}
+
+function dealNumberBase_(value) {
+  var text = dealNumberText_(value);
+  if (!text) return '';
+  return text.split('.')[0];
+}
+
+function dealVersion_(value) {
+  var text = dealNumberText_(value);
+  var parts = text.split('.');
+  if (parts.length < 2) return 0;
+  var v = parseInt(parts[1], 10);
+  return isNaN(v) ? 0 : v;
+}
+
+function isDealNumberQuery_(query) {
+  var q = String(query || '').trim().replace(/,/g, '');
+  return /^[0-9]+(\.[0-9]+)?$/.test(q);
+}
+
+function deskRowLooksLikeHeader_(desk) {
+  var name = String(desk.customerName || '').trim().toLowerCase();
+  var deal = dealNumberText_(desk.dealNumber).toLowerCase();
+  var stock = String(desk.stockNum || '').trim().toLowerCase();
+  if (name === 'customer' || name === 'purchaser' || name === 'purchaser name' || name === 'customer name') return true;
+  if (deal === 'deal' || deal === 'deal #' || deal === 'deal number' || deal === 'deal#') return true;
+  if (stock === 'stock' || stock === 'stock #' || stock === 'stock number') return true;
+  return false;
+}
+
+function deskRowHasContent_(desk) {
+  return !!(dealNumberText_(desk.dealNumber) ||
+    String(desk.customerName || '').trim() ||
+    String(desk.stockNum || '').trim());
+}
+
+function deskRowMatchesQuery_(desk, query) {
+  var q = String(query || '').trim().toLowerCase();
+  if (!q) return false;
+  var qDeal = q.replace(/,/g, '');
+  var deal = dealNumberText_(desk.dealNumber).toLowerCase();
+  var name = String(desk.customerName || '').trim().toLowerCase();
+  var stock = String(desk.stockNum || '').trim().toLowerCase();
+  if (deal) {
+    if (deal === qDeal) return true;
+    if (isDealNumberQuery_(qDeal) && dealNumberBase_(deal) === dealNumberBase_(qDeal)) return true;
+    if (isDealNumberQuery_(qDeal) && qDeal.length >= 3 && deal.indexOf(qDeal) === 0) return true;
   }
+  if (name && name.indexOf(q) !== -1) return true;
+  if (stock && stock.indexOf(qDeal) !== -1) return true;
+  return false;
+}
+
+function matchScore_(desk, query) {
+  var q = String(query || '').trim().toLowerCase();
+  var qDeal = q.replace(/,/g, '');
+  var deal = dealNumberText_(desk.dealNumber).toLowerCase();
+  var stock = String(desk.stockNum || '').trim().toLowerCase();
+  var name = String(desk.customerName || '').trim().toLowerCase();
+  if (deal && deal === qDeal) return 100;
+  if (deal && isDealNumberQuery_(qDeal) && dealNumberBase_(deal) === dealNumberBase_(qDeal)) return 90;
+  if (stock && stock === qDeal) return 80;
+  if (deal && isDealNumberQuery_(qDeal) && deal.indexOf(qDeal) === 0) return 70;
+  if (stock && stock.indexOf(qDeal) !== -1) return 60;
+  if (name && name.indexOf(q) !== -1) return 50;
+  return 0;
+}
+
+function readAllDesks_(deskSheet) {
+  var lastRow = deskSheet.getLastRow();
+  if (lastRow < 1) return [];
+  var width = Math.max(DESK_COL_COUNT, deskSheet.getLastColumn() || 0);
+  var data = deskSheet.getRange(1, 1, lastRow, width).getValues();
+  var desks = [];
+  for (var i = 0; i < data.length; i++) {
+    var desk = rowToDesk_(data[i]);
+    desk._sheetRow = i + 1;
+    if (!deskRowHasContent_(desk) || deskRowLooksLikeHeader_(desk)) continue;
+    desks.push(desk);
+  }
+  return desks;
+}
+
+function stripInternalDeskFields_(desk) {
+  var copy = {};
+  for (var key in desk) {
+    if (!Object.prototype.hasOwnProperty.call(desk, key)) continue;
+    if (String(key).charAt(0) === '_') continue;
+    copy[key] = desk[key];
+  }
+  return copy;
+}
+
+function searchDeals(query) {
+  if (!query || !String(query).trim()) return [];
+  var desks = readAllDesks_(getDeskSheet_());
+  var q = String(query).trim();
+  var bestByKey = {};
+  var order = [];
+  for (var i = 0; i < desks.length; i++) {
+    var desk = desks[i];
+    if (!deskRowMatchesQuery_(desk, q)) continue;
+    var key = dealNumberText_(desk.dealNumber) || ('row:' + desk._sheetRow);
+    var prev = bestByKey[key];
+    if (!prev) {
+      bestByKey[key] = desk;
+      order.push(key);
+    } else if ((desk._sheetRow || 0) >= (prev._sheetRow || 0)) {
+      bestByKey[key] = desk;
+    }
+  }
+  var matches = [];
+  for (var k = 0; k < order.length; k++) matches.push(bestByKey[order[k]]);
+  matches.sort(function (a, b) {
+    var scoreDiff = matchScore_(b, q) - matchScore_(a, q);
+    if (scoreDiff) return scoreDiff;
+    return (b._sheetRow || 0) - (a._sheetRow || 0);
+  });
+  if (matches.length > 20) matches = matches.slice(0, 20);
+  return matches.map(stripInternalDeskFields_);
+}
+
+function pickRecallDesk_(matches, query) {
+  if (!matches || !matches.length) return null;
+  var q = String(query || '').trim();
+  if (isDealNumberQuery_(q)) {
+    var qText = dealNumberText_(q).toLowerCase();
+    if (qText.indexOf('.') !== -1) {
+      for (var i = 0; i < matches.length; i++) {
+        if (dealNumberText_(matches[i].dealNumber).toLowerCase() === qText) return matches[i];
+      }
+    }
+    var family = [];
+    var qBase = dealNumberBase_(q);
+    for (var f = 0; f < matches.length; f++) {
+      if (dealNumberBase_(matches[f].dealNumber) === qBase) family.push(matches[f]);
+    }
+    if (family.length) {
+      family.sort(function (a, b) {
+        var versionDiff = dealVersion_(b.dealNumber) - dealVersion_(a.dealNumber);
+        if (versionDiff) return versionDiff;
+        return dealNumberText_(b.dealNumber).length - dealNumberText_(a.dealNumber).length;
+      });
+      return family[0];
+    }
+  }
+  if (matches.length === 1) return matches[0];
+  var bases = {};
+  for (var j = 0; j < matches.length; j++) {
+    bases[dealNumberBase_(matches[j].dealNumber) || ('row' + j)] = true;
+  }
+  if (Object.keys(bases).length === 1) return matches[0];
   return null;
+}
+
+function recallDesk(query) {
+  var q = String(query || '').trim();
+  var matches = searchDeals(q);
+  return {
+    desk: pickRecallDesk_(matches, q),
+    matches: matches,
+    query: q
+  };
 }

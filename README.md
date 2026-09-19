@@ -47,6 +47,7 @@ Each shareable link **snapshots** the catalog and rates at send time, so editing
 ## Deal / quote rules
 
 - Save, print, and the interactive quote work with any manager name, or none. `MANAGER_STAGING` is optional routing only: a Match substring sends that manager to a DESKDATA row (1–4); everyone else uses row 1. Manager names are never hardcoded.
+- Recall and Search look through **all** `DESKDATA` rows (staging 1–4 and history 5+). Type a deal number (`1102` also loads `1102.1`), a partial customer name, or a stock number. One match loads immediately; several matches open the list so you can click one.
 - Print still versions history (`1026`, `1026.1`, …). Quote **does not** consume a print version; it keeps the current deal number.
 - Deal numbers are assigned under a script lock.
 - Quote tokens are UUIDs with an expiry (`quoteTtlDays` in `CONFIG`, default 14).
