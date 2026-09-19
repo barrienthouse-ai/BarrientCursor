@@ -224,6 +224,123 @@ test('DMS aliases: taxCreditForTrade YES → creditYN Y', function() {
   assert.strictEqual(c.tax, 800);
 });
 
+vm.runInContext(fs.readFileSync(path.join(root, 'Config.gs'), 'utf8'), ctx);
+
+test('manager names are not hardcoded gates for save/print/quote', function() {
+  const cfg = fs.readFileSync(path.join(root, 'Config.gs'), 'utf8');
+  const desk = fs.readFileSync(path.join(root, 'Desking.gs'), 'utf8');
+  const quote = fs.readFileSync(path.join(root, 'CustomerQuote.gs'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'deskingDialog.html'), 'utf8');
+  assert.ok(cfg.indexOf("['KERRY'") === -1);
+  assert.ok(cfg.indexOf("['DAVID'") === -1);
+  assert.ok(cfg.indexOf("['KEITH'") === -1);
+  assert.ok(cfg.indexOf("['STEVE'") === -1);
+  assert.ok(cfg.indexOf('requireStagingRow_') === -1);
+  assert.ok(cfg.indexOf('resolveStagingRow_') !== -1);
+  assert.ok(desk.indexOf('requireStagingRow_') === -1);
+  assert.ok(desk.indexOf('resolveStagingRow_') !== -1);
+  assert.ok(quote.indexOf('requireStagingRow_') === -1);
+  assert.ok(quote.indexOf('resolveStagingRow_') !== -1);
+  assert.ok(html.indexOf('requireManager') === -1);
+  assert.ok(html.indexOf('Please select a Manager first') === -1);
+  assert.ok(html.indexOf('function saveDesk()') !== -1);
+  assert.ok(html.indexOf('function printPresentation()') !== -1);
+  assert.ok(html.indexOf('function openCustomerQuote()') !== -1);
+});
+
+test('optional MANAGER_STAGING match still routes; unmatched/blank uses row 1', function() {
+  const list = [{ match: 'PAT', row: 3 }];
+  assert.strictEqual(ctx.matchStagingRow_('Pat Nguyen', list, 1), 3);
+  assert.strictEqual(ctx.matchStagingRow_('pat', list, 1), 3);
+  assert.strictEqual(ctx.matchStagingRow_('Alex Rivera', list, 1), 1);
+  assert.strictEqual(ctx.matchStagingRow_('', list, 1), 1);
+  assert.strictEqual(ctx.matchStagingRow_('Alex Rivera', list, 0), 0);
+  assert.strictEqual(ctx.matchStagingRow_('', [], 1), 1);
+  assert.strictEqual(ctx.DEFAULT_STAGING_ROW_, 1);
+
+  const orig = ctx.getManagerStagingRows;
+  ctx.getManagerStagingRows = function() { return list; };
+  try {
+    assert.strictEqual(ctx.resolveStagingRow_('Pat Nguyen'), 3);
+    assert.strictEqual(ctx.resolveStagingRow_('Unknown Manager'), 1);
+    assert.strictEqual(ctx.resolveStagingRow_(''), 1);
+    assert.strictEqual(ctx.getStagingRow_('Unknown Manager'), 0);
+    assert.strictEqual(ctx.getStagingRow_(''), 0);
+  } finally {
+    ctx.getManagerStagingRows = orig;
+  }
+});
+
+vm.runInContext(fs.readFileSync(path.join(root, 'Desking.gs'), 'utf8'), ctx);
+vm.runInContext(fs.readFileSync(path.join(root, 'CustomerQuote.gs'), 'utf8'), ctx);
+
+test('save, print, and quote succeed with unmatched or blank manager names', function() {
+  const writes = [];
+  const orig = {
+    ensureConfigSheets: ctx.ensureConfigSheets,
+    withSheetLock_: ctx.withSheetLock_,
+    getManagerStagingRows: ctx.getManagerStagingRows,
+    getDeskSheet_: ctx.getDeskSheet_,
+    storeQuoteDeal_: ctx.storeQuoteDeal_,
+    getWebAppUrl_: ctx.getWebAppUrl_,
+    buildQuoteHtml_: ctx.buildQuoteHtml_,
+    snapshotQuoteConfig_: ctx.snapshotQuoteConfig_,
+    HtmlService: ctx.HtmlService
+  };
+  ctx.ensureConfigSheets = function() {};
+  ctx.withSheetLock_ = function(fn) { return fn(); };
+  ctx.getManagerStagingRows = function() { return []; };
+  ctx.getDeskSheet_ = function() {
+    return {
+      getLastRow: function() { return 6; },
+      getRange: function(row) {
+        return {
+          getValues: function() { return [['1001']]; },
+          setValues: function(vals) {
+            writes.push({ row: row, deal: vals[0][58] });
+            return this;
+          }
+        };
+      }
+    };
+  };
+  ctx.storeQuoteDeal_ = function() { return 'QT_unmatched'; };
+  ctx.getWebAppUrl_ = function() { return 'https://example.invalid/exec'; };
+  ctx.snapshotQuoteConfig_ = function() { return { settings: {}, protection: [], accessories: [] }; };
+  ctx.buildQuoteHtml_ = function() { return '<html>quote-ok</html>'; };
+  ctx.HtmlService = {
+    createHtmlOutputFromFile: function() {
+      return { getContent: function() { return 'PRINT __DESK_DATA_PLACEHOLDER__'; } };
+    }
+  };
+
+  try {
+    const saved = ctx.saveDesk({ manager: 'Alex Rivera', customerName: 'Test Buyer', marketValue: 40000 }, false);
+    assert.strictEqual(saved.success, true);
+    assert.ok(saved.dealNumber);
+
+    const skipped = ctx.saveDesk({ manager: '', customerName: 'Live Type' }, true);
+    assert.strictEqual(skipped.message.indexOf('Staging skipped') !== -1, true);
+
+    const stagedUnknown = ctx.saveDesk({ manager: 'Jordan Lee', customerName: 'Live Type' }, true);
+    assert.strictEqual(stagedUnknown.success, true);
+
+    const printed = ctx.getDeskPrintHtmlWithSave({ manager: '', customerName: 'No Manager', marketValue: 25000 });
+    assert.ok(printed.htmlStr.indexOf('No Manager') !== -1);
+    assert.ok(printed.dealNumber);
+
+    const quoted = ctx.getCustomerQuoteHtmlWithSave({ manager: 'Not In Staging Sheet', customerName: 'Quote Buyer' });
+    assert.strictEqual(quoted.htmlStr, '<html>quote-ok</html>');
+    assert.ok(quoted.dealNumber);
+    assert.ok(quoted.shareLink.indexOf('QT_unmatched') !== -1);
+
+    const stagingWrites = writes.filter(function(w) { return w.row === 1; });
+    assert.ok(stagingWrites.length >= 3, 'unmatched/blank managers still write DESKDATA row 1');
+  } finally {
+    Object.keys(orig).forEach(function(k) { ctx[k] = orig[k]; });
+  }
+});
+
 // Build preview HTML
 const quoteTpl = fs.readFileSync(path.join(root, 'customerQuote.html'), 'utf8');
 const previewDesk = ctx.redactDeskForCustomer({

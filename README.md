@@ -15,7 +15,7 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
 2. **GEAUX Desk → Open Desking Tool.** Salesperson, manager, term, and credit-tier lists are filled when the window opens (no extra wait). **GEAUX Desk → Create/refresh config sheets** creates `QUOTE_CATALOG` if needed.
 3. Confirm these sheets exist and edit them as needed:
    - `CONFIG` — fees, store city/phone, quote TTL, notify emails, default term
-   - `MANAGER_STAGING` — manager name match → DESKDATA staging row (1–4)
+   - `MANAGER_STAGING` — optional manager name match → DESKDATA staging row (1–4). Blank or unmatched names use row 1. Not required to save, print, or quote.
    - `QUOTE_CATALOG` — optional coverages (id, name, description, **price**, brochure URL, provider). Change the Price column anytime — no code deploy.
    - `QUOTE_RATES` — APR matrix (term × a1–b3). Blank cell = not offered
    - `CREDIT_TIERS` — labels and FICO bands shown to the customer
@@ -45,7 +45,7 @@ Each shareable link **snapshots** the catalog and rates at send time, so editing
 
 ## Deal / quote rules
 
-- Save, print, and quote require a manager that matches `MANAGER_STAGING`. Unknown names no longer overwrite row 1.
+- Save, print, and the interactive quote work with any manager name, or none. `MANAGER_STAGING` is optional routing only: a Match substring sends that manager to a DESKDATA row (1–4); everyone else uses row 1. Manager names are never hardcoded.
 - Print still versions history (`1026`, `1026.1`, …). Quote **does not** consume a print version; it keeps the current deal number.
 - Deal numbers are assigned under a script lock.
 - Quote tokens are UUIDs with an expiry (`quoteTtlDays` in `CONFIG`, default 14).

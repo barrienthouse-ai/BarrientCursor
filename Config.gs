@@ -3,13 +3,14 @@
  *
  * Editable sheets (auto-created with defaults on first run):
  *   CONFIG            key / value store settings, fees, branding, emails
- *   MANAGER_STAGING   manager name match → DESKDATA staging row
+ *   MANAGER_STAGING   optional manager name match → DESKDATA staging row (default 1)
  *   QUOTE_CATALOG     F&I coverages + optional accessories. Edit Price / BrochureUrl here.
  *   QUOTE_RATES       APR matrix by term × credit tier
  *   CREDIT_TIERS      customer-facing credit tier labels / FICO bands
  */
 
 var DEFAULT_STORE_CITY_ = 'LaPlace, LA';
+var DEFAULT_STAGING_ROW_ = 1;
 var CONFIG_SCHEMA_VERSION_ = '4';
 var _ssCache_ = null;
 var _configSheetsReady_ = false;
@@ -158,12 +159,14 @@ function ensureManagerSheet_(ss) {
     sheet = ss.insertSheet('MANAGER_STAGING');
     sheet.getRange(1, 1, 1, 3).setValues([['Match', 'StagingRow', 'Notes']]);
     headerStyle_(sheet, 3);
-    sheet.getRange(2, 1, 4, 3).setValues([
-      ['KERRY', 1, 'DESKDATA row 1 — match is case-insensitive substring of manager name'],
-      ['DAVID', 2, 'DESKDATA row 2'],
-      ['KEITH', 3, 'DESKDATA row 3'],
-      ['STEVE', 4, 'DESKDATA row 4']
-    ]);
+    sheet.getRange(2, 1, 1, 3).setValues([[
+      '',
+      '',
+      'Optional. Match is a case-insensitive substring of a manager name. Blank or unmatched names use DESKDATA row ' + DEFAULT_STAGING_ROW_ + '. Save, print, and quote never require a match.'
+    ]]);
+    sheet.setColumnWidth(1, 160);
+    sheet.setColumnWidth(2, 110);
+    sheet.setColumnWidth(3, 560);
   }
 }
 
@@ -480,22 +483,28 @@ function getManagerStagingRows() {
   return rows;
 }
 
-function getStagingRow_(manager) {
-  var list = getManagerStagingRows();
+function matchStagingRow_(manager, list, fallback) {
   var m = String(manager || '').toUpperCase();
-  if (!m) return 0;
+  var fb = parseInt(fallback, 10);
+  if (isNaN(fb) || fb < 1) fb = 0;
+  if (!m) return fb;
+  list = list || [];
   for (var i = 0; i < list.length; i++) {
-    if (m.indexOf(String(list[i].match).toUpperCase()) !== -1) return list[i].row;
+    var match = String(list[i].match || '').toUpperCase();
+    if (!match) continue;
+    var row = parseInt(list[i].row, 10);
+    if (isNaN(row) || row < 1) continue;
+    if (m.indexOf(match) !== -1) return row;
   }
-  return 0;
+  return fb;
 }
 
-function requireStagingRow_(manager) {
-  var row = getStagingRow_(manager);
-  if (!row) {
-    throw new Error('Select a Manager that matches MANAGER_STAGING (Match column) before saving, printing, or quoting.');
-  }
-  return row;
+function getStagingRow_(manager) {
+  return matchStagingRow_(manager, getManagerStagingRows(), 0);
+}
+
+function resolveStagingRow_(manager) {
+  return matchStagingRow_(manager, getManagerStagingRows(), DEFAULT_STAGING_ROW_);
 }
 
 function parseBoolCell_(v, defaultVal) {

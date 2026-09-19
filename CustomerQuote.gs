@@ -172,7 +172,7 @@ function buildQuoteHtml_(record, extras) {
 function getCustomerQuoteHtmlWithSave(deskData) {
   ensureConfigSheets();
   var d = normalizeDeskData(deskData);
-  var stagingRow = requireStagingRow_(d.manager);
+  var stagingRow = resolveStagingRow_(d.manager);
 
   return withSheetLock_(function () {
     var deskSheet = getDeskSheet_();
@@ -206,7 +206,7 @@ function getCustomerQuoteHtmlWithSave(deskData) {
 function generateShareableLink(deskData) {
   ensureConfigSheets();
   var d = normalizeDeskData(deskData);
-  requireStagingRow_(d.manager);
+  var stagingRow = resolveStagingRow_(d.manager);
   return withSheetLock_(function () {
     var deskSheet = getDeskSheet_();
     var existingDealNum = String(d.dealNumber || '').trim();
@@ -214,7 +214,7 @@ function generateShareableLink(deskData) {
     d.dealNumber = quoteDealNum;
     if (!existingDealNum) {
       var rowData = buildRowData_(d, quoteDealNum);
-      writeDeskRow_(deskSheet, requireStagingRow_(d.manager), rowData);
+      writeDeskRow_(deskSheet, stagingRow, rowData);
       var lastRow = Math.max(4, deskSheet.getLastRow());
       writeDeskRow_(deskSheet, lastRow + 1, rowData);
     }

@@ -520,14 +520,6 @@
         return data;
       }
 
-      function requireManager() {
-        if (!document.getElementById('manager').value) {
-          showStatus('Please select a Manager first', 'error');
-          return false;
-        }
-        return true;
-      }
-
       function fetchVehicle() {
         var stock = document.getElementById('stockNum').value.trim();
         if (!stock) { showStatus('Enter a Stock # first', 'error'); return; }
@@ -556,7 +548,6 @@
       }
 
       function saveDesk() {
-        if (!requireManager()) return;
         showStatus('Saving deal...', 'info');
         google.script.run
           .withSuccessHandler(function(res) {
@@ -656,7 +647,6 @@
       }
 
       function openCustomerQuote() {
-        if (!requireManager()) return;
         var data = collectFormData();
         showStatus('Generating interactive customer quote...', 'info');
         google.script.run
@@ -723,7 +713,6 @@
       }
 
       function printPresentation() {
-        if (!requireManager()) return;
         var data = collectFormData();
         data.printWithTaxFees = document.getElementById('printWithTaxFees').checked;
         showStatus('Saving and opening print preview...', 'info');

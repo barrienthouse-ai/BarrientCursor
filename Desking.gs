@@ -1,6 +1,6 @@
 /**
  * Shared Desking Tool — spreadsheet CRUD.
- * DESKDATA rows 1-4 = manager staging (from MANAGER_STAGING sheet)
+ * DESKDATA rows 1-4 = optional manager staging (MANAGER_STAGING sheet; default row 1)
  * DESKDATA row 5+   = history
  * Column BG (59)    = deal number
  * Columns 72-73     = daysToFirst, firstPaymentDate
@@ -312,10 +312,10 @@ function writeDeskRow_(deskSheet, row, rowData) {
 function saveDesk(deskData, isStagingOnly) {
   ensureConfigSheets();
   var d = normalizeDeskData(deskData);
-  var stagingRow = isStagingOnly ? getStagingRow_(d.manager) : requireStagingRow_(d.manager);
-  if (isStagingOnly && !stagingRow) {
+  if (isStagingOnly && !String(d.manager || '').trim()) {
     return { success: true, message: 'Staging skipped (no manager).', dealNumber: String(d.dealNumber || '') };
   }
+  var stagingRow = resolveStagingRow_(d.manager);
 
   return withSheetLock_(function () {
     var deskSheet = getDeskSheet_();
@@ -360,7 +360,7 @@ function assignPrintDealNumber_(deskSheet, deskData) {
 function getDeskPrintHtmlWithSave(deskData) {
   ensureConfigSheets();
   var d = normalizeDeskData(deskData);
-  var stagingRow = requireStagingRow_(d.manager);
+  var stagingRow = resolveStagingRow_(d.manager);
 
   return withSheetLock_(function () {
     var deskSheet = getDeskSheet_();
