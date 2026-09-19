@@ -24,7 +24,7 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
    - Execute as: **Me** (not User accessing the web app)
    - Who has access: **Anyone** (not “Anyone with a Google account”)
 6. **GEAUX Desk → Save Web App URL**, then **Test customer Web App**. Incognito + signed out must show a GEAUX page, not Google Drive.
-7. **Share a quote:** put the customer email on the desk and click **EMAIL QUOTE**. That sends a standalone HTML file they can open without Google. The gold-bar `/exec?token=` link only works after step 6 passes.
+7. **Share a quote:** put the customer email on the desk and click **EMAIL QUOTE**. The customer email tells them to open the attached `Your-GEAUX-Chevrolet-Quote-….html` file (paperclip on a phone). Do not send the Web App test URL to customers.
 
 Existing `SETUP` (salespeople A7:A52, managers A57:A62), `INV`, and `DESKDATA` keep working. `DESKDATA` history now uses **73 columns** (days-to-first and first payment date at the end).
 

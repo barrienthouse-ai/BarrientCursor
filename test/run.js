@@ -257,6 +257,9 @@ test('customer quote links never use YOUR_DEPLOYMENT_ID placeholder', function()
   assert.ok(quote.indexOf("var YOUR_WEBAPP_URL") === -1);
   assert.ok(quote.indexOf('buildQuoteShareLink_') !== -1);
   assert.ok(quote.indexOf('function emailCustomerQuote') !== -1);
+  assert.ok(quote.indexOf('function buildCustomerQuoteEmail_') !== -1);
+  assert.ok(quote.indexOf('showCopyableUrlDialog_') !== -1);
+  assert.ok(quote.indexOf('no web link') !== -1);
   assert.ok(deskHtml.indexOf('EMAIL QUOTE') !== -1);
   assert.ok(quote.indexOf('ScriptApp.getService') !== -1);
   assert.ok(html.indexOf('isLiveWebAppUrl') !== -1);
@@ -289,6 +292,29 @@ test('optional MANAGER_STAGING match still routes; unmatched/blank uses row 1', 
 
 vm.runInContext(fs.readFileSync(path.join(root, 'Desking.gs'), 'utf8'), ctx);
 vm.runInContext(fs.readFileSync(path.join(root, 'CustomerQuote.gs'), 'utf8'), ctx);
+
+test('customer quote email tells them to open the attachment, not a web link', function() {
+  const mail = ctx.buildCustomerQuoteEmail_({
+    storeName: 'GEAUX Chevrolet',
+    storeCity: 'LaPlace, LA',
+    storePhone: '(225) 644-8411'
+  }, {
+    customerName: 'Alex Customer',
+    year: '2026',
+    make: 'CHEV',
+    model: 'TRAVERSE',
+    salesperson: 'Jane'
+  }, '1102');
+  assert.strictEqual(mail.fileName, 'Your-GEAUX-Chevrolet-Quote-1102.html');
+  assert.ok(mail.subject.indexOf(mail.fileName) !== -1);
+  assert.ok(mail.body.indexOf('no web link') !== -1);
+  assert.ok(mail.body.indexOf('paperclip') !== -1);
+  assert.ok(mail.htmlBody.indexOf('paperclip') !== -1);
+  assert.ok(mail.htmlBody.indexOf('Your quote is this attached file') !== -1);
+  assert.ok(mail.body.indexOf('script.google.com') === -1);
+  assert.ok(mail.htmlBody.indexOf('script.google.com') === -1);
+  assert.ok(mail.body.indexOf('Hi Alex') !== -1);
+});
 
 test('placeholder web app URLs cannot become customer links', function() {
   assert.strictEqual(ctx.isUsableWebAppUrl_('https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec'), false);

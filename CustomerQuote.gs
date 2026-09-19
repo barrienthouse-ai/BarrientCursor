@@ -106,12 +106,46 @@ function setWebAppUrl() {
     return;
   }
   rememberWebAppUrl_(url, true);
-  var saved =
-    'Web App URL saved:\n\n' + normalizeWebAppUrl_(url) + '\n\n' +
-    'Test that URL in an incognito window while signed out. You should see a GEAUX “quote service is live” page — not Google Drive.\n\n' +
-    'Then open CUSTOMER QUOTE and use EMAIL QUOTE, or copy the gold-bar /exec?token= link.';
-  if (ui) ui.alert(saved);
-  else console.log(saved);
+  var live = normalizeWebAppUrl_(url);
+  showCopyableUrlDialog_(
+    'Web App URL saved — copy this URL',
+    live,
+    'Select the box or click Copy URL. Test it in an incognito window while signed out of Google. You should see a GEAUX page, not Drive. Customer quotes are still sent with EMAIL QUOTE (the attached file).'
+  );
+}
+
+function showCopyableUrlDialog_(title, url, note) {
+  var safeUrl = escapeHtml(url);
+  var safeNote = escapeHtml(note || '');
+  var html =
+    '<div style="font-family:Arial,sans-serif;padding:4px 2px 0;color:#202124;">' +
+    '<p style="margin:0 0 10px;font-size:13px;line-height:1.45;">' + safeNote + '</p>' +
+    '<input id="copyUrl" type="text" readonly value="' + safeUrl + '" ' +
+    'style="width:100%;box-sizing:border-box;padding:9px 10px;font:12px/1.3 monospace;' +
+    'border:2px solid #c8a84b;border-radius:4px;background:#0d1f33;color:#fff;" ' +
+    'onclick="this.select()">' +
+    '<div style="margin-top:12px;display:flex;gap:8px;align-items:center;">' +
+    '<button id="copyBtn" style="background:#c8a84b;color:#0d1f33;border:none;border-radius:4px;' +
+    'padding:8px 16px;font-weight:800;cursor:pointer;">Copy URL</button>' +
+    '<button onclick="google.script.host.close()" style="border:1px solid #bbb;background:#fff;' +
+    'border-radius:4px;padding:8px 14px;cursor:pointer;">Close</button>' +
+    '<span id="copied" style="color:#188038;font-size:12px;font-weight:700;"></span>' +
+    '</div></div>' +
+    '<script>' +
+    'var box=document.getElementById("copyUrl"); box.focus(); box.select();' +
+    'document.getElementById("copyBtn").onclick=function(){' +
+    'box.select(); box.setSelectionRange(0, box.value.length);' +
+    'try { document.execCommand("copy"); document.getElementById("copied").textContent="Copied"; }' +
+    'catch(e) { document.getElementById("copied").textContent="Select the box and press Ctrl+C"; }' +
+    '};</script>';
+  try {
+    SpreadsheetApp.getUi().showModalDialog(
+      HtmlService.createHtmlOutput(html).setWidth(560).setHeight(220),
+      title
+    );
+  } catch (e) {
+    console.log(title + ': ' + url);
+  }
 }
 
 function parseIdList_(v) {
@@ -300,6 +334,73 @@ function getCustomerQuoteHtmlWithSave(deskData) {
   });
 }
 
+function quoteAttachmentFileName_(storeName, dealNumber) {
+  var brand = String(storeName || 'GEAUX Chevrolet').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  var deal = String(dealNumber || 'quote').replace(/[^A-Za-z0-9._-]+/g, '');
+  return 'Your-' + brand + '-Quote-' + deal + '.html';
+}
+
+function buildCustomerQuoteEmail_(store, desk, dealNumber) {
+  store = store || {};
+  desk = desk || {};
+  var storeName = store.storeName || 'GEAUX Chevrolet';
+  var city = store.storeCity || '';
+  var phone = store.storePhone || '';
+  var fileName = quoteAttachmentFileName_(storeName, dealNumber);
+  var first = String(desk.customerName || '').trim().split(/\s+/)[0];
+  var greeting = first ? ('Hi ' + first + ',') : 'Hello,';
+  var vehicle = [desk.year, desk.make, desk.model].filter(Boolean).join(' ');
+  var salesperson = desk.salesperson || 'our sales team';
+  var subject = 'Your ' + storeName + ' quote is the attached file — ' + fileName;
+  var body =
+    greeting + '\n\n' +
+    'Your quote is the attached file named:\n' + fileName + '\n\n' +
+    'There is no web link to click. Open that attached file.\n\n' +
+    'On a phone\n' +
+    '1. Scroll to the bottom of this email.\n' +
+    '2. Tap the paperclip or the file named ' + fileName + '.\n' +
+    '3. If asked, choose Open or Preview.\n\n' +
+    'On a computer\n' +
+    '1. Find the attachment at the top or bottom of this email.\n' +
+    '2. Click ' + fileName + '.\n' +
+    '3. If it downloads, double-click the downloaded file.\n\n' +
+    'Your quote opens in a browser. You do not need a Google account.\n\n' +
+    (vehicle ? ('Vehicle: ' + vehicle + '\n') : '') +
+    'Deal #: ' + dealNumber + '\n' +
+    'Questions? Call ' + (phone || storeName) + ' and ask for ' + salesperson + '.\n\n' +
+    storeName + (city ? ' • ' + city : '') + '\n';
+
+  var htmlBody =
+    '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#0d1f33;">' +
+    '<div style="background:#0d1f33;padding:22px 24px;border-radius:8px 8px 0 0;">' +
+    '<div style="color:#c8a84b;font-style:italic;font-weight:900;font-size:22px;letter-spacing:0.5px;">' + escapeHtml(storeName) + '</div>' +
+    '<div style="color:#aac4e0;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-top:4px;">Your personalized quote</div>' +
+    '</div>' +
+    '<div style="border:1px solid #ddd;border-top:none;padding:22px 24px;background:#fff;">' +
+    '<p style="margin:0 0 14px;font-size:16px;">' + escapeHtml(greeting) + '</p>' +
+    '<div style="background:#fff8e1;border:2px solid #c8a84b;border-radius:8px;padding:16px 18px;margin:0 0 18px;">' +
+    '<div style="color:#8a6d1b;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;">Your quote is this attached file</div>' +
+    '<div style="font-size:18px;font-weight:900;margin:6px 0 10px;word-break:break-all;">' + escapeHtml(fileName) + '</div>' +
+    '<p style="margin:0;font-size:14px;line-height:1.45;">There is <strong>no web link</strong> to tap. Scroll to the attachment on this email and open that file.</p>' +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:16px;">' +
+    '<tr><td style="padding:8px 10px;background:#0d1f33;color:#c8a84b;font-weight:800;" colspan="2">How to open it</td></tr>' +
+    '<tr><td style="padding:10px;border-bottom:1px solid #eee;width:110px;font-weight:700;color:#1a3a5c;vertical-align:top;">Phone</td>' +
+    '<td style="padding:10px;border-bottom:1px solid #eee;">Scroll to the bottom of this email. Tap the <strong>paperclip</strong> or the file named <strong>' + escapeHtml(fileName) + '</strong>. Choose Open or Preview if asked.</td></tr>' +
+    '<tr><td style="padding:10px;font-weight:700;color:#1a3a5c;vertical-align:top;">Computer</td>' +
+    '<td style="padding:10px;">Click the attachment <strong>' + escapeHtml(fileName) + '</strong>. If it downloads, double-click the downloaded file. It opens in your browser.</td></tr>' +
+    '</table>' +
+    '<p style="margin:0 0 8px;font-size:13px;color:#5f6368;">You do not need a Google login. If the file asks to download, that is normal — open the downloaded file.</p>' +
+    (vehicle ? ('<p style="margin:12px 0 0;font-size:14px;"><strong>Vehicle:</strong> ' + escapeHtml(vehicle) + '</p>') : '') +
+    '<p style="margin:4px 0 0;font-size:14px;"><strong>Deal #:</strong> ' + escapeHtml(String(dealNumber || '')) + '</p>' +
+    '<p style="margin:16px 0 0;font-size:14px;">Questions? Call <strong>' + escapeHtml(phone || storeName) + '</strong> and ask for ' + escapeHtml(salesperson) + '.</p>' +
+    '</div>' +
+    '<div style="background:#0d1f33;padding:12px 24px;border-radius:0 0 8px 8px;text-align:center;">' +
+    '<p style="color:#aac4e0;font-size:11px;margin:0;">' + escapeHtml(storeName) + (city ? ' &bull; ' + escapeHtml(city) : '') + '</p></div></div>';
+
+  return { subject: subject, body: body, htmlBody: htmlBody, fileName: fileName };
+}
+
 function emailCustomerQuote(deskData) {
   var built = withSheetLock_(function () {
     return buildSavedCustomerQuote_(deskData, { managerPreview: false });
@@ -310,45 +411,35 @@ function emailCustomerQuote(deskData) {
   }
   var store = {};
   try { store = getStoreSettings(); } catch (e) {}
-  var storeName = store.storeName || 'GEAUX Chevrolet';
-  var subject = storeName + ' quote — Deal #' + built.dealNumber;
-  var body =
-    'Your personalized ' + storeName + ' quote is attached.\n\n' +
-    'Open the HTML file on your phone or computer. You do not need a Google login.\n';
-  if (built.shareLink) {
-    body += '\nOr open this link:\n' + built.shareLink + '\n';
-  }
-  var blob = Utilities.newBlob(built.htmlStr, 'text/html', 'GEAUX-Quote-' + built.dealNumber + '.html');
+  var mail = buildCustomerQuoteEmail_(store, built.desk, built.dealNumber);
+  var blob = Utilities.newBlob(built.htmlStr, 'text/html', mail.fileName);
   MailApp.sendEmail({
     to: to,
-    subject: subject,
-    body: body,
+    subject: mail.subject,
+    body: mail.body,
+    htmlBody: mail.htmlBody,
     attachments: [blob]
   });
   return {
     success: true,
     emailedTo: to,
     dealNumber: built.dealNumber,
-    shareLink: built.shareLink || ''
+    shareLink: built.shareLink || '',
+    fileName: mail.fileName
   };
 }
 
 function testCustomerWebApp() {
   var url = getWebAppUrl_();
-  var ui;
-  try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }
   if (!isUsableWebAppUrl_(url)) {
     setWebAppUrl();
     return;
   }
-  var msg =
-    'Open this URL in an incognito window while signed OUT of Google:\n\n' + url + '\n\n' +
-    'PASS: a GEAUX page that says the quote service is live.\n' +
-    'FAIL: Google Drive “unable to open the file”.\n\n' +
-    'If it fails: Apps Script → Deploy → Manage deployments → pencil on the Web app → Execute as Me, Who has access Anyone (not “Anyone with a Google account”) → New version → Deploy.\n\n' +
-    'You can still send quotes with EMAIL QUOTE (HTML attachment).';
-  if (ui) ui.alert(msg);
-  else console.log(msg);
+  showCopyableUrlDialog_(
+    'Copy this Web App URL',
+    url,
+    'Click Copy URL, then paste it into an incognito window while signed out of Google. PASS = a GEAUX page. FAIL = Google Drive. Customer emails use the attached quote file, not this URL.'
+  );
 }
 
 function generateShareableLink(deskData) {
