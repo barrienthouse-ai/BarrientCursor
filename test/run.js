@@ -167,6 +167,14 @@ test('print template does not include SSN', function() {
   assert.ok(html.toLowerCase().indexOf('>ssn<') === -1);
 });
 
+test('config defaults store city to LaPlace, not Gonzales', function() {
+  const src = fs.readFileSync(path.join(root, 'Config.gs'), 'utf8');
+  assert.ok(src.indexOf("DEFAULT_STORE_CITY_ = 'LaPlace, LA'") !== -1);
+  assert.ok(src.indexOf('Gonzales, Louisiana') === -1);
+  const preview = fs.readFileSync(path.join(root, 'test/run.js'), 'utf8');
+  assert.ok(preview.indexOf("storeCity: 'LaPlace, LA'") !== -1);
+});
+
 test('print template uses GEAUX Chevrolet logo, not Supreme wordmark', function() {
   const html = fs.readFileSync(path.join(root, 'deskPrint.html'), 'utf8');
   assert.ok(html.indexOf('alt="GEAUX Chevrolet"') !== -1);
@@ -237,7 +245,7 @@ previewDesk._token = 'demo';
 const previewConfig = {
   settings: {
     storeName: 'GEAUX Chevrolet',
-    storeCity: 'Gonzales, Louisiana',
+    storeCity: 'LaPlace, LA',
     storePhone: '(225) 644-8411',
     defaultTerm: 72,
     allowTermChange: true,

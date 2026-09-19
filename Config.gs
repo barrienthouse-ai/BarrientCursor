@@ -9,6 +9,8 @@
  *   CREDIT_TIERS      customer-facing credit tier labels / FICO bands
  */
 
+var DEFAULT_STORE_CITY_ = 'LaPlace, LA';
+
 var DEFAULT_FEES_ = {
   docFee: 436.00,
   titleFee: 68.50,
@@ -55,6 +57,26 @@ function headerStyle_(sheet, cols) {
   sheet.setFrozenRows(1);
 }
 
+function isGonzalesCity_(value) {
+  return /gonzales/i.test(String(value || ''));
+}
+
+function migrateStoreCity_(sheet) {
+  var data = sheet.getDataRange().getValues();
+  var found = false;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0] || '').trim() !== 'storeCity') continue;
+    found = true;
+    if (isGonzalesCity_(data[i][1])) {
+      sheet.getRange(i + 1, 2).setValue(DEFAULT_STORE_CITY_);
+    }
+    return;
+  }
+  if (!found) {
+    sheet.appendRow(['storeCity', DEFAULT_STORE_CITY_, 'City line on quote / emails']);
+  }
+}
+
 function ensureConfigSheet_(ss) {
   var sheet = ss.getSheetByName('CONFIG');
   if (!sheet) {
@@ -63,7 +85,7 @@ function ensureConfigSheet_(ss) {
     headerStyle_(sheet, 3);
     var rows = [
       ['storeName', 'GEAUX Chevrolet', 'Customer-facing store name'],
-      ['storeCity', 'Gonzales, Louisiana', 'City line on quote / emails'],
+      ['storeCity', DEFAULT_STORE_CITY_, 'City line on quote / emails'],
       ['storePhone', '(225) 644-8411', 'Customer-facing phone'],
       ['notifyEmails', 'dbarrient@geauxautomotive.com,swinkler@geauxautomotive.com,kcoulon@geauxautomotive.com,kmumphrey@geauxautomotive.com', 'Comma-separated quote notification recipients'],
       ['quoteTtlDays', '14', 'Shareable quote link lifetime in days'],
@@ -88,6 +110,8 @@ function ensureConfigSheet_(ss) {
     sheet.setColumnWidth(1, 180);
     sheet.setColumnWidth(2, 420);
     sheet.setColumnWidth(3, 280);
+  } else {
+    migrateStoreCity_(sheet);
   }
 }
 
@@ -237,9 +261,11 @@ function getDefaultFees() {
 
 function getStoreSettings() {
   var map = getConfigMap();
+  var city = cfgStr_(map, 'storeCity', DEFAULT_STORE_CITY_);
+  if (isGonzalesCity_(city)) city = DEFAULT_STORE_CITY_;
   return {
     storeName: cfgStr_(map, 'storeName', 'GEAUX Chevrolet'),
-    storeCity: cfgStr_(map, 'storeCity', 'Gonzales, Louisiana'),
+    storeCity: city,
     storePhone: cfgStr_(map, 'storePhone', '(225) 644-8411'),
     notifyEmails: cfgStr_(map, 'notifyEmails', ''),
     quoteTtlDays: cfgNum_(map, 'quoteTtlDays', 14),
