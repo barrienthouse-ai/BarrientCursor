@@ -14,7 +14,7 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
    - **GEAUX TOOLS:** Lease Engine, Dealer Bonuses, GEAUX Terminal, Service Manager Report (SMR), SLM, GEAUX Desk.
    - **GEAUX REPORTS:** Deal Reports and Dealer Tool Kit.
    - If they are missing: **Extensions → Apps Script**, confirm `Code.gs` is in the script bound to this spreadsheet, then reload. First run: **Run → onOpen** in the Apps Script editor and click Allow.
-   - **Delete any other `function onOpen()`** in the same Apps Script project (keep the rest of those files). Two `onOpen` functions cannot share one project.
+   - **Delete any other `function onOpen()`** in the same Apps Script project (keep the rest of those files). Two `onOpen` functions cannot share one project. Use `LeaseEngine.gs` for the lease calculator (no `onOpen` in that file).
 2. **GEAUX TOOLS → GEAUX Desk → Open Desking Tool.** Salesperson, manager, term, and credit-tier lists are filled when the window opens (no extra wait). **GEAUX TOOLS → GEAUX Desk → Create/refresh config sheets** creates `QUOTE_CATALOG` if needed.
 3. Confirm these sheets exist and edit them as needed:
    - `CONFIG` — fees, store city/phone, quote TTL, notify emails, default term

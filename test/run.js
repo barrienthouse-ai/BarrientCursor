@@ -154,6 +154,17 @@ test('quote HTML has placeholders and no hardcoded demo PII', function() {
   assert.ok(html.indexOf('const RATE_MATRIX') === -1);
 });
 
+test('LeaseEngine.gs keeps lease tools and has no onOpen', function() {
+  const src = fs.readFileSync(path.join(root, 'LeaseEngine.gs'), 'utf8');
+  assert.ok(src.indexOf('function openLeaseCalculator') !== -1);
+  assert.ok(src.indexOf('function showDashboard') !== -1);
+  assert.ok(src.indexOf('function getPersonnelDropdownData') !== -1);
+  assert.ok(src.indexOf('function processSaveAndPrint') !== -1);
+  assert.ok(src.indexOf('function getGMModelList') !== -1);
+  assert.ok(src.indexOf('function saveDealerDefaults') !== -1);
+  assert.ok(!/^function\s+onOpen\s*\(/m.test(src));
+});
+
 test('Code.gs groups dealer menus under GEAUX TOOLS and GEAUX REPORTS', function() {
   vm.runInContext(fs.readFileSync(path.join(root, 'Code.gs'), 'utf8'), ctx);
   const plan = ctx.geauxMenuBlueprint_();
