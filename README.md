@@ -23,7 +23,7 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
 5. Deploy **Deploy → New deployment → Web app**
    - Execute as: **Me**
    - Who has access: **Anyone** (customers do not have Google logins)
-6. **GEAUX Desk → Save Web App URL.** That stores the published `/exec` URL (or paste it into CONFIG `webAppUrl`). Customer emails must use this URL — links with `YOUR_DEPLOYMENT_ID` are not a real web app and will 404. Open the quote again after saving the URL and send the new link.
+6. **GEAUX Desk → Save Web App URL.** That stores the published `/exec` URL (or paste it into CONFIG `webAppUrl`). Then open **CUSTOMER QUOTE** and copy the gold-bar link. It must look like `https://script.google.com/macros/s/…/exec?token=QT_…`. A URL that stops at `/macros/s/AKfycb…` (no `/exec`, no `token`) is a Drive file path and will 404.
 
 Existing `SETUP` (salespeople A7:A52, managers A57:A62), `INV`, and `DESKDATA` keep working. `DESKDATA` history now uses **73 columns** (days-to-first and first payment date at the end).
 

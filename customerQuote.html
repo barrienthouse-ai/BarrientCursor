@@ -293,7 +293,7 @@ function isLiveWebAppUrl(url) {
   var s = String(url || '').trim();
   if (!s) return false;
   if (/YOUR_DEPLOYMENT_ID|REPLACE_WITH_YOUR_DEPLOYMENT_ID/i.test(s)) return false;
-  return /^https:\/\/script\.google\.com\//i.test(s);
+  return /^https:\/\/script\.google\.com\//i.test(s) && /\/exec(\?|$)/i.test(s);
 }
 function roundMoney(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 function fmt(n) {

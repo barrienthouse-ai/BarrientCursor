@@ -653,7 +653,7 @@
           .withSuccessHandler(function(res) {
             document.getElementById('dealNumber').value = res.dealNumber;
             openBlobHtml(res.htmlStr, 'Customer quote opened. Deal # ' + res.dealNumber);
-            if (res.shareLink && res.shareLink.indexOf('script.google.com') !== -1 && res.shareLink.indexOf('YOUR_DEPLOYMENT_ID') === -1) {
+            if (res.shareLink && /script\.google\.com\/.*\/exec\?token=/i.test(res.shareLink) && res.shareLink.indexOf('YOUR_DEPLOYMENT_ID') === -1) {
               showShareLinkPanel(res.shareLink, res.dealNumber);
             } else {
               showStatus('Customer quote opened. Deal # ' + res.dealNumber + ' — deploy the Web App (Anyone), then GEAUX Desk → Save Web App URL, and open the quote again to copy a working customer link.', 'success');
@@ -674,7 +674,7 @@
         title.textContent = 'CUSTOMER QUOTE LINK';
         var hint = document.createElement('span');
         hint.style.cssText = 'color:#aac4e0;font-size:12px;';
-        hint.textContent = 'Deal #' + dealNumber + ' — text or email this link:';
+        hint.textContent = 'Deal #' + dealNumber + ' — send this full /exec?token= link (not the short macros/s/… address):';
         var input = document.createElement('input');
         input.id = 'shareLinkInput';
         input.type = 'text';

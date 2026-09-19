@@ -9,17 +9,23 @@
  */
 
 function isUsableWebAppUrl_(url) {
-  var s = String(url || '').trim();
+  var s = normalizeWebAppUrl_(url);
   if (!s) return false;
   if (!/^https:\/\/script\.google\.com\//i.test(s)) return false;
-  var upper = s.toUpperCase();
-  if (upper.indexOf('YOUR_DEPLOYMENT_ID') !== -1) return false;
-  if (upper.indexOf('REPLACE_WITH_YOUR_DEPLOYMENT_ID') !== -1) return false;
-  return true;
+  if (/YOUR_DEPLOYMENT_ID|REPLACE_WITH_YOUR_DEPLOYMENT_ID/i.test(s)) return false;
+  return /\/exec$/i.test(s);
 }
 
 function normalizeWebAppUrl_(url) {
-  return String(url || '').trim().replace(/\/+$/, '');
+  var s = String(url || '').trim();
+  if (!s) return '';
+  s = s.split('#')[0].split('?')[0].replace(/\/+$/, '');
+  if (!/^https:\/\/script\.google\.com\//i.test(s)) return s;
+  if (/YOUR_DEPLOYMENT_ID|REPLACE_WITH_YOUR_DEPLOYMENT_ID/i.test(s)) return s;
+  if (/\/exec$/i.test(s)) return s;
+  if (/\/dev$/i.test(s)) return s.replace(/\/dev$/i, '/exec');
+  if (/\/s\/[^/]+$/i.test(s)) return s + '/exec';
+  return s;
 }
 
 function detectDeployedWebAppUrl_() {
@@ -97,7 +103,9 @@ function setWebAppUrl() {
     return;
   }
   rememberWebAppUrl_(url, true);
-  var saved = 'Customer quote links will use:\n\n' + normalizeWebAppUrl_(url);
+  var saved =
+    'Web App URL saved:\n\n' + normalizeWebAppUrl_(url) + '\n\n' +
+    'Do not send that base URL to a customer. Open CUSTOMER QUOTE and copy the full link from the gold bar. It must include /exec?token=';
   if (ui) ui.alert(saved);
   else console.log(saved);
 }

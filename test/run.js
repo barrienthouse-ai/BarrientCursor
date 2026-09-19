@@ -294,11 +294,19 @@ test('placeholder web app URLs cannot become customer links', function() {
   assert.strictEqual(ctx.isUsableWebAppUrl_('https://example.invalid/exec'), false);
   assert.strictEqual(ctx.isUsableWebAppUrl_('https://script.google.com/macros/s/AKfycbxLiveId123/exec'), true);
   assert.strictEqual(
+    ctx.normalizeWebAppUrl_('https://script.google.com/macros/s/AKfycbyJXHt_lfpsgxCqriMqek_dYroDLruTAHu6DlrplO3AKk2Qe'),
+    'https://script.google.com/macros/s/AKfycbyJXHt_lfpsgxCqriMqek_dYroDLruTAHu6DlrplO3AKk2Qe/exec'
+  );
+  assert.strictEqual(
     ctx.buildQuoteShareLink_('QT_d4b451c931c44d', 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec'),
     ''
   );
   assert.strictEqual(
-    ctx.buildQuoteShareLink_('QT_d4b451c931c44d', 'https://script.google.com/macros/s/AKfycbxLiveId123/exec'),
+    ctx.buildQuoteShareLink_('QT_d4b451c931c44d', 'https://script.google.com/macros/s/AKfycbyJXHt_lfpsgxCqriMqek_dYroDLruTAHu6DlrplO3AKk2Qe'),
+    'https://script.google.com/macros/s/AKfycbyJXHt_lfpsgxCqriMqek_dYroDLruTAHu6DlrplO3AKk2Qe/exec?token=QT_d4b451c931c44d'
+  );
+  assert.strictEqual(
+    ctx.buildQuoteShareLink_('QT_d4b451c931c44d', 'https://script.google.com/macros/s/AKfycbxLiveId123/dev'),
     'https://script.google.com/macros/s/AKfycbxLiveId123/exec?token=QT_d4b451c931c44d'
   );
 });
