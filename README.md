@@ -21,9 +21,10 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
    - `CREDIT_TIERS` — labels and FICO bands shown to the customer
 4. **GEAUX Desk → Publish quote brochures** after the PDFs are in the Drive folder. That writes view links into `QUOTE_CATALOG` BrochureUrl. You can also paste any URL into that column by hand.
 5. Deploy **Deploy → New deployment → Web app**
-   - Execute as: **Me**
-   - Who has access: **Anyone** (customers do not have Google logins)
-6. **GEAUX Desk → Save Web App URL.** That stores the published `/exec` URL (or paste it into CONFIG `webAppUrl`). Then open **CUSTOMER QUOTE** and copy the gold-bar link. It must look like `https://script.google.com/macros/s/…/exec?token=QT_…`. A URL that stops at `/macros/s/AKfycb…` (no `/exec`, no `token`) is a Drive file path and will 404.
+   - Execute as: **Me** (not User accessing the web app)
+   - Who has access: **Anyone** (not “Anyone with a Google account”)
+6. **GEAUX Desk → Save Web App URL**, then **Test customer Web App**. Incognito + signed out must show a GEAUX page, not Google Drive.
+7. **Share a quote:** put the customer email on the desk and click **EMAIL QUOTE**. That sends a standalone HTML file they can open without Google. The gold-bar `/exec?token=` link only works after step 6 passes.
 
 Existing `SETUP` (salespeople A7:A52, managers A57:A62), `INV`, and `DESKDATA` keep working. `DESKDATA` history now uses **73 columns** (days-to-first and first payment date at the end).
 

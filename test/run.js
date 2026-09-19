@@ -256,9 +256,12 @@ test('customer quote links never use YOUR_DEPLOYMENT_ID placeholder', function()
   assert.ok(quote.indexOf("setProperty('WEBAPP_URL', YOUR_WEBAPP_URL)") === -1);
   assert.ok(quote.indexOf("var YOUR_WEBAPP_URL") === -1);
   assert.ok(quote.indexOf('buildQuoteShareLink_') !== -1);
+  assert.ok(quote.indexOf('function emailCustomerQuote') !== -1);
+  assert.ok(deskHtml.indexOf('EMAIL QUOTE') !== -1);
   assert.ok(quote.indexOf('ScriptApp.getService') !== -1);
   assert.ok(html.indexOf('isLiveWebAppUrl') !== -1);
-  assert.ok(deskHtml.indexOf('Save Web App URL') !== -1);
+  assert.ok(deskHtml.indexOf('EMAIL QUOTE') !== -1);
+  assert.ok(fs.readFileSync(path.join(root, 'Code.gs'), 'utf8').indexOf('Save Web App URL') !== -1);
 });
 
 test('optional MANAGER_STAGING match still routes; unmatched/blank uses row 1', function() {
@@ -308,6 +311,10 @@ test('placeholder web app URLs cannot become customer links', function() {
   assert.strictEqual(
     ctx.buildQuoteShareLink_('QT_d4b451c931c44d', 'https://script.google.com/macros/s/AKfycbxLiveId123/dev'),
     'https://script.google.com/macros/s/AKfycbxLiveId123/exec?token=QT_d4b451c931c44d'
+  );
+  assert.strictEqual(
+    ctx.normalizeWebAppUrl_('https://script.google.com/a/macros/geauxautomotive.com/s/AKfycbxLiveId123/exec'),
+    'https://script.google.com/macros/s/AKfycbxLiveId123/exec'
   );
 });
 

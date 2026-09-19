@@ -10,6 +10,7 @@ function onOpen() {
     .addItem('Create/refresh config sheets', 'ensureConfigSheets')
     .addItem('Publish quote brochures', 'publishQuoteBrochures')
     .addItem('Save Web App URL', 'setWebAppUrl')
+    .addItem('Test customer Web App', 'testCustomerWebApp')
     .addItem('Send test quote email', 'testEmailNotification')
     .addToUi();
 }

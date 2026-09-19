@@ -22,6 +22,9 @@ function normalizeWebAppUrl_(url) {
   s = s.split('#')[0].split('?')[0].replace(/\/+$/, '');
   if (!/^https:\/\/script\.google\.com\//i.test(s)) return s;
   if (/YOUR_DEPLOYMENT_ID|REPLACE_WITH_YOUR_DEPLOYMENT_ID/i.test(s)) return s;
+  // Workspace /a/macros/domain/... URLs fail for customers outside the domain.
+  s = s.replace(/^https:\/\/script\.google\.com\/a\/macros\/[^/]+\/s\//i, 'https://script.google.com/macros/s/');
+  s = s.replace(/^https:\/\/script\.google\.com\/a\/[^/]+\/macros\/s\//i, 'https://script.google.com/macros/s/');
   if (/\/exec$/i.test(s)) return s;
   if (/\/dev$/i.test(s)) return s.replace(/\/dev$/i, '/exec');
   if (/\/s\/[^/]+$/i.test(s)) return s + '/exec';
@@ -91,13 +94,13 @@ function setWebAppUrl() {
   try { ui = SpreadsheetApp.getUi(); } catch (e2) { ui = null; }
   if (!isUsableWebAppUrl_(url)) {
     var msg =
-      'No published Web App URL yet. Customer links will not work until this is done.\n\n' +
+      'No published Web App URL yet.\n\n' +
       '1. Extensions → Apps Script\n' +
       '2. Deploy → New deployment → Web app\n' +
-      '3. Execute as: Me\n' +
-      '4. Who has access: Anyone\n' +
-      '5. Deploy, copy the URL, then run GEAUX Desk → Save Web App URL again.\n\n' +
-      'You can also paste the URL into the CONFIG sheet (key webAppUrl) and run this again.';
+      '3. Execute as: Me  (not “User accessing the web app”)\n' +
+      '4. Who has access: Anyone  (not “Anyone with a Google account”)\n' +
+      '5. Deploy, then GEAUX Desk → Save Web App URL\n\n' +
+      'Until that works, use EMAIL QUOTE. The attached HTML file opens without Google Drive.';
     if (ui) ui.alert(msg);
     else console.log(msg);
     return;
@@ -105,7 +108,8 @@ function setWebAppUrl() {
   rememberWebAppUrl_(url, true);
   var saved =
     'Web App URL saved:\n\n' + normalizeWebAppUrl_(url) + '\n\n' +
-    'Do not send that base URL to a customer. Open CUSTOMER QUOTE and copy the full link from the gold bar. It must include /exec?token=';
+    'Test that URL in an incognito window while signed out. You should see a GEAUX “quote service is live” page — not Google Drive.\n\n' +
+    'Then open CUSTOMER QUOTE and use EMAIL QUOTE, or copy the gold-bar /exec?token= link.';
   if (ui) ui.alert(saved);
   else console.log(saved);
 }
@@ -251,39 +255,100 @@ function buildQuoteHtml_(record, extras) {
   return html;
 }
 
-function getCustomerQuoteHtmlWithSave(deskData) {
+function buildSavedCustomerQuote_(deskData, extras) {
+  extras = extras || {};
   ensureConfigSheets();
   var d = normalizeDeskData(deskData);
   var stagingRow = resolveStagingRow_(d.manager);
+  var deskSheet = getDeskSheet_();
+  var existingDealNum = String(d.dealNumber || '').trim();
+  var quoteDealNum = existingDealNum || String(getNextDealNumber_(deskSheet));
+  d.dealNumber = quoteDealNum;
 
-  return withSheetLock_(function () {
-    var deskSheet = getDeskSheet_();
-    var existingDealNum = String(d.dealNumber || '').trim();
-    var quoteDealNum = existingDealNum || String(getNextDealNumber_(deskSheet));
-    d.dealNumber = quoteDealNum;
+  var rowData = buildRowData_(d, quoteDealNum);
+  writeDeskRow_(deskSheet, stagingRow, rowData);
+  if (!existingDealNum) {
+    var lastRow = Math.max(4, deskSheet.getLastRow());
+    writeDeskRow_(deskSheet, lastRow + 1, rowData);
+  } else {
+    var existingRow = findDealRow_(deskSheet, quoteDealNum);
+    if (existingRow > 0) writeDeskRow_(deskSheet, existingRow, rowData);
+  }
 
-    var rowData = buildRowData_(d, quoteDealNum);
-    writeDeskRow_(deskSheet, stagingRow, rowData);
-    if (!existingDealNum) {
-      var lastRow = Math.max(4, deskSheet.getLastRow());
-      writeDeskRow_(deskSheet, lastRow + 1, rowData);
-    } else {
-      var existingRow = findDealRow_(deskSheet, quoteDealNum);
-      if (existingRow > 0) writeDeskRow_(deskSheet, existingRow, rowData);
-    }
-
-    var token = storeQuoteDeal_(d, quoteDealNum);
-    var shareLink = buildQuoteShareLink_(token);
-    var htmlStr = buildQuoteHtml_({
-      token: token,
-      payload: { desk: redactDeskForCustomer(d), config: snapshotQuoteConfig_(d) }
-    }, {
-      _shareLink: shareLink,
-      _webAppUrl: getWebAppUrl_(),
-      _isManagerPreview: true
-    });
-    return { htmlStr: htmlStr, dealNumber: quoteDealNum, shareLink: shareLink };
+  var token = storeQuoteDeal_(d, quoteDealNum);
+  var shareLink = buildQuoteShareLink_(token);
+  var htmlStr = buildQuoteHtml_({
+    token: token,
+    payload: { desk: redactDeskForCustomer(d), config: snapshotQuoteConfig_(d) }
+  }, {
+    _shareLink: shareLink,
+    _webAppUrl: getWebAppUrl_(),
+    _isManagerPreview: extras.managerPreview === true
   });
+  return {
+    htmlStr: htmlStr,
+    dealNumber: quoteDealNum,
+    shareLink: shareLink,
+    token: token,
+    desk: d
+  };
+}
+
+function getCustomerQuoteHtmlWithSave(deskData) {
+  return withSheetLock_(function () {
+    return buildSavedCustomerQuote_(deskData, { managerPreview: true });
+  });
+}
+
+function emailCustomerQuote(deskData) {
+  var built = withSheetLock_(function () {
+    return buildSavedCustomerQuote_(deskData, { managerPreview: false });
+  });
+  var to = String((built.desk && built.desk.email) || '').trim();
+  if (!to || to.indexOf('@') === -1) {
+    throw new Error('Enter the customer Email on the desk first, then click EMAIL QUOTE.');
+  }
+  var store = {};
+  try { store = getStoreSettings(); } catch (e) {}
+  var storeName = store.storeName || 'GEAUX Chevrolet';
+  var subject = storeName + ' quote — Deal #' + built.dealNumber;
+  var body =
+    'Your personalized ' + storeName + ' quote is attached.\n\n' +
+    'Open the HTML file on your phone or computer. You do not need a Google login.\n';
+  if (built.shareLink) {
+    body += '\nOr open this link:\n' + built.shareLink + '\n';
+  }
+  var blob = Utilities.newBlob(built.htmlStr, 'text/html', 'GEAUX-Quote-' + built.dealNumber + '.html');
+  MailApp.sendEmail({
+    to: to,
+    subject: subject,
+    body: body,
+    attachments: [blob]
+  });
+  return {
+    success: true,
+    emailedTo: to,
+    dealNumber: built.dealNumber,
+    shareLink: built.shareLink || ''
+  };
+}
+
+function testCustomerWebApp() {
+  var url = getWebAppUrl_();
+  var ui;
+  try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }
+  if (!isUsableWebAppUrl_(url)) {
+    setWebAppUrl();
+    return;
+  }
+  var msg =
+    'Open this URL in an incognito window while signed OUT of Google:\n\n' + url + '\n\n' +
+    'PASS: a GEAUX page that says the quote service is live.\n' +
+    'FAIL: Google Drive “unable to open the file”.\n\n' +
+    'If it fails: Apps Script → Deploy → Manage deployments → pencil on the Web app → Execute as Me, Who has access Anyone (not “Anyone with a Google account”) → New version → Deploy.\n\n' +
+    'You can still send quotes with EMAIL QUOTE (HTML attachment).';
+  if (ui) ui.alert(msg);
+  else console.log(msg);
 }
 
 function generateShareableLink(deskData) {
@@ -384,7 +449,10 @@ function doGet(e) {
   if (brochureId) return serveBrochure_(brochureId);
   var token = e && e.parameter && e.parameter.token ? e.parameter.token : null;
   if (!token) {
-    return quoteErrorPage_('Invalid Quote Link', 'This link is missing a quote token. Please contact us for a new link.');
+    return quoteErrorPage_(
+      'Quote service is live',
+      'This Web App is working. Ask your salesperson for your personal quote link (it includes ?token=).'
+    );
   }
   var record = getStoredQuoteRecord_(token);
   if (!record || record.expired) {

@@ -128,6 +128,7 @@
         <button class="btn-save"  onclick="saveDesk()">SAVE DEAL</button>
         <button class="btn-print" onclick="printPresentation()">PRINT</button>
         <button class="btn-quote" onclick="openCustomerQuote()">CUSTOMER QUOTE</button>
+        <button class="btn-quote" onclick="emailCustomerQuote()">EMAIL QUOTE</button>
         <button class="btn-clear" onclick="clearForm()">CLEAR</button>
         <button class="btn-close" onclick="google.script.host.close()">CLOSE</button>
       </div>
@@ -653,10 +654,9 @@
           .withSuccessHandler(function(res) {
             document.getElementById('dealNumber').value = res.dealNumber;
             openBlobHtml(res.htmlStr, 'Customer quote opened. Deal # ' + res.dealNumber);
-            if (res.shareLink && /script\.google\.com\/.*\/exec\?token=/i.test(res.shareLink) && res.shareLink.indexOf('YOUR_DEPLOYMENT_ID') === -1) {
-              showShareLinkPanel(res.shareLink, res.dealNumber);
-            } else {
-              showStatus('Customer quote opened. Deal # ' + res.dealNumber + ' — deploy the Web App (Anyone), then GEAUX Desk → Save Web App URL, and open the quote again to copy a working customer link.', 'success');
+            showShareLinkPanel(res.shareLink || '', res.dealNumber);
+            if (!(res.shareLink && /\/exec\?token=/i.test(res.shareLink))) {
+              showStatus('Customer quote opened. Deal # ' + res.dealNumber + ' — the Google link is not public yet. Use EMAIL QUOTE (sends an HTML file the customer can open).', 'success');
             }
           })
           .withFailureHandler(function(e) { showStatus('Customer quote error: ' + e.message, 'error'); })
@@ -674,18 +674,25 @@
         title.textContent = 'CUSTOMER QUOTE LINK';
         var hint = document.createElement('span');
         hint.style.cssText = 'color:#aac4e0;font-size:12px;';
-        hint.textContent = 'Deal #' + dealNumber + ' — send this full /exec?token= link (not the short macros/s/… address):';
+        hint.textContent = shareLink
+          ? ('Deal #' + dealNumber + ' — copy the full /exec?token= link, or EMAIL QUOTE to send an HTML file:')
+          : ('Deal #' + dealNumber + ' — Google Drive will reject the web link. Use EMAIL QUOTE (customer Email required).');
         var input = document.createElement('input');
         input.id = 'shareLinkInput';
         input.type = 'text';
         input.readOnly = true;
-        input.value = shareLink;
+        input.value = shareLink || '';
+        input.placeholder = 'No public /exec link yet';
         input.style.cssText = 'flex:1;min-width:260px;background:#1a3a5c;border:1px solid #c8a84b;border-radius:5px;color:white;padding:7px 10px;font-size:12px;font-family:monospace;';
         input.onclick = function() { this.select(); };
         var copyBtn = document.createElement('button');
         copyBtn.textContent = 'Copy';
         copyBtn.style.cssText = 'background:#c8a84b;color:#0d1f33;border:none;border-radius:5px;padding:8px 16px;font-weight:900;cursor:pointer;';
         copyBtn.onclick = copyQuoteLink;
+        var emailBtn = document.createElement('button');
+        emailBtn.textContent = 'Email quote';
+        emailBtn.style.cssText = 'background:#34a853;color:white;border:none;border-radius:5px;padding:8px 16px;font-weight:900;cursor:pointer;';
+        emailBtn.onclick = emailCustomerQuote;
         var dismiss = document.createElement('button');
         dismiss.textContent = 'Dismiss';
         dismiss.style.cssText = 'background:transparent;border:1px solid #555;color:#aac4e0;border-radius:5px;padding:8px 12px;cursor:pointer;';
@@ -694,8 +701,26 @@
         panel.appendChild(hint);
         panel.appendChild(input);
         panel.appendChild(copyBtn);
+        panel.appendChild(emailBtn);
         panel.appendChild(dismiss);
         document.body.appendChild(panel);
+      }
+
+      function emailCustomerQuote() {
+        var data = collectFormData();
+        if (!String(data.email || '').trim()) {
+          showStatus('Enter the customer Email on the desk first.', 'error');
+          return;
+        }
+        showStatus('Emailing quote to ' + data.email + '...', 'info');
+        google.script.run
+          .withSuccessHandler(function(res) {
+            document.getElementById('dealNumber').value = res.dealNumber;
+            showStatus('Quote emailed to ' + res.emailedTo + ' (HTML attachment). Deal # ' + res.dealNumber, 'success');
+            if (res.shareLink) showShareLinkPanel(res.shareLink, res.dealNumber);
+          })
+          .withFailureHandler(function(e) { showStatus('Email quote error: ' + e.message, 'error'); })
+          .emailCustomerQuote(data);
       }
 
       function copyQuoteLink() {
