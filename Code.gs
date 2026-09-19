@@ -3,7 +3,6 @@
  */
 
 function onOpen() {
-  ensureConfigSheets();
   SpreadsheetApp.getUi()
     .createMenu('GEAUX Desk')
     .addItem('Open Desking Tool', 'OPEN_DESKING_TOOL')
