@@ -7,9 +7,14 @@
  */
 
 function OPEN_DESKING_TOOL() {
-  ensureConfigSheets();
-  var html = HtmlService.createTemplateFromFile('deskingDialog')
-    .evaluate()
+  var data = {};
+  try {
+    data = getDeskingInitialData();
+  } catch (e) {
+    console.error(e);
+  }
+  var raw = HtmlService.createHtmlOutputFromFile('deskingDialog').getContent();
+  var html = HtmlService.createHtmlOutput(injectJson_(raw, '__DESK_INITIAL_PLACEHOLDER__', data))
     .setTitle('Shared Desking Tool')
     .setWidth(1600)
     .setHeight(950);
@@ -23,21 +28,23 @@ function getDeskingInitialData() {
   var salespeople = [];
   var managers = [];
   if (setupSheet) {
-    salespeople = setupSheet.getRange('A7:A52').getValues().flat().filter(function (v) {
-      return v !== '' && v !== null;
-    });
-    managers = setupSheet.getRange('A57:A62').getValues().flat().filter(function (v) {
-      return v !== '' && v !== null;
-    });
+    var setupVals = setupSheet.getRange('A7:A62').getValues();
+    for (var i = 0; i < 46; i++) {
+      if (setupVals[i][0] !== '' && setupVals[i][0] !== null) salespeople.push(setupVals[i][0]);
+    }
+    for (var m = 50; m < setupVals.length; m++) {
+      if (setupVals[m][0] !== '' && setupVals[m][0] !== null) managers.push(setupVals[m][0]);
+    }
   }
   var store = getStoreSettings();
+  var catalog = getQuoteCatalog();
   return {
     salespeople: salespeople,
     managers: managers,
     defaultFees: getDefaultFees(),
     quoteCatalog: {
-      protection: getProtectionCatalog(),
-      accessories: getAccessoryCatalog()
+      protection: catalog.filter(function (i) { return i.category === 'protection' && i.active; }),
+      accessories: catalog.filter(function (i) { return i.category === 'accessory' && i.active; })
     },
     quoteSettings: {
       defaultTerm: store.defaultTerm,

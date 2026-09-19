@@ -154,6 +154,20 @@ test('quote HTML has placeholders and no hardcoded demo PII', function() {
   assert.ok(html.indexOf('const RATE_MATRIX') === -1);
 });
 
+test('desking dialog injects initial dropdown data', function() {
+  const html = fs.readFileSync(path.join(root, 'deskingDialog.html'), 'utf8');
+  assert.ok(html.indexOf('__DESK_INITIAL_PLACEHOLDER__') !== -1);
+  assert.ok(html.indexOf('applyInitialData') !== -1);
+  const desk = fs.readFileSync(path.join(root, 'Desking.gs'), 'utf8');
+  assert.ok(desk.indexOf("injectJson_(raw, '__DESK_INITIAL_PLACEHOLDER__'") !== -1);
+  const cfg = fs.readFileSync(path.join(root, 'Config.gs'), 'utf8');
+  assert.ok(cfg.indexOf('GEAUX_CONFIG_SCHEMA') !== -1);
+  assert.ok(cfg.indexOf('_configSheetsReady_') !== -1);
+  const injected = ctx.injectJson_(html, '__DESK_INITIAL_PLACEHOLDER__', { salespeople: ['Jane'], managers: ['DAVID'] });
+  assert.ok(injected.indexOf('__DESK_INITIAL_PLACEHOLDER__') === -1);
+  assert.ok(injected.indexOf('Jane') !== -1);
+});
+
 test('desking dialog does not use innerHTML for names', function() {
   const html = fs.readFileSync(path.join(root, 'deskingDialog.html'), 'utf8');
   assert.ok(html.indexOf('Total Plus T.T.L.') !== -1);

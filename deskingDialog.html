@@ -137,8 +137,8 @@
     <div class="setup-strip">
       <div class="sf w90"><label>Date</label><input type="date" id="date" onchange="calculate()"></div>
       <div class="vdiv"></div>
-      <div class="sf w180"><label>Salesperson</label><select id="salesperson" onchange="autoSaveStaging()"></select></div>
-      <div class="sf w180"><label>Manager</label><select id="manager" onchange="autoSaveStaging()"></select></div>
+      <div class="sf w180"><label>Salesperson</label><select id="salesperson" onchange="autoSaveStaging()"><option value="">Loading…</option></select></div>
+      <div class="sf w180"><label>Manager</label><select id="manager" onchange="autoSaveStaging()"><option value="">Loading…</option></select></div>
       <div class="vdiv"></div>
       <div class="sf w60"><label>Rate (%)</label><input type="number" id="rate" step="0.01" value="7.00" onchange="calculate()"></div>
       <div class="sf w60"><label>Term (mo)</label><input type="number" id="term" value="72" onchange="calculate()"></div>
@@ -319,6 +319,8 @@
     </div>
 
     <script>
+      var DESK_INITIAL = __DESK_INITIAL_PLACEHOLDER__;
+      var lastDeskLists = null;
       function escapeHtml(s) {
         return String(s == null ? '' : s)
           .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -333,16 +335,23 @@
 
       document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('date').valueAsDate = new Date();
+        if (DESK_INITIAL && typeof DESK_INITIAL === 'object' && (DESK_INITIAL.salespeople || DESK_INITIAL.managers || DESK_INITIAL.tiers)) {
+          applyInitialData(DESK_INITIAL);
+          return;
+        }
         google.script.run
-          .withSuccessHandler(function(d) {
-            populateDropdowns(d);
-            setDefaultFees(d.defaultFees);
-            renderQuoteOptions(d);
-            calculate();
-          })
+          .withSuccessHandler(applyInitialData)
           .withFailureHandler(function(e) { showStatus('Load error: ' + e.message, 'error'); })
           .getDeskingInitialData();
       });
+
+      function applyInitialData(d) {
+        lastDeskLists = d || {};
+        populateDropdowns(lastDeskLists);
+        setDefaultFees(lastDeskLists.defaultFees);
+        renderQuoteOptions(lastDeskLists);
+        calculate();
+      }
 
       function populateDropdowns(d) {
         var sp = document.getElementById('salesperson');
@@ -616,13 +625,19 @@
         document.getElementById('acc2Label').value = 'ACC 2';
         document.getElementById('acc3Label').value = 'ACC 3';
         document.getElementById('searchResults').textContent = '';
-        google.script.run
-          .withSuccessHandler(function(d) {
-            setDefaultFees(d.defaultFees);
-            renderQuoteOptions(d);
-            calculate();
-          })
-          .getDeskingInitialData();
+        if (lastDeskLists) {
+          setDefaultFees(lastDeskLists.defaultFees);
+          renderQuoteOptions(lastDeskLists);
+          calculate();
+        } else {
+          google.script.run
+            .withSuccessHandler(function(d) {
+              setDefaultFees(d.defaultFees);
+              renderQuoteOptions(d);
+              calculate();
+            })
+            .getDeskingInitialData();
+        }
         showStatus('Form cleared', 'success');
       }
 

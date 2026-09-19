@@ -12,7 +12,7 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
 
 1. Reload the spreadsheet. **GEAUX Desk** appears on the Google Sheets menu bar (to the right of Help), not in GitHub and not as a tab at the bottom of the workbook.
    - If it is missing: **Extensions → Apps Script**, confirm `Code.gs` with `createMenu('GEAUX Desk')` is in the script bound to this spreadsheet, then reload. First run: **Run → onOpen** in the Apps Script editor and click Allow.
-2. **GEAUX Desk → Create/refresh config sheets** (also runs when you open the desking tool). That is what creates the `QUOTE_CATALOG` tab.
+2. **GEAUX Desk → Open Desking Tool.** Salesperson, manager, term, and credit-tier lists are filled when the window opens (no extra wait). **GEAUX Desk → Create/refresh config sheets** creates `QUOTE_CATALOG` if needed.
 3. Confirm these sheets exist and edit them as needed:
    - `CONFIG` — fees, store city/phone, quote TTL, notify emails, default term
    - `MANAGER_STAGING` — manager name match → DESKDATA staging row (1–4)

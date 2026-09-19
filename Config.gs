@@ -10,6 +10,13 @@
  */
 
 var DEFAULT_STORE_CITY_ = 'LaPlace, LA';
+var CONFIG_SCHEMA_VERSION_ = '4';
+var _ssCache_ = null;
+var _configSheetsReady_ = false;
+var _configMapCache_ = null;
+var _quoteCatalogCache_ = null;
+var _rateMatrixCache_ = null;
+var _creditTiersCache_ = null;
 
 var DEFAULT_FEES_ = {
   docFee: 436.00,
@@ -37,16 +44,46 @@ function withSheetLock_(fn) {
 }
 
 function getActiveSs_() {
-  return SpreadsheetApp.getActiveSpreadsheet();
+  if (!_ssCache_) _ssCache_ = SpreadsheetApp.getActiveSpreadsheet();
+  return _ssCache_;
+}
+
+function isConfigSchemaCurrent_() {
+  try {
+    return PropertiesService.getScriptProperties().getProperty('GEAUX_CONFIG_SCHEMA') === CONFIG_SCHEMA_VERSION_;
+  } catch (e) {
+    return false;
+  }
+}
+
+function markConfigSchemaCurrent_() {
+  try {
+    PropertiesService.getScriptProperties().setProperty('GEAUX_CONFIG_SCHEMA', CONFIG_SCHEMA_VERSION_);
+  } catch (e) {}
+}
+
+function configSheetsExist_(ss) {
+  return !!(ss.getSheetByName('CONFIG') &&
+    ss.getSheetByName('MANAGER_STAGING') &&
+    ss.getSheetByName('QUOTE_CATALOG') &&
+    ss.getSheetByName('QUOTE_RATES') &&
+    ss.getSheetByName('CREDIT_TIERS'));
 }
 
 function ensureConfigSheets() {
+  if (_configSheetsReady_) return;
   var ss = getActiveSs_();
+  if (configSheetsExist_(ss) && isConfigSchemaCurrent_()) {
+    _configSheetsReady_ = true;
+    return;
+  }
   ensureConfigSheet_(ss);
   ensureManagerSheet_(ss);
   ensureCatalogSheet_(ss);
   ensureRatesSheet_(ss);
   ensureTiersSheet_(ss);
+  markConfigSchemaCurrent_();
+  _configSheetsReady_ = true;
 }
 
 function headerStyle_(sheet, cols) {
@@ -245,7 +282,7 @@ function ensureCatalogSheet_(ss) {
     var rows = defaultCatalogRows_();
     sheet.getRange(2, 1, rows.length, CATALOG_HEADERS_.length).setValues(rows);
     applyCatalogSheetLayout_(sheet);
-  } else {
+  } else if (!isConfigSchemaCurrent_()) {
     migrateCatalogSheet_(sheet);
   }
 }
@@ -263,11 +300,8 @@ function applyCatalogSheetLayout_(sheet) {
 }
 
 function migrateCatalogSheet_(sheet) {
-  var range = sheet.getDataRange();
-  var data = range.getValues();
+  var data = sheet.getDataRange().getValues();
   if (!data.length) {
-    sheet.getRange(1, 1, 1, CATALOG_HEADERS_.length).setValues([CATALOG_HEADERS_]);
-    headerStyle_(sheet, CATALOG_HEADERS_.length);
     data = [CATALOG_HEADERS_.slice()];
   }
   var headers = data[0].map(function (h) { return String(h || '').trim(); });
@@ -283,43 +317,47 @@ function migrateCatalogSheet_(sheet) {
       changedHeaders = true;
     }
   }
-  if (changedHeaders) {
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    headerStyle_(sheet, headers.length);
+  data[0] = headers;
+  var width = headers.length;
+  for (var pad = 1; pad < data.length; pad++) {
+    while (data[pad].length < width) data[pad].push('');
   }
-  applyCatalogSheetLayout_(sheet);
-
   var col = headerIndexMap_(headers);
   var byId = {};
   for (var i = 1; i < data.length; i++) {
-    var existingId = String(data[i][col.id] || '').trim();
-    if (existingId) byId[existingId] = i + 1;
+    var existingId = String(col.id != null ? data[i][col.id] : '').trim();
+    if (existingId) byId[existingId] = i;
   }
 
   var products = defaultProtectionProducts_();
   for (var p = 0; p < products.length; p++) {
     var item = products[p];
-    var rowNumber = byId[item.id];
-    if (rowNumber) {
-      sheet.getRange(rowNumber, col.category + 1).setValue(item.category);
-      sheet.getRange(rowNumber, col.name + 1).setValue(item.name);
-      sheet.getRange(rowNumber, col.description + 1).setValue(item.description);
-      if (col.provider != null) sheet.getRange(rowNumber, col.provider + 1).setValue(item.provider);
-      if (col.active != null) sheet.getRange(rowNumber, col.active + 1).setValue(true);
+    var row = catalogProductToRow_(item);
+    while (row.length < width) row.push('');
+    if (byId[item.id] != null) {
+      var r = data[byId[item.id]];
+      if (col.category != null) r[col.category] = item.category;
+      if (col.name != null) r[col.name] = item.name;
+      if (col.description != null) r[col.description] = item.description;
+      if (col.provider != null) r[col.provider] = item.provider;
+      if (col.active != null) r[col.active] = true;
     } else {
-      sheet.appendRow(catalogProductToRow_(item));
+      data.push(row);
     }
   }
 
-  data = sheet.getDataRange().getValues();
-  headers = data[0].map(function (h) { return String(h || '').trim(); });
-  col = headerIndexMap_(headers);
-  for (var r = 1; r < data.length; r++) {
-    var id = String(data[r][col.id] || '').trim();
-    var category = String(data[r][col.category] || '').trim().toLowerCase();
+  for (var r2 = 1; r2 < data.length; r2++) {
+    var id = String(col.id != null ? data[r2][col.id] : '').trim();
+    var category = String(col.category != null ? data[r2][col.category] : '').trim().toLowerCase();
     if (category === 'protection' && RETIRED_PROTECTION_IDS_[id] && col.active != null) {
-      sheet.getRange(r + 1, col.active + 1).setValue(false);
+      data[r2][col.active] = false;
     }
+  }
+
+  sheet.getRange(1, 1, data.length, width).setValues(data);
+  if (changedHeaders) {
+    headerStyle_(sheet, width);
+    applyCatalogSheetLayout_(sheet);
   }
 }
 
@@ -364,6 +402,7 @@ function ensureTiersSheet_(ss) {
 
 function getConfigMap() {
   ensureConfigSheets();
+  if (_configMapCache_) return _configMapCache_;
   var sheet = getActiveSs_().getSheetByName('CONFIG');
   var data = sheet.getDataRange().getValues();
   var map = {};
@@ -371,6 +410,7 @@ function getConfigMap() {
     var key = String(data[i][0] || '').trim();
     if (key) map[key] = data[i][1];
   }
+  _configMapCache_ = map;
   return map;
 }
 
@@ -469,6 +509,7 @@ function parseBoolCell_(v, defaultVal) {
 
 function getQuoteCatalog() {
   ensureConfigSheets();
+  if (_quoteCatalogCache_) return _quoteCatalogCache_;
   var sheet = getActiveSs_().getSheetByName('QUOTE_CATALOG');
   var data = sheet.getDataRange().getValues();
   var col = headerIndexMap_(data[0] || []);
@@ -494,6 +535,7 @@ function getQuoteCatalog() {
     if (a.category !== b.category) return a.category < b.category ? 1 : -1;
     return a.sort - b.sort;
   });
+  _quoteCatalogCache_ = items;
   return items;
 }
 
@@ -507,6 +549,7 @@ function getAccessoryCatalog() {
 
 function getRateMatrix() {
   ensureConfigSheets();
+  if (_rateMatrixCache_) return _rateMatrixCache_;
   var sheet = getActiveSs_().getSheetByName('QUOTE_RATES');
   var data = sheet.getDataRange().getValues();
   var header = data[0] || [];
@@ -527,11 +570,13 @@ function getRateMatrix() {
     }
     matrix[String(term)] = row;
   }
+  _rateMatrixCache_ = matrix;
   return matrix;
 }
 
 function getCreditTiers() {
   ensureConfigSheets();
+  if (_creditTiersCache_) return _creditTiersCache_;
   var sheet = getActiveSs_().getSheetByName('CREDIT_TIERS');
   var data = sheet.getDataRange().getValues();
   var tiers = [];
@@ -546,6 +591,7 @@ function getCreditTiers() {
     });
   }
   tiers.sort(function (a, b) { return a.sort - b.sort; });
+  _creditTiersCache_ = tiers;
   return tiers;
 }
 
