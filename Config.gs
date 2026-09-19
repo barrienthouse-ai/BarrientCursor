@@ -4,7 +4,7 @@
  * Editable sheets (auto-created with defaults on first run):
  *   CONFIG            key / value store settings, fees, branding, emails
  *   MANAGER_STAGING   manager name match → DESKDATA staging row
- *   QUOTE_CATALOG     protection packages + accessories (no code change needed)
+ *   QUOTE_CATALOG     F&I coverages + optional accessories. Edit Price / BrochureUrl here.
  *   QUOTE_RATES       APR matrix by term × credit tier
  *   CREDIT_TIERS      customer-facing credit tier labels / FICO bands
  */
@@ -130,46 +130,196 @@ function ensureManagerSheet_(ss) {
   }
 }
 
-function defaultCatalogRows_() {
+var CATALOG_HEADERS_ = ['Id', 'Category', 'Name', 'Description', 'Price', 'Taxable', 'DefaultOn', 'Sort', 'Active', 'BrochureUrl', 'Provider'];
+
+var BROCHURE_FOLDER_NAME_ = 'GEAUX Quote Brochures';
+
+var BROCHURE_FILES_ = {
+  mbi: 'mbi.pdf',
+  uvp: 'uvp.pdf',
+  gap: 'gap.pdf',
+  ppm: 'ppm.pdf',
+  ceramic: 'ceramic.pdf',
+  windshield: 'windshield.pdf',
+  theft: 'theft.pdf',
+  gps: 'gps.pdf'
+};
+
+var RETIRED_PROTECTION_IDS_ = {
+  warranty: true,
+  key: true,
+  roadhazard: true,
+  paint: true
+};
+
+function defaultProtectionProducts_() {
   return [
-    ['warranty', 'protection', 'Extended Warranty', 'Bumper-to-bumper coverage beyond factory warranty. Covers major mechanical & electrical components.', 2848, 'FALSE', 'FALSE', 10, 'TRUE'],
-    ['gap', 'protection', 'GAP Insurance', 'Covers the difference between your loan balance and the vehicle actual cash value in a total loss.', 895, 'FALSE', 'FALSE', 20, 'TRUE'],
-    ['key', 'protection', 'Key Protection', 'Replacement coverage for lost, stolen, or damaged keys and key fobs. Includes lockout service.', 419, 'TRUE', 'FALSE', 30, 'TRUE'],
-    ['roadhazard', 'protection', 'Road Hazard Protection', 'Covers tire and wheel damage from potholes, nails, glass, and road debris. Includes towing.', 688, 'TRUE', 'FALSE', 40, 'TRUE'],
-    ['windshield', 'protection', 'Windshield Protection', 'Unlimited windshield chip repairs and crack coverage. No deductible.', 759, 'TRUE', 'FALSE', 50, 'TRUE'],
-    ['paint', 'protection', 'Paint & Interior Sealant', 'Professional-grade paint sealant and interior fabric protection.', 481, 'TRUE', 'FALSE', 60, 'TRUE'],
-    ['flrmats', 'accessory', 'All-Weather Floor Mats', 'Heavy-duty custom-fit floor mats — front & rear set.', 359, 'TRUE', 'FALSE', 10, 'TRUE'],
-    ['bedliner', 'accessory', 'Spray-In Bed Liner', 'Professional spray-in bed liner for maximum truck bed protection.', 595, 'TRUE', 'FALSE', 20, 'TRUE'],
-    ['runboards', 'accessory', 'Running Boards / Side Steps', 'Powder-coated steel running boards for easy cab entry.', 895, 'TRUE', 'FALSE', 30, 'TRUE'],
-    ['powerboards', 'accessory', 'Power Running Boards / Side Steps', 'Auto power running boards for easy cab entry.', 2495, 'TRUE', 'FALSE', 40, 'TRUE'],
-    ['tonneauhard', 'accessory', 'Tonneau Cover (Tri-fold Hard)', 'Tri-fold hard tonneau cover — protects cargo, improves fuel economy.', 1895, 'TRUE', 'FALSE', 50, 'TRUE'],
-    ['tonneau', 'accessory', 'Tonneau Cover (Soft Folding)', 'Soft folding tonneau cover — protects cargo, improves fuel economy.', 895, 'TRUE', 'FALSE', 60, 'TRUE'],
-    ['hitch', 'accessory', 'Trailer Hitch & Wiring', '2" receiver hitch with 7-pin wiring harness. Factory-style install.', 695, 'TRUE', 'FALSE', 70, 'TRUE'],
-    ['remstart', 'accessory', 'Remote Start System', 'OEM-compatible remote start with smartphone app integration.', 595, 'TRUE', 'FALSE', 80, 'TRUE'],
-    ['wheellocks', 'accessory', 'Wheel Locks', 'Anti-theft locking lug nuts for all four wheels.', 189, 'TRUE', 'FALSE', 90, 'TRUE'],
-    ['mudflaps', 'accessory', 'Mud Flaps / Splash Guards', 'Custom-fit molded splash guards — front & rear.', 149, 'TRUE', 'FALSE', 100, 'TRUE'],
-    ['tint', 'accessory', 'Window Tint', 'Professional ceramic window tint — all side and rear windows.', 395, 'TRUE', 'FALSE', 110, 'TRUE'],
-    ['seats3row', 'accessory', '3 Row Leather Seats', 'Premium 3-row leather seat upgrade — all rows.', 1998, 'TRUE', 'FALSE', 120, 'TRUE'],
-    ['seats2row', 'accessory', '2 Row Leather Seats', 'Custom-fit leather seats — front & rear.', 1449, 'TRUE', 'FALSE', 130, 'TRUE'],
-    ['cargonet', 'accessory', 'Cargo Net / Organizer', 'Heavy-duty cargo net and trunk organizer set.', 79, 'TRUE', 'FALSE', 140, 'TRUE']
+    {
+      id: 'mbi', category: 'protection', name: 'Mechanical Breakdown Insurance',
+      provider: 'Louisiana Dealer Services',
+      description: 'Covers electronic, electrical, and mechanical parts if they fail. Deductible options plus rental or rideshare help. Optional — not required to finance.',
+      price: 2848, taxable: false, defaultOn: false, sort: 10
+    },
+    {
+      id: 'uvp', category: 'protection', name: 'Ultimate Vehicle Protection',
+      provider: 'Safe-Guard',
+      description: 'Packages tire & wheel, dent, and key protection so road-hazard and everyday damage is covered. No typical deductible — see brochure for terms.',
+      price: 1995, taxable: false, defaultOn: false, sort: 20
+    },
+    {
+      id: 'gap', category: 'protection', name: 'Guaranteed Asset Protection (GAP)',
+      provider: 'Safe-Guard',
+      description: 'If the vehicle is a total loss, GAP may waive the difference between the insurance payout and the remaining loan or lease balance.',
+      price: 895, taxable: false, defaultOn: false, sort: 30
+    },
+    {
+      id: 'ppm', category: 'protection', name: 'Pre-Paid Maintenance',
+      provider: 'Procarma',
+      description: 'Lock in oil changes, tire rotations, brake inspections, and more at a fixed price. Track visits in the Procarma app.',
+      price: 1295, taxable: false, defaultOn: false, sort: 40
+    },
+    {
+      id: 'ceramic', category: 'protection', name: 'Safe-Shield Ceramic',
+      provider: 'Safe-Guard',
+      description: 'Interior and exterior appearance protection designed to keep the vehicle looking new, with covered-repair rental assistance.',
+      price: 795, taxable: false, defaultOn: false, sort: 50
+    },
+    {
+      id: 'windshield', category: 'protection', name: 'Windshield Protection',
+      provider: 'Safe-Guard',
+      description: 'Unlimited repair of front-windshield chips and cracks from road debris. Optional one-time replacement — see brochure for terms.',
+      price: 759, taxable: false, defaultOn: false, sort: 60
+    },
+    {
+      id: 'theft', category: 'protection', name: 'Vehicle Theft Protection',
+      provider: 'Safe-Guard',
+      description: 'If the vehicle is stolen, helps cover deductible, fees, and extra replacement costs that primary insurance often leaves unpaid.',
+      price: 695, taxable: false, defaultOn: false, sort: 70
+    },
+    {
+      id: 'gps', category: 'protection', name: 'GPS - Vehicle Locator',
+      provider: 'Stargard',
+      description: '24/7 stolen-vehicle recovery with law enforcement, live location in the app, custom alerts, and no subscription fees.',
+      price: 995, taxable: false, defaultOn: false, sort: 80
+    }
   ];
+}
+
+function defaultCatalogRows_() {
+  return defaultProtectionProducts_().map(function (p) {
+    return catalogProductToRow_(p);
+  });
+}
+
+function catalogProductToRow_(p) {
+  return [
+    p.id,
+    p.category || 'protection',
+    p.name,
+    p.description || '',
+    p.price == null ? 0 : p.price,
+    p.taxable ? 'TRUE' : 'FALSE',
+    p.defaultOn ? 'TRUE' : 'FALSE',
+    p.sort || 0,
+    p.active === false ? 'FALSE' : 'TRUE',
+    p.brochureUrl || '',
+    p.provider || ''
+  ];
+}
+
+function headerIndexMap_(row) {
+  var map = {};
+  for (var i = 0; i < row.length; i++) {
+    var key = String(row[i] || '').trim().toLowerCase();
+    if (key) map[key] = i;
+  }
+  return map;
 }
 
 function ensureCatalogSheet_(ss) {
   var sheet = ss.getSheetByName('QUOTE_CATALOG');
   if (!sheet) {
     sheet = ss.insertSheet('QUOTE_CATALOG');
-    sheet.getRange(1, 1, 1, 9).setValues([[
-      'Id', 'Category', 'Name', 'Description', 'Price', 'Taxable', 'DefaultOn', 'Sort', 'Active'
-    ]]);
-    headerStyle_(sheet, 9);
+    sheet.getRange(1, 1, 1, CATALOG_HEADERS_.length).setValues([CATALOG_HEADERS_]);
+    headerStyle_(sheet, CATALOG_HEADERS_.length);
     var rows = defaultCatalogRows_();
-    sheet.getRange(2, 1, rows.length, 9).setValues(rows);
-    sheet.setColumnWidth(1, 120);
-    sheet.setColumnWidth(3, 260);
-    sheet.setColumnWidth(4, 420);
-    sheet.getRange(1, 2, 1, 1).setNote('protection or accessory');
-    sheet.getRange(1, 6, 1, 1).setNote('FALSE for typical VSC/GAP (not sales-taxed)');
+    sheet.getRange(2, 1, rows.length, CATALOG_HEADERS_.length).setValues(rows);
+    applyCatalogSheetLayout_(sheet);
+  } else {
+    migrateCatalogSheet_(sheet);
+  }
+}
+
+function applyCatalogSheetLayout_(sheet) {
+  sheet.setColumnWidth(1, 120);
+  sheet.setColumnWidth(3, 280);
+  sheet.setColumnWidth(4, 460);
+  sheet.setColumnWidth(10, 280);
+  sheet.setColumnWidth(11, 200);
+  sheet.getRange(1, 2, 1, 1).setNote('protection or accessory');
+  sheet.getRange(1, 5, 1, 1).setNote('Selling price. Change this cell anytime — no code deploy.');
+  sheet.getRange(1, 6, 1, 1).setNote('FALSE for typical F&I (not sales-taxed)');
+  sheet.getRange(1, 10, 1, 1).setNote('Paste a Drive “anyone with the link” URL, or run GEAUX Desk → Publish quote brochures.');
+}
+
+function migrateCatalogSheet_(sheet) {
+  var range = sheet.getDataRange();
+  var data = range.getValues();
+  if (!data.length) {
+    sheet.getRange(1, 1, 1, CATALOG_HEADERS_.length).setValues([CATALOG_HEADERS_]);
+    headerStyle_(sheet, CATALOG_HEADERS_.length);
+    data = [CATALOG_HEADERS_.slice()];
+  }
+  var headers = data[0].map(function (h) { return String(h || '').trim(); });
+  var changedHeaders = false;
+  for (var h = 0; h < CATALOG_HEADERS_.length; h++) {
+    var needed = CATALOG_HEADERS_[h];
+    var found = false;
+    for (var c = 0; c < headers.length; c++) {
+      if (headers[c].toLowerCase() === needed.toLowerCase()) { found = true; break; }
+    }
+    if (!found) {
+      headers.push(needed);
+      changedHeaders = true;
+    }
+  }
+  if (changedHeaders) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    headerStyle_(sheet, headers.length);
+  }
+  applyCatalogSheetLayout_(sheet);
+
+  var col = headerIndexMap_(headers);
+  var byId = {};
+  for (var i = 1; i < data.length; i++) {
+    var existingId = String(data[i][col.id] || '').trim();
+    if (existingId) byId[existingId] = i + 1;
+  }
+
+  var products = defaultProtectionProducts_();
+  for (var p = 0; p < products.length; p++) {
+    var item = products[p];
+    var rowNumber = byId[item.id];
+    if (rowNumber) {
+      sheet.getRange(rowNumber, col.category + 1).setValue(item.category);
+      sheet.getRange(rowNumber, col.name + 1).setValue(item.name);
+      sheet.getRange(rowNumber, col.description + 1).setValue(item.description);
+      if (col.provider != null) sheet.getRange(rowNumber, col.provider + 1).setValue(item.provider);
+      if (col.active != null) sheet.getRange(rowNumber, col.active + 1).setValue(true);
+    } else {
+      sheet.appendRow(catalogProductToRow_(item));
+    }
+  }
+
+  data = sheet.getDataRange().getValues();
+  headers = data[0].map(function (h) { return String(h || '').trim(); });
+  col = headerIndexMap_(headers);
+  for (var r = 1; r < data.length; r++) {
+    var id = String(data[r][col.id] || '').trim();
+    var category = String(data[r][col.category] || '').trim().toLowerCase();
+    if (category === 'protection' && RETIRED_PROTECTION_IDS_[id] && col.active != null) {
+      sheet.getRange(r + 1, col.active + 1).setValue(false);
+    }
   }
 }
 
@@ -321,20 +471,23 @@ function getQuoteCatalog() {
   ensureConfigSheets();
   var sheet = getActiveSs_().getSheetByName('QUOTE_CATALOG');
   var data = sheet.getDataRange().getValues();
+  var col = headerIndexMap_(data[0] || []);
   var items = [];
   for (var i = 1; i < data.length; i++) {
-    var id = String(data[i][0] || '').trim();
+    var id = String(col.id != null ? data[i][col.id] : data[i][0] || '').trim();
     if (!id) continue;
     items.push({
       id: id,
-      category: String(data[i][1] || 'accessory').trim().toLowerCase(),
-      name: String(data[i][2] || id).trim(),
-      description: String(data[i][3] || '').trim(),
-      price: toNumber_(data[i][4]),
-      taxable: parseBoolCell_(data[i][5], true),
-      defaultOn: parseBoolCell_(data[i][6], false),
-      sort: toNumber_(data[i][7]),
-      active: parseBoolCell_(data[i][8], true)
+      category: String(col.category != null ? data[i][col.category] : data[i][1] || 'accessory').trim().toLowerCase(),
+      name: String(col.name != null ? data[i][col.name] : data[i][2] || id).trim(),
+      description: String(col.description != null ? data[i][col.description] : data[i][3] || '').trim(),
+      price: toNumber_(col.price != null ? data[i][col.price] : data[i][4]),
+      taxable: parseBoolCell_(col.taxable != null ? data[i][col.taxable] : data[i][5], true),
+      defaultOn: parseBoolCell_(col.defaulton != null ? data[i][col.defaulton] : data[i][6], false),
+      sort: toNumber_(col.sort != null ? data[i][col.sort] : data[i][7]),
+      active: parseBoolCell_(col.active != null ? data[i][col.active] : data[i][8], true),
+      brochureUrl: String(col.brochureurl != null ? data[i][col.brochureurl] : '').trim(),
+      provider: String(col.provider != null ? data[i][col.provider] : '').trim()
     });
   }
   items.sort(function (a, b) {
@@ -407,4 +560,83 @@ function getQuoteRuntimeConfig(deskData) {
     rates: getRateMatrix(),
     tiers: getCreditTiers()
   };
+}
+
+function getOrCreateBrochureFolder_() {
+  var ss = getActiveSs_();
+  var parents = [];
+  try {
+    var file = DriveApp.getFileById(ss.getId());
+    parents = file.getParents();
+  } catch (e) {
+    parents = { hasNext: function () { return false; } };
+  }
+  var parent = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
+  var existing = parent.getFoldersByName(BROCHURE_FOLDER_NAME_);
+  if (existing.hasNext()) return existing.next();
+  return parent.createFolder(BROCHURE_FOLDER_NAME_);
+}
+
+function findBrochureFile_(folder, filename) {
+  var files = folder.getFilesByName(filename);
+  if (files.hasNext()) return files.next();
+  var all = folder.getFiles();
+  var want = String(filename).toLowerCase();
+  while (all.hasNext()) {
+    var f = all.next();
+    if (String(f.getName() || '').toLowerCase() === want) return f;
+  }
+  return null;
+}
+
+function setCatalogBrochureUrl_(id, url) {
+  var sheet = getActiveSs_().getSheetByName('QUOTE_CATALOG');
+  if (!sheet) return;
+  var data = sheet.getDataRange().getValues();
+  var col = headerIndexMap_(data[0] || []);
+  if (col.id == null || col.brochureurl == null) return;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][col.id] || '').trim() === id) {
+      sheet.getRange(i + 1, col.brochureurl + 1).setValue(url);
+      return;
+    }
+  }
+}
+
+/**
+ * Copies sharing links for PDFs in the "GEAUX Quote Brochures" Drive folder
+ * into QUOTE_CATALOG BrochureUrl. Prices stay on the sheet.
+ */
+function publishQuoteBrochures() {
+  ensureConfigSheets();
+  var folder = getOrCreateBrochureFolder_();
+  var updated = [];
+  var missing = [];
+  for (var id in BROCHURE_FILES_) {
+    if (!BROCHURE_FILES_.hasOwnProperty(id)) continue;
+    var filename = BROCHURE_FILES_[id];
+    var file = findBrochureFile_(folder, filename);
+    if (!file) {
+      missing.push(filename);
+      continue;
+    }
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) {}
+    var url = 'https://drive.google.com/file/d/' + file.getId() + '/view';
+    setCatalogBrochureUrl_(id, url);
+    updated.push(filename);
+  }
+  var msg = 'Brochure folder:\n' + folder.getUrl() + '\n\n';
+  if (updated.length) msg += 'Linked: ' + updated.join(', ') + '\n';
+  if (missing.length) {
+    msg += 'Missing (copy from the repo brochures/ folder): ' + missing.join(', ') + '\n';
+  }
+  msg += '\nEdit selling prices on the QUOTE_CATALOG Price column. No code change needed.';
+  try {
+    SpreadsheetApp.getUi().alert(msg);
+  } catch (e) {
+    console.log(msg);
+  }
+  return { folderUrl: folder.getUrl(), updated: updated, missing: missing };
 }

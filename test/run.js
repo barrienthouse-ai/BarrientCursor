@@ -167,6 +167,21 @@ test('print template does not include SSN', function() {
   assert.ok(html.toLowerCase().indexOf('>ssn<') === -1);
 });
 
+test('quote catalog defaults are dealer F&I products with brochure column', function() {
+  const src = fs.readFileSync(path.join(root, 'Config.gs'), 'utf8');
+  assert.ok(src.indexOf('Mechanical Breakdown Insurance') !== -1);
+  assert.ok(src.indexOf('Safe-Shield Ceramic') !== -1);
+  assert.ok(src.indexOf('GPS - Vehicle Locator') !== -1);
+  assert.ok(src.indexOf('BrochureUrl') !== -1);
+  assert.ok(src.indexOf("name: 'Extended Warranty'") === -1);
+  const html = fs.readFileSync(path.join(root, 'customerQuote.html'), 'utf8');
+  assert.ok(html.indexOf('pkg-brochure') !== -1);
+  assert.ok(html.indexOf('Optional Coverages') !== -1);
+  ['mbi', 'uvp', 'gap', 'ppm', 'ceramic', 'windshield', 'theft', 'gps'].forEach(function(id) {
+    assert.ok(fs.existsSync(path.join(root, 'brochures', id + '.pdf')), 'missing brochure ' + id);
+  });
+});
+
 test('config defaults store city to LaPlace, not Gonzales', function() {
   const src = fs.readFileSync(path.join(root, 'Config.gs'), 'utf8');
   assert.ok(src.indexOf("DEFAULT_STORE_CITY_ = 'LaPlace, LA'") !== -1);
@@ -253,13 +268,16 @@ const previewConfig = {
     useOddDaysOnQuote: true
   },
   protection: [
-    { id: 'warranty', name: 'Extended Warranty', description: 'Loaded from QUOTE_CATALOG', price: 2848, taxable: false },
-    { id: 'gap', name: 'GAP Insurance', description: 'Loaded from QUOTE_CATALOG', price: 895, taxable: false }
+    { id: 'mbi', name: 'Mechanical Breakdown Insurance', provider: 'Louisiana Dealer Services', description: 'Covers electronic, electrical, and mechanical parts if they fail.', price: 2848, taxable: false, brochureUrl: '/brochures/mbi.pdf' },
+    { id: 'uvp', name: 'Ultimate Vehicle Protection', provider: 'Safe-Guard', description: 'Tire & wheel, dent, and key protection packaged together.', price: 1995, taxable: false, brochureUrl: '/brochures/uvp.pdf' },
+    { id: 'gap', name: 'Guaranteed Asset Protection (GAP)', provider: 'Safe-Guard', description: 'May waive the gap between insurance payout and the remaining balance after a total loss.', price: 895, taxable: false, brochureUrl: '/brochures/gap.pdf' },
+    { id: 'ppm', name: 'Pre-Paid Maintenance', provider: 'Procarma', description: 'Prepaid oil changes, tire rotations, and inspections at a fixed price.', price: 1295, taxable: false, brochureUrl: '/brochures/ppm.pdf' },
+    { id: 'ceramic', name: 'Safe-Shield Ceramic', provider: 'Safe-Guard', description: 'Interior and exterior appearance protection to keep the vehicle looking new.', price: 795, taxable: false, brochureUrl: '/brochures/ceramic.pdf' },
+    { id: 'windshield', name: 'Windshield Protection', provider: 'Safe-Guard', description: 'Unlimited repair of front-windshield chips and cracks from road debris.', price: 759, taxable: false, brochureUrl: '/brochures/windshield.pdf' },
+    { id: 'theft', name: 'Vehicle Theft Protection', provider: 'Safe-Guard', description: 'Helps cover deductible and extra costs if the vehicle is stolen.', price: 695, taxable: false, brochureUrl: '/brochures/theft.pdf' },
+    { id: 'gps', name: 'GPS - Vehicle Locator', provider: 'Stargard', description: '24/7 stolen-vehicle recovery and live location with no subscription fees.', price: 995, taxable: false, brochureUrl: '/brochures/gps.pdf' }
   ],
-  accessories: [
-    { id: 'flrmats', name: 'All-Weather Floor Mats', description: 'Loaded from QUOTE_CATALOG', price: 359, taxable: true },
-    { id: 'bedliner', name: 'Spray-In Bed Liner', description: 'Loaded from QUOTE_CATALOG', price: 595, taxable: true }
-  ],
+  accessories: [],
   rates: {
     '60': { a1: 5.94, a2: 6.19, a3: 8.59, b1: 12.64, b2: 14.84, b3: 16.89 },
     '72': { a1: 6.19, a2: 6.44, a3: 8.99, b1: 13.04, b2: 15.15, b3: 17.69 },

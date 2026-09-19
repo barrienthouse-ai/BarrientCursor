@@ -67,8 +67,8 @@ function snapshotQuoteConfig_(deskData) {
       defaultCreditTier: d.quoteDefaultTier || settings.defaultCreditTier || 'a1',
       useOddDaysOnQuote: settings.useOddDaysOnQuote
     },
-    protection: runtime.protection,
-    accessories: runtime.accessories,
+    protection: runtime.protection.map(withAbsoluteBrochure_),
+    accessories: runtime.accessories.map(withAbsoluteBrochure_),
     rates: runtime.rates,
     tiers: runtime.tiers,
     preselectedProtection: preProt,
@@ -243,8 +243,60 @@ function quoteErrorPage_(title, message) {
   ).setTitle(name + ' — Quote');
 }
 
+function withAbsoluteBrochure_(item) {
+  var out = {};
+  for (var k in item) {
+    if (Object.prototype.hasOwnProperty.call(item, k)) out[k] = item[k];
+  }
+  var url = String(item.brochureUrl || '').trim();
+  if (url && /^https?:\/\//i.test(url)) {
+    out.brochureUrl = url;
+    return out;
+  }
+  var base = getWebAppUrl_();
+  if (base && String(base).indexOf('YOUR_DEPLOYMENT_ID') === -1) {
+    out.brochureUrl = String(base).replace(/\/$/, '') + '?brochure=' + encodeURIComponent(item.id);
+  }
+  return out;
+}
+
+function serveBrochure_(id) {
+  id = String(id || '').trim();
+  var catalog = getQuoteCatalog();
+  var item = null;
+  for (var i = 0; i < catalog.length; i++) {
+    if (catalog[i].id === id) { item = catalog[i]; break; }
+  }
+  var url = item && item.brochureUrl ? String(item.brochureUrl).trim() : '';
+  if (!url || !/^https?:\/\//i.test(url)) {
+    try {
+      var folder = getOrCreateBrochureFolder_();
+      var filename = BROCHURE_FILES_[id];
+      var file = filename ? findBrochureFile_(folder, filename) : null;
+      if (file) url = 'https://drive.google.com/file/d/' + file.getId() + '/view';
+    } catch (e) {}
+  }
+  if (url && /^https?:\/\//i.test(url)) {
+    var safe = escapeHtml(url);
+    return HtmlService.createHtmlOutput(
+      '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta http-equiv="refresh" content="0;url=' + safe + '">' +
+      '<title>Opening brochure</title></head><body style="font-family:Arial,sans-serif;padding:24px;">' +
+      'Opening brochure… <a href="' + safe + '">Open PDF</a></body></html>'
+    ).setTitle('Brochure');
+  }
+  var name = item ? escapeHtml(item.name) : escapeHtml(id);
+  return HtmlService.createHtmlOutput(
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Brochure</title></head>' +
+    '<body style="font-family:Arial,sans-serif;padding:32px;max-width:560px;">' +
+    '<h2>' + name + '</h2><p>The PDF brochure is not linked yet. Copy the files from the <code>brochures/</code> folder into Drive, then run <strong>GEAUX Desk → Publish quote brochures</strong>, or paste a link in the QUOTE_CATALOG <em>BrochureUrl</em> column.</p>' +
+    '</body></html>'
+  ).setTitle('Brochure');
+}
+
 function doGet(e) {
   ensureConfigSheets();
+  var brochureId = e && e.parameter && e.parameter.brochure ? e.parameter.brochure : null;
+  if (brochureId) return serveBrochure_(brochureId);
   var token = e && e.parameter && e.parameter.token ? e.parameter.token : null;
   if (!token) {
     return quoteErrorPage_('Invalid Quote Link', 'This link is missing a quote token. Please contact us for a new link.');

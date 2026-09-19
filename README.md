@@ -4,9 +4,9 @@ Google Apps Script project that replaces individual desking sheets with:
 
 1. A shared HTML desking dialog (`deskingDialog.html`)
 2. An internal print worksheet (`deskPrint.html`) with the official GEAUX Chevrolet logo (no Supreme Automotive Group wordmark)
-3. An interactive customer quote (`customerQuote.html`) whose **packages, accessories, APRs, FICO labels, fees, store name, and notification emails are edited in spreadsheet sheets — not hardcoded in HTML.**
+3. An interactive customer quote (`customerQuote.html`) whose **coverages, accessories, APRs, FICO labels, fees, store name, and notification emails are edited in spreadsheet sheets — not hardcoded in HTML.**
 
-Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound Apps Script on `GEAUXCHEVROLETSALESLOG` (or `clasp push`).
+Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound Apps Script on `GEAUXCHEVROLETSALESLOG` (or `clasp push`). Copy the PDFs in `brochures/` into a Drive folder named **GEAUX Quote Brochures** (same folder as the spreadsheet).
 
 ## First run
 
@@ -15,13 +15,14 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
 3. Confirm these sheets exist and edit them as needed:
    - `CONFIG` — fees, store city/phone, quote TTL, notify emails, default term
    - `MANAGER_STAGING` — manager name match → DESKDATA staging row (1–4)
-   - `QUOTE_CATALOG` — protection + accessory menu (id, name, price, taxable, defaultOn, active)
+   - `QUOTE_CATALOG` — optional coverages (id, name, description, **price**, brochure URL, provider). Change the Price column anytime — no code deploy.
    - `QUOTE_RATES` — APR matrix (term × a1–b3). Blank cell = not offered
    - `CREDIT_TIERS` — labels and FICO bands shown to the customer
-4. Deploy **Deploy → New deployment → Web app**
+4. **GEAUX Desk → Publish quote brochures** after the PDFs are in the Drive folder. That writes view links into `QUOTE_CATALOG` BrochureUrl. You can also paste any URL into that column by hand.
+5. Deploy **Deploy → New deployment → Web app**
    - Execute as: **Me**
    - Who has access: **Anyone** (customers do not have Google logins)
-5. Paste the web app URL into `setWebAppUrl()` (or a `webAppUrl` row in `CONFIG`) and run it.
+6. Paste the web app URL into `setWebAppUrl()` (or a `webAppUrl` row in `CONFIG`) and run it.
 
 Existing `SETUP` (salespeople A7:A52, managers A57:A62), `INV`, and `DESKDATA` keep working. `DESKDATA` history now uses **73 columns** (days-to-first and first payment date at the end).
 
@@ -29,7 +30,11 @@ Existing `SETUP` (salespeople A7:A52, managers A57:A62), `INV`, and `DESKDATA` k
 
 | What to change | Where |
 |---|---|
-| Add/rename/price a warranty, GAP, tint, etc. | `QUOTE_CATALOG` (set Active to FALSE to hide) |
+| Selling price of MBI, GAP, UVP, windshield, etc. | `QUOTE_CATALOG` **Price** column |
+| Product name, short description, or provider line | `QUOTE_CATALOG` Name / Description / Provider |
+| Brochure PDF link | `QUOTE_CATALOG` BrochureUrl, or **Publish quote brochures** |
+| Hide a coverage | `QUOTE_CATALOG` Active = FALSE |
+| Add another coverage | New `QUOTE_CATALOG` row (`protection` or `accessory`) |
 | Change APRs or which terms a tier can use | `QUOTE_RATES` |
 | FICO wording on the quote | `CREDIT_TIERS` |
 | Doc fee, tax rate, store phone, email list | `CONFIG` |

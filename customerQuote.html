@@ -46,8 +46,14 @@
   }
   .pkg-toggle.active, .acc-item.active { border-color: var(--green); background: #f0fff4; }
   .pkg-name, .acc-name { font-size: 13px; font-weight: 700; }
-  .pkg-desc, .acc-desc { font-size: 11px; color: var(--muted); }
-  .pkg-price, .acc-price { font-size: 14px; font-weight: 700; color: var(--mid); margin-top: 6px; }
+  .pkg-provider { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--gold); margin-top: 2px; }
+  .pkg-desc, .acc-desc { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .pkg-price, .acc-price { font-size: 14px; font-weight: 700; color: var(--mid); margin-top: 8px; }
+  .pkg-brochure {
+    display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--mid);
+    text-decoration: underline; cursor: pointer;
+  }
+  .pkg-brochure:hover { color: var(--gold); }
   .acc-list { display: flex; flex-direction: column; gap: 8px; }
   .acc-item { display: flex; align-items: center; gap: 12px; }
   .acc-info { flex: 1; }
@@ -199,14 +205,14 @@
     </div>
 
     <div class="card">
-      <div class="card-header">Protection Packages <span class="badge">Optional</span></div>
+      <div class="card-header">Optional Coverages <span class="badge">Optional</span></div>
       <div class="card-body">
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Select packages to include. Edit names and prices on the QUOTE_CATALOG sheet.</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Select coverages to include. Names, descriptions, and selling prices are edited on the QUOTE_CATALOG sheet — no code change. Open a brochure for full terms.</p>
         <div class="protection-grid" id="protectionGrid"></div>
-        <div class="selected-bar" id="protectionSummary">No protection packages selected.</div>
+        <div class="selected-bar" id="protectionSummary">No coverages selected.</div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" id="accessoryCard">
       <div class="card-header">Accessories &amp; Add-Ons <span class="badge">Optional</span></div>
       <div class="card-body">
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Catalog is loaded from the spreadsheet. Items already on the desk as ACC 1–3 are hidden so they are not double-sold.</p>
@@ -413,6 +419,15 @@ function refreshTermDropdown() {
   sel.disabled = CFG.settings.allowTermChange === false;
 }
 
+function safeBrochureUrl(url) {
+  var s = String(url || '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  if (/^\/[\w./-]+\.pdf$/i.test(s)) return s;
+  if (/^[\w./-]+\.pdf$/i.test(s)) return s.charAt(0) === '/' ? s : '/' + s;
+  return '';
+}
+
 function renderCatalog() {
   var grid = document.getElementById('protectionGrid');
   grid.innerHTML = '';
@@ -420,11 +435,41 @@ function renderCatalog() {
     var div = document.createElement('div');
     var on = state.selectedProtection.has(pkg.id);
     div.className = 'pkg-toggle' + (on ? ' active' : '');
-    div.onclick = function() { toggleSet(state.selectedProtection, pkg.id); renderCatalog(); recalculate(); };
-    div.innerHTML = '<div class="pkg-name"></div><div class="pkg-desc"></div><div class="pkg-price"></div>';
-    div.querySelector('.pkg-name').textContent = pkg.name;
-    div.querySelector('.pkg-desc').textContent = pkg.description || '';
-    div.querySelector('.pkg-price').textContent = fmt(pkg.price);
+    div.addEventListener('click', function(ev) {
+      if (ev.target && ev.target.closest && ev.target.closest('a')) return;
+      toggleSet(state.selectedProtection, pkg.id);
+      renderCatalog();
+      recalculate();
+    });
+    var nameEl = document.createElement('div');
+    nameEl.className = 'pkg-name';
+    nameEl.textContent = pkg.name || '';
+    div.appendChild(nameEl);
+    if (pkg.provider) {
+      var prov = document.createElement('div');
+      prov.className = 'pkg-provider';
+      prov.textContent = pkg.provider;
+      div.appendChild(prov);
+    }
+    var desc = document.createElement('div');
+    desc.className = 'pkg-desc';
+    desc.textContent = pkg.description || '';
+    div.appendChild(desc);
+    var price = document.createElement('div');
+    price.className = 'pkg-price';
+    price.textContent = fmt(pkg.price);
+    div.appendChild(price);
+    var brochureHref = safeBrochureUrl(pkg.brochureUrl);
+    if (brochureHref) {
+      var link = document.createElement('a');
+      link.className = 'pkg-brochure';
+      link.href = brochureHref;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'View brochure';
+      link.addEventListener('click', function(ev) { ev.stopPropagation(); });
+      div.appendChild(link);
+    }
     grid.appendChild(div);
   });
   var list = document.getElementById('accessoryList');
@@ -433,14 +478,43 @@ function renderCatalog() {
     var div = document.createElement('div');
     var on = state.selectedAccessories.has(acc.id);
     div.className = 'acc-item' + (on ? ' active' : '');
-    div.onclick = function() { toggleSet(state.selectedAccessories, acc.id); renderCatalog(); recalculate(); };
-    div.innerHTML = '<div class="acc-info"><div class="acc-name"></div><div class="acc-desc"></div></div><div class="acc-price"></div>';
-    div.querySelector('.acc-name').textContent = acc.name;
-    div.querySelector('.acc-desc').textContent = acc.description || '';
-    div.querySelector('.acc-price').textContent = fmt(acc.price);
+    div.addEventListener('click', function(ev) {
+      if (ev.target && ev.target.closest && ev.target.closest('a')) return;
+      toggleSet(state.selectedAccessories, acc.id);
+      renderCatalog();
+      recalculate();
+    });
+    var info = document.createElement('div');
+    info.className = 'acc-info';
+    var accName = document.createElement('div');
+    accName.className = 'acc-name';
+    accName.textContent = acc.name || '';
+    var accDesc = document.createElement('div');
+    accDesc.className = 'acc-desc';
+    accDesc.textContent = acc.description || '';
+    info.appendChild(accName);
+    info.appendChild(accDesc);
+    var accHref = safeBrochureUrl(acc.brochureUrl);
+    if (accHref) {
+      var accLink = document.createElement('a');
+      accLink.className = 'pkg-brochure';
+      accLink.href = accHref;
+      accLink.target = '_blank';
+      accLink.rel = 'noopener noreferrer';
+      accLink.textContent = 'View brochure';
+      accLink.addEventListener('click', function(ev) { ev.stopPropagation(); });
+      info.appendChild(accLink);
+    }
+    var accPrice = document.createElement('div');
+    accPrice.className = 'acc-price';
+    accPrice.textContent = fmt(acc.price);
+    div.appendChild(info);
+    div.appendChild(accPrice);
     list.appendChild(div);
   });
-  summarize('protectionSummary', state.selectedProtection, CFG.protection, 'No protection packages selected.');
+  var accCard = document.getElementById('accessoryCard');
+  if (accCard) accCard.style.display = (CFG.accessories && CFG.accessories.length) ? '' : 'none';
+  summarize('protectionSummary', state.selectedProtection, CFG.protection, 'No coverages selected.');
   summarize('accessorySummary', state.selectedAccessories, CFG.accessories, 'No accessories selected.');
 }
 
