@@ -3,7 +3,7 @@
 Google Apps Script project that replaces individual desking sheets with:
 
 1. A shared HTML desking dialog (`deskingDialog.html`)
-2. An internal print worksheet (`deskPrint.html`)
+2. An internal print worksheet (`deskPrint.html`) with the official GEAUX Chevrolet logo (no Supreme Automotive Group wordmark)
 3. An interactive customer quote (`customerQuote.html`) whose **packages, accessories, APRs, FICO labels, fees, store name, and notification emails are edited in spreadsheet sheets — not hardcoded in HTML.**
 
 Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound Apps Script on `GEAUXCHEVROLETSALESLOG` (or `clasp push`).

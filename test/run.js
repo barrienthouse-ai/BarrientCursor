@@ -167,6 +167,17 @@ test('print template does not include SSN', function() {
   assert.ok(html.toLowerCase().indexOf('>ssn<') === -1);
 });
 
+test('print template uses GEAUX Chevrolet logo, not Supreme wordmark', function() {
+  const html = fs.readFileSync(path.join(root, 'deskPrint.html'), 'utf8');
+  assert.ok(html.indexOf('alt="GEAUX Chevrolet"') !== -1);
+  assert.ok(html.indexOf('data:image/jpeg;base64') !== -1);
+  assert.ok(html.indexOf('brand-logo') !== -1);
+  assert.ok(html.indexOf('Supreme') === -1);
+  assert.ok(html.indexOf('AUTOMOTIVE GROUP') === -1);
+  assert.ok(html.indexOf('logo-GEAUX') === -1);
+  assert.ok(fs.existsSync(path.join(root, 'assets/geaux-chevrolet-logo.jpg')));
+});
+
 test('DMS aliases: taxCreditForTrade YES → creditYN Y', function() {
   const c = ctx.calculateDeal({
     marketValue: 10000, taxRate: 10, taxCreditForTrade: 'YES', tradeAllowance: 2000,
