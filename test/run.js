@@ -154,6 +154,20 @@ test('quote HTML has placeholders and no hardcoded demo PII', function() {
   assert.ok(html.indexOf('const RATE_MATRIX') === -1);
 });
 
+test('Code.gs onOpen keeps existing dealer menus when those tools are present', function() {
+  const src = fs.readFileSync(path.join(root, 'Code.gs'), 'utf8');
+  assert.ok(src.indexOf("createMenu('GEAUX Desk')") !== -1);
+  assert.ok(src.indexOf('function addExistingDealerMenus_') !== -1);
+  assert.ok(src.indexOf("createMenu('Lease Engine')") !== -1);
+  assert.ok(src.indexOf("createMenu('Dealer Bonuses')") !== -1);
+  assert.ok(src.indexOf("createMenu('Deal Reports')") !== -1);
+  assert.ok(src.indexOf("createMenu('Dealer Tool Kit')") !== -1);
+  assert.ok(src.indexOf("createMenu('GEAUX Terminal')") !== -1);
+  assert.ok(src.indexOf('typeof openLeaseCalculator') !== -1);
+  assert.ok(src.indexOf('SMR_onOpen()') !== -1);
+  assert.ok(src.indexOf('SLM_onOpen()') !== -1);
+});
+
 test('desking dialog injects initial dropdown data', function() {
   const html = fs.readFileSync(path.join(root, 'deskingDialog.html'), 'utf8');
   assert.ok(html.indexOf('__DESK_INITIAL_PLACEHOLDER__') !== -1);
