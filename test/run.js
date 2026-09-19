@@ -248,6 +248,19 @@ test('manager names are not hardcoded gates for save/print/quote', function() {
   assert.ok(html.indexOf('function openCustomerQuote()') !== -1);
 });
 
+test('customer quote links never use YOUR_DEPLOYMENT_ID placeholder', function() {
+  const quote = fs.readFileSync(path.join(root, 'CustomerQuote.gs'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'customerQuote.html'), 'utf8');
+  const deskHtml = fs.readFileSync(path.join(root, 'deskingDialog.html'), 'utf8');
+  assert.ok(quote.indexOf("return 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec'") === -1);
+  assert.ok(quote.indexOf("setProperty('WEBAPP_URL', YOUR_WEBAPP_URL)") === -1);
+  assert.ok(quote.indexOf("var YOUR_WEBAPP_URL") === -1);
+  assert.ok(quote.indexOf('buildQuoteShareLink_') !== -1);
+  assert.ok(quote.indexOf('ScriptApp.getService') !== -1);
+  assert.ok(html.indexOf('isLiveWebAppUrl') !== -1);
+  assert.ok(deskHtml.indexOf('Save Web App URL') !== -1);
+});
+
 test('optional MANAGER_STAGING match still routes; unmatched/blank uses row 1', function() {
   const list = [{ match: 'PAT', row: 3 }];
   assert.strictEqual(ctx.matchStagingRow_('Pat Nguyen', list, 1), 3);
@@ -273,6 +286,51 @@ test('optional MANAGER_STAGING match still routes; unmatched/blank uses row 1', 
 
 vm.runInContext(fs.readFileSync(path.join(root, 'Desking.gs'), 'utf8'), ctx);
 vm.runInContext(fs.readFileSync(path.join(root, 'CustomerQuote.gs'), 'utf8'), ctx);
+
+test('placeholder web app URLs cannot become customer links', function() {
+  assert.strictEqual(ctx.isUsableWebAppUrl_('https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec'), false);
+  assert.strictEqual(ctx.isUsableWebAppUrl_('https://script.google.com/macros/s/REPLACE_WITH_YOUR_DEPLOYMENT_ID/exec'), false);
+  assert.strictEqual(ctx.isUsableWebAppUrl_(''), false);
+  assert.strictEqual(ctx.isUsableWebAppUrl_('https://example.invalid/exec'), false);
+  assert.strictEqual(ctx.isUsableWebAppUrl_('https://script.google.com/macros/s/AKfycbxLiveId123/exec'), true);
+  assert.strictEqual(
+    ctx.buildQuoteShareLink_('QT_d4b451c931c44d', 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec'),
+    ''
+  );
+  assert.strictEqual(
+    ctx.buildQuoteShareLink_('QT_d4b451c931c44d', 'https://script.google.com/macros/s/AKfycbxLiveId123/exec'),
+    'https://script.google.com/macros/s/AKfycbxLiveId123/exec?token=QT_d4b451c931c44d'
+  );
+});
+
+test('stored placeholder WEBAPP_URL is ignored in favor of the live deployment', function() {
+  const orig = {
+    PropertiesService: ctx.PropertiesService,
+    ScriptApp: ctx.ScriptApp,
+    getConfigMap: ctx.getConfigMap,
+    rememberWebAppUrl_: ctx.rememberWebAppUrl_
+  };
+  ctx.PropertiesService = {
+    getScriptProperties: function() {
+      return {
+        getProperty: function() { return 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec'; },
+        setProperty: function() {}
+      };
+    }
+  };
+  ctx.ScriptApp = {
+    getService: function() {
+      return { getUrl: function() { return 'https://script.google.com/macros/s/AKfycbxLiveId123/exec'; } };
+    }
+  };
+  ctx.getConfigMap = function() { return { webAppUrl: '' }; };
+  ctx.rememberWebAppUrl_ = function() {};
+  try {
+    assert.strictEqual(ctx.getWebAppUrl_(), 'https://script.google.com/macros/s/AKfycbxLiveId123/exec');
+  } finally {
+    Object.keys(orig).forEach(function(k) { ctx[k] = orig[k]; });
+  }
+});
 
 test('save, print, and quote succeed with unmatched or blank manager names', function() {
   const writes = [];
@@ -305,7 +363,7 @@ test('save, print, and quote succeed with unmatched or blank manager names', fun
     };
   };
   ctx.storeQuoteDeal_ = function() { return 'QT_unmatched'; };
-  ctx.getWebAppUrl_ = function() { return 'https://example.invalid/exec'; };
+  ctx.getWebAppUrl_ = function() { return 'https://script.google.com/macros/s/AKfycbxTest/exec'; };
   ctx.snapshotQuoteConfig_ = function() { return { settings: {}, protection: [], accessories: [] }; };
   ctx.buildQuoteHtml_ = function() { return '<html>quote-ok</html>'; };
   ctx.HtmlService = {

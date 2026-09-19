@@ -11,7 +11,7 @@
 
 var DEFAULT_STORE_CITY_ = 'LaPlace, LA';
 var DEFAULT_STAGING_ROW_ = 1;
-var CONFIG_SCHEMA_VERSION_ = '4';
+var CONFIG_SCHEMA_VERSION_ = '5';
 var _ssCache_ = null;
 var _configSheetsReady_ = false;
 var _configMapCache_ = null;
@@ -131,6 +131,7 @@ function ensureConfigSheet_(ss) {
       ['allowTermChange', 'yes', 'yes = customer can change term on the quote'],
       ['defaultCreditTier', 'a1', 'Starting credit tier on the quote'],
       ['useOddDaysOnQuote', 'yes', 'yes = match desk payment (odd-days interest past 30)'],
+      ['webAppUrl', '', 'Published Web App URL for customer quote links. GEAUX Desk → Save Web App URL fills this.'],
       ['docFee', String(DEFAULT_FEES_.docFee), 'Default doc fee'],
       ['titleFee', String(DEFAULT_FEES_.titleFee), ''],
       ['licenseFee', String(DEFAULT_FEES_.licenseFee), ''],
@@ -150,6 +151,7 @@ function ensureConfigSheet_(ss) {
     sheet.setColumnWidth(3, 280);
   } else {
     migrateStoreCity_(sheet);
+    upsertConfigValue_('webAppUrl', '', 'Published Web App URL for customer quote links. GEAUX Desk → Save Web App URL fills this.', true);
   }
 }
 
@@ -401,6 +403,24 @@ function ensureTiersSheet_(ss) {
       ['b3', 'Rebuilding Credit — B3', 'FICO 569 & Below', 60]
     ]);
   }
+}
+
+function upsertConfigValue_(key, value, notes, onlyIfMissing) {
+  var ss = getActiveSs_();
+  var sheet = ss.getSheetByName('CONFIG');
+  if (!sheet) return;
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0] || '').trim() !== key) continue;
+    if (!onlyIfMissing) {
+      sheet.getRange(i + 1, 2).setValue(value);
+      if (notes) sheet.getRange(i + 1, 3).setValue(notes);
+    }
+    _configMapCache_ = null;
+    return;
+  }
+  sheet.appendRow([key, onlyIfMissing ? (value || '') : value, notes || '']);
+  _configMapCache_ = null;
 }
 
 function getConfigMap() {

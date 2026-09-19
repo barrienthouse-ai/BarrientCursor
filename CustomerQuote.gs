@@ -8,24 +8,98 @@
  * link does not change when someone later edits the catalog.
  */
 
+function isUsableWebAppUrl_(url) {
+  var s = String(url || '').trim();
+  if (!s) return false;
+  if (!/^https:\/\/script\.google\.com\//i.test(s)) return false;
+  var upper = s.toUpperCase();
+  if (upper.indexOf('YOUR_DEPLOYMENT_ID') !== -1) return false;
+  if (upper.indexOf('REPLACE_WITH_YOUR_DEPLOYMENT_ID') !== -1) return false;
+  return true;
+}
+
+function normalizeWebAppUrl_(url) {
+  return String(url || '').trim().replace(/\/+$/, '');
+}
+
+function detectDeployedWebAppUrl_() {
+  try {
+    if (typeof ScriptApp !== 'undefined' && ScriptApp.getService) {
+      var live = ScriptApp.getService().getUrl();
+      if (isUsableWebAppUrl_(live)) return normalizeWebAppUrl_(live);
+    }
+  } catch (e) {}
+  return '';
+}
+
+function rememberWebAppUrl_(url, force) {
+  if (!isUsableWebAppUrl_(url)) return;
+  var s = normalizeWebAppUrl_(url);
+  try {
+    var current = PropertiesService.getScriptProperties().getProperty('WEBAPP_URL');
+    if (!force && isUsableWebAppUrl_(current) && normalizeWebAppUrl_(current) === s) return;
+    PropertiesService.getScriptProperties().setProperty('WEBAPP_URL', s);
+  } catch (e) {}
+  try {
+    upsertConfigValue_('webAppUrl', s, 'Published Web App URL for customer quote links. GEAUX Desk → Save Web App URL fills this.');
+  } catch (e2) {}
+}
+
 function getWebAppUrl_() {
-  var props = PropertiesService.getScriptProperties();
-  var url = props.getProperty('WEBAPP_URL');
-  if (url) return url;
-  var map = {};
-  try { map = getConfigMap(); } catch (e) {}
-  if (map.webAppUrl) return String(map.webAppUrl).trim();
-  return 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
+  var candidates = [];
+  try {
+    var stored = PropertiesService.getScriptProperties().getProperty('WEBAPP_URL');
+    if (stored) candidates.push(stored);
+  } catch (e) {}
+  try {
+    var map = getConfigMap();
+    if (map && map.webAppUrl) candidates.push(map.webAppUrl);
+  } catch (e2) {}
+  var detected = detectDeployedWebAppUrl_();
+  if (detected) candidates.push(detected);
+
+  for (var i = 0; i < candidates.length; i++) {
+    if (!isUsableWebAppUrl_(candidates[i])) continue;
+    var url = normalizeWebAppUrl_(candidates[i]);
+    rememberWebAppUrl_(url);
+    return url;
+  }
+  return '';
+}
+
+function buildQuoteShareLink_(token, baseUrl) {
+  var base = baseUrl == null ? getWebAppUrl_() : baseUrl;
+  if (!isUsableWebAppUrl_(base) || !token) return '';
+  return normalizeWebAppUrl_(base) + '?token=' + encodeURIComponent(token);
 }
 
 function setWebAppUrl() {
-  var YOUR_WEBAPP_URL = 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_DEPLOYMENT_ID/exec';
-  PropertiesService.getScriptProperties().setProperty('WEBAPP_URL', YOUR_WEBAPP_URL);
-  try {
-    SpreadsheetApp.getUi().alert('Web App URL saved!\n\n' + YOUR_WEBAPP_URL);
-  } catch (e) {
-    console.log('Web App URL saved: ' + YOUR_WEBAPP_URL);
+  var url = detectDeployedWebAppUrl_();
+  if (!isUsableWebAppUrl_(url)) {
+    try {
+      var map = getConfigMap();
+      if (map && map.webAppUrl) url = map.webAppUrl;
+    } catch (e) {}
   }
+  var ui;
+  try { ui = SpreadsheetApp.getUi(); } catch (e2) { ui = null; }
+  if (!isUsableWebAppUrl_(url)) {
+    var msg =
+      'No published Web App URL yet. Customer links will not work until this is done.\n\n' +
+      '1. Extensions → Apps Script\n' +
+      '2. Deploy → New deployment → Web app\n' +
+      '3. Execute as: Me\n' +
+      '4. Who has access: Anyone\n' +
+      '5. Deploy, copy the URL, then run GEAUX Desk → Save Web App URL again.\n\n' +
+      'You can also paste the URL into the CONFIG sheet (key webAppUrl) and run this again.';
+    if (ui) ui.alert(msg);
+    else console.log(msg);
+    return;
+  }
+  rememberWebAppUrl_(url, true);
+  var saved = 'Customer quote links will use:\n\n' + normalizeWebAppUrl_(url);
+  if (ui) ui.alert(saved);
+  else console.log(saved);
 }
 
 function parseIdList_(v) {
@@ -191,12 +265,13 @@ function getCustomerQuoteHtmlWithSave(deskData) {
     }
 
     var token = storeQuoteDeal_(d, quoteDealNum);
-    var shareLink = getWebAppUrl_() + '?token=' + encodeURIComponent(token);
+    var shareLink = buildQuoteShareLink_(token);
     var htmlStr = buildQuoteHtml_({
       token: token,
       payload: { desk: redactDeskForCustomer(d), config: snapshotQuoteConfig_(d) }
     }, {
       _shareLink: shareLink,
+      _webAppUrl: getWebAppUrl_(),
       _isManagerPreview: true
     });
     return { htmlStr: htmlStr, dealNumber: quoteDealNum, shareLink: shareLink };
@@ -220,7 +295,7 @@ function generateShareableLink(deskData) {
     }
     var token = storeQuoteDeal_(d, quoteDealNum);
     return {
-      shareLink: getWebAppUrl_() + '?token=' + encodeURIComponent(token),
+      shareLink: buildQuoteShareLink_(token),
       dealNumber: quoteDealNum
     };
   });
@@ -254,7 +329,7 @@ function withAbsoluteBrochure_(item) {
     return out;
   }
   var base = getWebAppUrl_();
-  if (base && String(base).indexOf('YOUR_DEPLOYMENT_ID') === -1) {
+  if (isUsableWebAppUrl_(base)) {
     out.brochureUrl = String(base).replace(/\/$/, '') + '?brochure=' + encodeURIComponent(item.id);
   }
   return out;
@@ -295,6 +370,8 @@ function serveBrochure_(id) {
 
 function doGet(e) {
   ensureConfigSheets();
+  var live = detectDeployedWebAppUrl_();
+  if (live) rememberWebAppUrl_(live);
   var brochureId = e && e.parameter && e.parameter.brochure ? e.parameter.brochure : null;
   if (brochureId) return serveBrochure_(brochureId);
   var token = e && e.parameter && e.parameter.token ? e.parameter.token : null;

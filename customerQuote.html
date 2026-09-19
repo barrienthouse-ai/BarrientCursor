@@ -289,6 +289,12 @@ const DESK = __DESK_DATA_PLACEHOLDER__;
 const QUOTE_CONFIG = __QUOTE_CONFIG_PLACEHOLDER__;
 
 function toNumber(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function isLiveWebAppUrl(url) {
+  var s = String(url || '').trim();
+  if (!s) return false;
+  if (/YOUR_DEPLOYMENT_ID|REPLACE_WITH_YOUR_DEPLOYMENT_ID/i.test(s)) return false;
+  return /^https:\/\/script\.google\.com\//i.test(s);
+}
 function roundMoney(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 function fmt(n) {
   if (n === null || n === undefined || isNaN(n)) return '—';
@@ -665,10 +671,10 @@ function init() {
   slider.value = Math.min(state.downPayment, maxDown);
   setText('dp_max_label', '$' + maxDown.toLocaleString());
 
-  var isWebApp = !!(d._webAppUrl && String(d._webAppUrl).indexOf('YOUR_DEPLOYMENT_ID') === -1);
+  var isWebApp = isLiveWebAppUrl(d._webAppUrl);
   document.getElementById('submitSection').style.display = isWebApp ? '' : 'none';
   if (d._isManagerPreview) document.getElementById('previewNote').style.display = 'block';
-  if (d._shareLink && !isWebApp) {
+  if (isLiveWebAppUrl(d._shareLink) && !isWebApp) {
     var bar = document.getElementById('shareLinkBar');
     var a = document.getElementById('shareLinkAnchor');
     a.href = d._shareLink; a.textContent = d._shareLink; bar.style.display = 'block';
@@ -713,7 +719,7 @@ function submitSelections() {
     google.script.run.withSuccessHandler(ok).withFailureHandler(fail).receiveCustomerSubmission(JSON.stringify(payload));
     return;
   }
-  if (!webAppUrl || String(webAppUrl).indexOf('YOUR_DEPLOYMENT_ID') !== -1) {
+  if (!isLiveWebAppUrl(webAppUrl)) {
     btn.disabled = false;
     alert('To send selections, open the personalized link from your salesperson.');
     return;

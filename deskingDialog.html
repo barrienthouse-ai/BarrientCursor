@@ -653,10 +653,10 @@
           .withSuccessHandler(function(res) {
             document.getElementById('dealNumber').value = res.dealNumber;
             openBlobHtml(res.htmlStr, 'Customer quote opened. Deal # ' + res.dealNumber);
-            if (res.shareLink && res.shareLink.indexOf('YOUR_DEPLOYMENT_ID') === -1) {
+            if (res.shareLink && res.shareLink.indexOf('script.google.com') !== -1 && res.shareLink.indexOf('YOUR_DEPLOYMENT_ID') === -1) {
               showShareLinkPanel(res.shareLink, res.dealNumber);
             } else {
-              showStatus('Customer quote opened. Deal # ' + res.dealNumber + ' — run setWebAppUrl() after deploying the Web App to enable remote sharing.', 'success');
+              showStatus('Customer quote opened. Deal # ' + res.dealNumber + ' — deploy the Web App (Anyone), then GEAUX Desk → Save Web App URL, and open the quote again to copy a working customer link.', 'success');
             }
           })
           .withFailureHandler(function(e) { showStatus('Customer quote error: ' + e.message, 'error'); })
