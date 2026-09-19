@@ -154,18 +154,61 @@ test('quote HTML has placeholders and no hardcoded demo PII', function() {
   assert.ok(html.indexOf('const RATE_MATRIX') === -1);
 });
 
-test('Code.gs onOpen keeps existing dealer menus when those tools are present', function() {
-  const src = fs.readFileSync(path.join(root, 'Code.gs'), 'utf8');
-  assert.ok(src.indexOf("createMenu('GEAUX Desk')") !== -1);
-  assert.ok(src.indexOf('function addExistingDealerMenus_') !== -1);
-  assert.ok(src.indexOf("createMenu('Lease Engine')") !== -1);
-  assert.ok(src.indexOf("createMenu('Dealer Bonuses')") !== -1);
-  assert.ok(src.indexOf("createMenu('Deal Reports')") !== -1);
-  assert.ok(src.indexOf("createMenu('Dealer Tool Kit')") !== -1);
-  assert.ok(src.indexOf("createMenu('GEAUX Terminal')") !== -1);
-  assert.ok(src.indexOf('typeof openLeaseCalculator') !== -1);
-  assert.ok(src.indexOf('SMR_onOpen()') !== -1);
-  assert.ok(src.indexOf('SLM_onOpen()') !== -1);
+test('Code.gs groups dealer menus under GEAUX TOOLS and GEAUX REPORTS', function() {
+  vm.runInContext(fs.readFileSync(path.join(root, 'Code.gs'), 'utf8'), ctx);
+  const plan = ctx.geauxMenuBlueprint_();
+  assert.strictEqual(plan.toolsTitle, 'GEAUX TOOLS');
+  assert.strictEqual(plan.reportsTitle, 'GEAUX REPORTS');
+  assert.strictEqual(plan.tools.map(function(g) { return g.title; }).join('|'),
+    'Lease Engine|Dealer Bonuses|GEAUX Terminal|Service Manager Report|SLM|GEAUX Desk');
+  assert.strictEqual(plan.reports.map(function(g) { return g.title; }).join('|'),
+    'Deal Reports|Dealer Tool Kit');
+  assert.strictEqual(plan.tools[3].onOpen, 'SMR_onOpen');
+  assert.strictEqual(plan.tools[4].onOpen, 'SLM_onOpen');
+  assert.ok(plan.tools[5].always);
+
+  const added = [];
+  const menus = {};
+  function mockMenu(title) {
+    const menu = {
+      title: title,
+      items: [],
+      addItem: function(label, fn) { this.items.push({ label: label, fn: fn }); return this; },
+      addSeparator: function() { this.items.push({ separator: true }); return this; },
+      addSubMenu: function(sub) { this.items.push({ submenu: sub.title, items: sub.items.slice() }); return this; },
+      addToUi: function() { added.push(this.title); return this; }
+    };
+    menus[title] = menu;
+    return menu;
+  }
+  ctx.openLeaseCalculator = function() {};
+  ctx.showDashboard = function() {};
+  ctx.launchMainTerminal = function() {};
+  ctx.launchFinanceTool = function() {};
+  ctx.SMR_onOpen = function() {
+    ctx.SpreadsheetApp.getUi().createMenu('Service Manager Report').addItem('Open SMR', 'SMR_open').addToUi();
+  };
+  ctx.SLM_onOpen = function() {
+    ctx.SpreadsheetApp.getUi().createMenu('SLM').addItem('Open SLM', 'SLM_open').addToUi();
+  };
+  ctx.launchDealComparisonReport = function() {};
+  ctx.launchTradeDashboardFromMenu = function() {};
+  ctx.SCR_showSalesComparisonReport = function() {};
+  ctx.GEAUXDealerForm_OpenBridge = function() {};
+  ctx.OPEN_DESKING_TOOL = function() {};
+  ctx.SpreadsheetApp = {
+    getUi: function() {
+      return { createMenu: mockMenu };
+    }
+  };
+  ctx.onOpen();
+  assert.strictEqual(added.join('|'), 'GEAUX TOOLS|GEAUX REPORTS');
+  assert.strictEqual(menus['GEAUX TOOLS'].items.map(function(i) { return i.submenu; }).join('|'),
+    'Lease Engine|Dealer Bonuses|GEAUX Terminal|Service Manager Report|SLM|GEAUX Desk');
+  assert.strictEqual(menus['GEAUX REPORTS'].items.map(function(i) { return i.submenu; }).join('|'),
+    'Deal Reports|Dealer Tool Kit');
+  assert.ok(added.indexOf('Service Manager Report') === -1);
+  assert.ok(added.indexOf('SLM') === -1);
 });
 
 test('desking dialog injects initial dropdown data', function() {

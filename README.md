@@ -10,21 +10,23 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
 
 ## First run
 
-1. Reload the spreadsheet. **GEAUX Desk** appears on the Google Sheets menu bar (to the right of Help), not in GitHub and not as a tab at the bottom of the workbook.
-   - If it is missing: **Extensions → Apps Script**, confirm `Code.gs` with `createMenu('GEAUX Desk')` is in the script bound to this spreadsheet, then reload. First run: **Run → onOpen** in the Apps Script editor and click Allow.
-   - This project’s `onOpen()` also restores Lease Engine, Dealer Bonuses, Deal Reports, Dealer Tool Kit, and GEAUX Terminal when those functions exist. **Delete any other `function onOpen()`** in the same Apps Script project (keep the rest of those files). Two `onOpen` functions cannot share one project.
-2. **GEAUX Desk → Open Desking Tool.** Salesperson, manager, term, and credit-tier lists are filled when the window opens (no extra wait). **GEAUX Desk → Create/refresh config sheets** creates `QUOTE_CATALOG` if needed.
+1. Reload the spreadsheet. The menu bar has two items: **GEAUX TOOLS** and **GEAUX REPORTS** (to the right of Help), not in GitHub and not as tabs at the bottom of the workbook.
+   - **GEAUX TOOLS:** Lease Engine, Dealer Bonuses, GEAUX Terminal, Service Manager Report (SMR), SLM, GEAUX Desk.
+   - **GEAUX REPORTS:** Deal Reports and Dealer Tool Kit.
+   - If they are missing: **Extensions → Apps Script**, confirm `Code.gs` is in the script bound to this spreadsheet, then reload. First run: **Run → onOpen** in the Apps Script editor and click Allow.
+   - **Delete any other `function onOpen()`** in the same Apps Script project (keep the rest of those files). Two `onOpen` functions cannot share one project.
+2. **GEAUX TOOLS → GEAUX Desk → Open Desking Tool.** Salesperson, manager, term, and credit-tier lists are filled when the window opens (no extra wait). **GEAUX TOOLS → GEAUX Desk → Create/refresh config sheets** creates `QUOTE_CATALOG` if needed.
 3. Confirm these sheets exist and edit them as needed:
    - `CONFIG` — fees, store city/phone, quote TTL, notify emails, default term
    - `MANAGER_STAGING` — optional manager name match → DESKDATA staging row (1–4). Blank or unmatched names use row 1. Not required to save, print, or quote.
    - `QUOTE_CATALOG` — optional coverages (id, name, description, **price**, brochure URL, provider). Change the Price column anytime — no code deploy.
    - `QUOTE_RATES` — APR matrix (term × a1–b3). Blank cell = not offered
    - `CREDIT_TIERS` — labels and FICO bands shown to the customer
-4. **GEAUX Desk → Publish quote brochures** after the PDFs are in the Drive folder. That writes view links into `QUOTE_CATALOG` BrochureUrl. You can also paste any URL into that column by hand.
+4. **GEAUX TOOLS → GEAUX Desk → Publish quote brochures** after the PDFs are in the Drive folder. That writes view links into `QUOTE_CATALOG` BrochureUrl. You can also paste any URL into that column by hand.
 5. Deploy **Deploy → New deployment → Web app**
    - Execute as: **Me** (not User accessing the web app)
    - Who has access: **Anyone** (not “Anyone with a Google account”)
-6. **GEAUX Desk → Save Web App URL**, then **Test customer Web App**. Incognito + signed out must show a GEAUX page, not Google Drive.
+6. **GEAUX TOOLS → GEAUX Desk → Save Web App URL**, then **Test customer Web App**. Incognito + signed out must show a GEAUX page, not Google Drive.
 7. **Share a quote:** put the customer email on the desk and click **EMAIL QUOTE**. The customer email tells them to open the attached `Your-GEAUX-Chevrolet-Quote-….html` file (paperclip on a phone). Do not send the Web App test URL to customers.
 
 Existing `SETUP` (salespeople A7:A52, managers A57:A62), `INV`, and `DESKDATA` keep working. `DESKDATA` history now uses **73 columns** (days-to-first and first payment date at the end).
