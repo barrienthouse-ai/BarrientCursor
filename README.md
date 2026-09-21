@@ -11,7 +11,7 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
 ## First run
 
 1. Reload the spreadsheet. The menu bar has two items: **GEAUX TOOLS** and **GEAUX REPORTS** (to the right of Help), not in GitHub and not as tabs at the bottom of the workbook.
-   - **GEAUX TOOLS:** Lease Engine, Dealer Bonuses, GEAUX Terminal, Service Manager Report (SMR), SLM, GEAUX Desk.
+   - **GEAUX TOOLS:** Lease Engine, Dealer Bonuses, GEAUX Terminal, Service Manager Report (SMR), SLM, GEAUX Desk, Deal Log.
    - **GEAUX REPORTS:** Deal Reports and Dealer Tool Kit.
    - If they are missing: **Extensions → Apps Script**, confirm `Code.gs` is in the script bound to this spreadsheet, then reload. First run: **Run → onOpen** in the Apps Script editor and click Allow.
    - **Delete any other `function onOpen()`** in the same Apps Script project (keep the rest of those files). Two `onOpen` functions cannot share one project. Use `LeaseEngine.gs` for the lease calculator (no `onOpen` in that file).
@@ -30,6 +30,16 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
 7. **Share a quote:** put the customer email on the desk and click **EMAIL QUOTE**. The customer email tells them to open the attached `Your-GEAUX-Chevrolet-Quote-….html` file (paperclip on a phone). Do not send the Web App test URL to customers.
 
 Existing `SETUP` (salespeople A7:A52, managers A57:A62), `INV`, and `DESKDATA` keep working. `DESKDATA` history now uses **73 columns** (days-to-first and first payment date at the end).
+
+## Deal Log (sold deals — not desking)
+
+`DealManager.gs` + `logDealDialog.html` is a **different tool** from GEAUX Desk. It writes sold deals to `DEALINPUT` through the `LOGDEAL` formula row. It does **not** read or write `DESKDATA`.
+
+1. **GEAUX TOOLS → Deal Log → Open Deal Log Entry** (copy `DealManager.gs` and `logDealDialog.html` into the bound script).
+2. Add / Update / Recall / Clear talk to `LOGDEAL` then paste `A1:EC1` into `DEALINPUT`. Protected formula columns stay formulas (`PROTECTED_INDICES` is unchanged).
+3. The dialog field **etch** maps to LOGDEAL **paint** (B24). **Spiff 2** is the commissions `spiff2b` box and writes `J31`.
+4. Clear resets both the dialog and the LOGDEAL formula cells on the sheet.
+5. Sidebar **Deal Manager** (`OPENDEALMANAGER` / `dealDialog.html`) is not in the menu until that HTML file exists. Do not add a second `onOpen()` in `DealManager.gs`.
 
 ## Changing customer quote options (no code deploy)
 

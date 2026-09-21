@@ -5,7 +5,7 @@
  * Delete any other function onOpen() from lease / bonus / report files — keep
  * those tools' other functions.
  *
- * Toolbar: GEAUX TOOLS (lease, bonuses, terminal, SMR, SLM, desk)
+ * Toolbar: GEAUX TOOLS (lease, bonuses, terminal, SMR, SLM, desk, deal log)
  *          GEAUX REPORTS (deal reports + dealer tool kit)
  */
 
@@ -42,6 +42,13 @@ function geauxMenuBlueprint_() {
           { label: 'Save Web App URL', fn: 'setWebAppUrl' },
           { label: 'Test customer Web App', fn: 'testCustomerWebApp' },
           { label: 'Send test quote email', fn: 'testEmailNotification' }
+        ]
+      },
+      {
+        title: 'Deal Log',
+        always: true,
+        items: [
+          { label: 'Open Deal Log Entry', fn: 'OPENLOGDEAL' }
         ]
       }
     ],

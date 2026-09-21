@@ -171,12 +171,14 @@ test('Code.gs groups dealer menus under GEAUX TOOLS and GEAUX REPORTS', function
   assert.strictEqual(plan.toolsTitle, 'GEAUX TOOLS');
   assert.strictEqual(plan.reportsTitle, 'GEAUX REPORTS');
   assert.strictEqual(plan.tools.map(function(g) { return g.title; }).join('|'),
-    'Lease Engine|Dealer Bonuses|GEAUX Terminal|Service Manager Report|SLM|GEAUX Desk');
+    'Lease Engine|Dealer Bonuses|GEAUX Terminal|Service Manager Report|SLM|GEAUX Desk|Deal Log');
   assert.strictEqual(plan.reports.map(function(g) { return g.title; }).join('|'),
     'Deal Reports|Dealer Tool Kit');
   assert.strictEqual(plan.tools[3].onOpen, 'SMR_onOpen');
   assert.strictEqual(plan.tools[4].onOpen, 'SLM_onOpen');
   assert.ok(plan.tools[5].always);
+  assert.ok(plan.tools[6].always);
+  assert.strictEqual(plan.tools[6].items[0].fn, 'OPENLOGDEAL');
 
   const added = [];
   const menus = {};
@@ -207,6 +209,7 @@ test('Code.gs groups dealer menus under GEAUX TOOLS and GEAUX REPORTS', function
   ctx.SCR_showSalesComparisonReport = function() {};
   ctx.GEAUXDealerForm_OpenBridge = function() {};
   ctx.OPEN_DESKING_TOOL = function() {};
+  ctx.OPENLOGDEAL = function() {};
   ctx.SpreadsheetApp = {
     getUi: function() {
       return { createMenu: mockMenu };
@@ -215,7 +218,7 @@ test('Code.gs groups dealer menus under GEAUX TOOLS and GEAUX REPORTS', function
   ctx.onOpen();
   assert.strictEqual(added.join('|'), 'GEAUX TOOLS|GEAUX REPORTS');
   assert.strictEqual(menus['GEAUX TOOLS'].items.map(function(i) { return i.submenu; }).join('|'),
-    'Lease Engine|Dealer Bonuses|GEAUX Terminal|Service Manager Report|SLM|GEAUX Desk');
+    'Lease Engine|Dealer Bonuses|GEAUX Terminal|Service Manager Report|SLM|GEAUX Desk|Deal Log');
   assert.strictEqual(menus['GEAUX REPORTS'].items.map(function(i) { return i.submenu; }).join('|'),
     'Deal Reports|Dealer Tool Kit');
   assert.ok(added.indexOf('Service Manager Report') === -1);
@@ -596,6 +599,43 @@ test('recall and search find DESKDATA deals by deal #, partial name, and stock',
   }
 });
 
+test('Deal Log is a separate GEAUX TOOLS item and does not use onOpen', function() {
+  const src = fs.readFileSync(path.join(root, 'DealManager.gs'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'logDealDialog.html'), 'utf8');
+  assert.ok(!/^function\s+onOpen\s*\(/m.test(src));
+  assert.ok(src.indexOf('function OPENLOGDEAL') !== -1);
+  assert.ok(src.indexOf('function logDealFieldAliases_') !== -1);
+  assert.ok(src.indexOf('out.paint = out.etch') !== -1);
+  assert.ok(src.indexOf('out.spiff2 = out.spiff2b') !== -1);
+  assert.ok(src.indexOf('etch:               paintVal') !== -1);
+  assert.ok(src.indexOf('sourceRange.copyTo(destRange)') !== -1);
+  assert.ok(src.indexOf('var PROTECTED_INDICES = [2,16,25,26,40,50,67,69,71,77,80,82,83,84,85,86,87,88,') !== -1);
+  assert.ok(src.indexOf('89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,105,106,107,108,109,110,111,') !== -1);
+  assert.ok(src.indexOf('112,113,115,116,117,118,119,120,121,122,124,125,126];') !== -1);
+  assert.ok(html.indexOf('d.paint = d.etch') !== -1);
+  assert.ok(html.indexOf("d.spiff2 = s2 ? s2.value : ''") !== -1);
+  assert.ok(html.indexOf('.clearForm()') !== -1);
+  assert.ok(html.indexOf('s.textContent = text') !== -1);
+  assert.ok(html.indexOf('etch: d.etch || d.paint') !== -1);
+  assert.ok(html.indexOf('id="etch"') !== -1);
+  assert.ok(html.indexOf('id="spiff2b"') !== -1);
+  assert.ok(!fs.existsSync(path.join(root, 'dealDialog.html')));
+});
+
+vm.runInContext(fs.readFileSync(path.join(root, 'DealManager.gs'), 'utf8'), ctx);
+
+test('logDealFieldAliases_ maps etch to paint and spiff2b to spiff2', function() {
+  const a = ctx.logDealFieldAliases_({ etch: '150', spiff2b: '25' });
+  assert.strictEqual(a.paint, '150');
+  assert.strictEqual(a.spiff2, '25');
+  assert.strictEqual(a.etch, '150');
+  const b = ctx.logDealFieldAliases_({ paint: '90', etch: '', spiff2: '10', spiff2b: '99' });
+  assert.strictEqual(b.paint, '90');
+  assert.strictEqual(b.spiff2, '10');
+  const c = ctx.logDealFieldAliases_(null);
+  assert.strictEqual(Object.keys(c).length, 0);
+});
+
 test('desking dialog recalls by deal #, customer, or stock and lists multiples', function() {
   const html = fs.readFileSync(path.join(root, 'deskingDialog.html'), 'utf8');
   assert.ok(html.indexOf('handleRecallResponse') !== -1);
@@ -704,6 +744,41 @@ const printDesk = Object.assign({}, previewDesk, {
 });
 const printHtml = ctx.injectJson_(printTpl, '__DESK_DATA_PLACEHOLDER__', printDesk);
 fs.writeFileSync(path.join(root, 'test', 'print-preview.html'), printHtml);
+
+const logTpl = fs.readFileSync(path.join(root, 'logDealDialog.html'), 'utf8');
+const logMock = [
+  '<script>',
+  'window.google = { script: { host: { close: function(){} }, run: (function(){',
+  '  var api = {',
+  '    withSuccessHandler: function(fn) { api._ok = fn; return api; },',
+  '    withFailureHandler: function(fn) { api._err = fn; return api; },',
+  '    getLogDealDropdowns: function() {',
+  "      api._ok({ salesReps:['JANE SALES','BOB ASM'], managers:['DAVID'], salesRoles:{'JANE SALES':'SALES','BOB ASM':'ASM'} });",
+  '    },',
+  '    getVehicleByStockForLog: function() {',
+  "      api._ok({ year:'2026', make:'CHEV', model:'TRAVERSE', vin:'1GNEVJK00TJ000001', hitlistOnList:true, hitlistAmount:300 });",
+  '    },',
+  "    addDeal: function(n) { api._ok('Deal #' + n + ' added successfully (row 12).'); },",
+  "    updateDeal: function(n) { api._ok('Deal #' + n + ' updated successfully (row 12).'); },",
+  '    locateDeals: function() {',
+  "      api._ok([{rowIndex:6,dealNo:'1102',date:'09/21/2026',firstName:'Maria',lastName:'Barrient',stock:'SC1001'}]);",
+  '    },',
+  '    recallDealForDialog: function() {',
+  "      api._ok({ date:'09/21/2026', dealNo:'1102', saleType:'RETAIL', newUsed:'NEW', sales1:'JANE SALES',",
+  "        stock:'SC1001', year:'2026', make:'CHEV', model:'TRAVERSE', vin:'1GNEVJK00TJ000001',",
+  "        custFirst:'Maria', custLast:'Barrient', agFront:200, frontGross:1500, warranty:400, etch:150,",
+  "        salesPrice:45000, weowes:0, commCost:100, dlrCash:0, spiff1:50, spiff2:25,",
+  "        rebate1Submitted:500, rebate1Code:'BC' });",
+  '    },',
+  '    clearForm: function() { api._ok(); }',
+  '  };',
+  '  return api;',
+  '})() } };',
+  '</script>'
+].join('\n');
+const logPreview = logTpl.replace('</head>', logMock + '\n</head>');
+fs.writeFileSync(path.join(root, 'test', 'log-deal-preview.html'), logPreview);
+console.log('Wrote ' + path.join(root, 'test', 'log-deal-preview.html'));
 
 if (failures.length) {
   console.log('\n' + failures.length + ' failed');
