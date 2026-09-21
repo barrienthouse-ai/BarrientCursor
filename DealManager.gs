@@ -3,6 +3,14 @@
  * SPEED PASS — same DEALINPUT paste/formula rules.
  * Menus live in Code.gs (GEAUX TOOLS → Deal Log). Do not add onOpen() here.
  * LOGDEAL = input form. DEALINPUT = sold-deal log (headers row 5, data row 6+).
+ *
+ * Live LOGDEAL B15:B24 → DEALINPUT O:Y (do not insert columns; Z/AA are formulas):
+ *   B15 AG/FRONT → O F/P (dialog removed; new deals write blank)
+ *   B16 FRONT GROSS → P    B17 PART → R    B18 WARRANT → S    B19 GAP → T
+ *   B20 MAINT → U          B21 KEY → V     B22 TIRE → W
+ *   B23 WINDSHIELD → X     B24 PAINT/etch → Y
+ *   Q = O+P (F TOTAL)      Z = SUM(R:Y) (FIN TOTAL / back)    AA = Q+Z
+ * Dialog shows Windshield after Etch; values still write B23 / X so history stays put.
  */
 
 function OPENDEALMANAGER() {
@@ -12,6 +20,7 @@ function OPENDEALMANAGER() {
 }
 
 function OPENLOGDEAL() {
+  ensureLogDealWindshieldLayout_();
   var html = HtmlService.createHtmlOutputFromFile('logDealDialog')
       .setWidth(1400).setHeight(900).setTitle('Deal Log Entry');
   SpreadsheetApp.getUi().showModalDialog(html, 'Deal Log Entry');
@@ -328,6 +337,11 @@ function logDealFieldAliases_(d) {
     if (Object.prototype.hasOwnProperty.call(d, k)) out[k] = d[k];
   }
   if (out.etch !== undefined && String(out.etch) !== '') out.paint = out.etch;
+  if ((out.key === undefined || out.key === '') && out.uvpProd !== undefined) out.key = out.uvpProd;
+  if ((out.tire === undefined || out.tire === '') && out.starguard !== undefined) out.tire = out.starguard;
+  if ((out.windshield === undefined || out.windshield === '') && out.safeshield !== undefined) {
+    out.windshield = out.safeshield;
+  }
   if ((out.spiff2 === undefined || out.spiff2 === '') && out.spiff2b !== undefined) out.spiff2 = out.spiff2b;
   return out;
 }
@@ -345,8 +359,8 @@ function writeFormToSheet_(s, d) {
     'dealDate', 'dealNo', 'saleType', 'newUsed', 'sales1', 'sales2', 'stockNo',
     'vehYear', 'vehMake', 'vehModel', 'vehVin',
     'custFirst', 'custLast',
-    'agFront', 'frontGross', 'participation', 'warranty', 'gap', 'maint', 'uvpProd', 'starguard',
-    'safeshield', 'paint', 'downPayment', 'financeMgr', 'salesMgr', 'lienholder', 'totalFinanced',
+    '', 'frontGross', 'participation', 'warranty', 'gap', 'maint', 'key', 'tire',
+    'windshield', 'paint', 'downPayment', 'financeMgr', 'salesMgr', 'lienholder', 'totalFinanced',
     'trade1Stk', 'trade1Year', 'trade1Make', 'trade1Model', 'trade1Vin', 'trade1Miles',
     'trade1Acv', 'trade1Allow', 'trade1Title'
   ]));
@@ -405,6 +419,7 @@ function addDeal(dealNo, formData) {
   dealNo = (dealNo || '').toString().trim();
   if (!dealNo) throw new Error('Deal Number is required to add a deal.');
 
+  ensureLogDealWindshieldLayout_();
   if (formData) writeFormToSheet_(frmSheet, formData);
   else {
     frmSheet.getRange('B3').setValue(dealNo);
@@ -440,6 +455,7 @@ function updateDeal(dealNo, formData) {
   var match = existing.find(function(m) { return m.dealNo.toString() === dealNo; });
   if (!match) throw new Error('Deal #' + dealNo + ' not found. Use Add Deal instead.');
 
+  ensureLogDealWindshieldLayout_();
   if (formData) writeFormToSheet_(frmSheet, formData);
   else {
     frmSheet.getRange('B3').setValue(dealNo);
@@ -483,15 +499,14 @@ function getRecalledFormData() {
     vin:                fmt(b[10][0]),
     custFirst:          fmt(b[11][0]),
     custLast:           fmt(b[12][0]),
-    agFront:            fmt(b[13][0]),
     frontGross:         fmt(b[14][0]),
     participation:      fmt(b[15][0]),
     warranty:           fmt(b[16][0]),
     gap:                fmt(b[17][0]),
     maint:              fmt(b[18][0]),
-    uvpProd:            fmt(b[19][0]),
-    starguard:          fmt(b[20][0]),
-    safeshield:         fmt(b[21][0]),
+    key:                fmt(b[19][0]),
+    tire:               fmt(b[20][0]),
+    windshield:         fmt(b[21][0]),
     paint:              paintVal,
     etch:               paintVal,
     downPayment:        fmt(b[23][0]),
@@ -561,13 +576,13 @@ function clearForm() {
   sheet.getRange('G31').setValue('=IF(K24=0,0,MAX(K24:K26))');
   sheet.getRange('F36').setValue('=E36-E37');
   sheet.getRange('C37').setValue('=B36-B37');
-  sheet.getRange('C17').setValue('=SUM(B16,B15)');
+  sheet.getRange('C17').setValue('=B16');
   sheet.getRange('C19').setValue('=SUM(B17:B24)');
   sheet.getRange('H30').setValue('=IF($B$5="USED",(IF(C6="ASM", 0.3, 0)+IF(AND(C6="SALES", $H$24<$J$18), 0.25, 0)+IF(AND(C6="SALESN", $H$24<$J$18), 0.25, 0)+IF(AND(C6="SALES", $H$24>=$J$18),0.3,0)+IF(AND(C6="SALESN", $H$24>=$J$18),0.3,0)),0)+IF($B$5="NEW",(IF(C6="ASM", 0.3, 0)+IF(AND(C6="SALES", $H$24<$J$17), 0.25, 0)+IF(AND(C6="SALESN", $H$24<$J$17), 0.25, 0)+IF(AND(C6="SALES", $H$24>=$J$17),0.3,0)+IF(AND(C6="SALESN", $H$24>=$J$17),0.3,0)),0)');
   sheet.getRange('H31').setValue('=IF($B$5="USED",(IF(C7="ASM", 0.3, 0)+IF(AND(C7="SALES", $H$24<$J$18), 0.25, 0)+IF(AND(C7="SALESN", $H$24<$J$18), 0.25, 0)+IF(AND(C7="SALES", $H$24>=$J$18),0.3,0)+IF(AND(C7="SALESN", $H$24>=$J$18),0.3,0)),0)+IF($B$5="NEW",(IF(C7="ASM", 0.3, 0)+IF(AND(C7="SALES", $H$24<$J$17), 0.25, 0)+IF(AND(C7="SALESN", $H$24<$J$17), 0.25, 0)+IF(AND(C7="SALES", $H$24>=$J$17),0.3,0)+IF(AND(C7="SALESN", $H$24>=$J$17),0.3,0)),0)');
   sheet.getRange('H20').setValue('=(C37+F36)');
   sheet.getRange('H21').setValue('=SUM(H17:H18)');
-  sheet.getRange('H22').setValue('=B15');
+  sheet.getRange('H22').setValue('=0');
   sheet.getRange('H24').setValue('=H16-H21+H20+H22');
   sheet.getRange('H25').setValue('=H24-H23');
   sheet.getRange('J24').setValue('=H30*H25');
@@ -577,4 +592,25 @@ function clearForm() {
   sheet.getRange('K25').setValue('200');
   sheet.getRange('K26').setValue('=IFERROR(INDEX(HITLIST!$I$23:$I,MATCH($B$8,HITLIST!$A$23:$A,0)),)');
   sheet.getRange('F19').setValue('=SUM($F$17,$F$14,$F$10,$F$11,$F$8,$F$5)');
+}
+
+function ensureLogDealWindshieldLayout_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var logDeal = ss.getSheetByName('LOGDEAL');
+  var dealInput = ss.getSheetByName('DEALINPUT');
+  if (logDeal) {
+    logDeal.getRange('A21').setValue('KEY');
+    logDeal.getRange('A22').setValue('TIRE');
+    logDeal.getRange('A23').setValue('WINDSHIELD');
+    logDeal.getRange('A24').setValue('PAINT');
+    logDeal.getRange('C17').setFormula('=B16');
+    logDeal.getRange('C19').setFormula('=SUM(B17:B24)');
+    logDeal.getRange('H22').setFormula('=0');
+  }
+  if (dealInput) {
+    dealInput.getRange(5, 22).setValue('KEY');
+    dealInput.getRange(5, 23).setValue('TIRE');
+    dealInput.getRange(5, 24).setValue('WINDSHIELD');
+    dealInput.getRange(5, 25).setValue('PAINT');
+  }
 }

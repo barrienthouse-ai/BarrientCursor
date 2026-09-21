@@ -618,20 +618,32 @@ test('Deal Log is a separate GEAUX TOOLS item and does not use onOpen', function
   assert.ok(html.indexOf('s.textContent = text') !== -1);
   assert.ok(html.indexOf('etch: d.etch || d.paint') !== -1);
   assert.ok(html.indexOf('id="etch"') !== -1);
+  assert.ok(html.indexOf('id="windshield"') !== -1);
+  assert.ok(html.indexOf('id="key"') !== -1);
+  assert.ok(html.indexOf('id="tire"') !== -1);
+  assert.ok(html.indexOf('id="agFront"') === -1);
   assert.ok(html.indexOf('id="spiff2b"') !== -1);
+  assert.ok(src.indexOf("getRange('EB1')") === -1);
+  assert.ok(src.indexOf('B39') === -1);
+  assert.ok(src.indexOf("'windshield', 'paint'") !== -1);
   assert.ok(!fs.existsSync(path.join(root, 'dealDialog.html')));
 });
 
 vm.runInContext(fs.readFileSync(path.join(root, 'DealManager.gs'), 'utf8'), ctx);
 
-test('logDealFieldAliases_ maps etch to paint and spiff2b to spiff2', function() {
-  const a = ctx.logDealFieldAliases_({ etch: '150', spiff2b: '25' });
+test('logDealFieldAliases_ maps etch to paint, windshield aliases, and spiff2b', function() {
+  const a = ctx.logDealFieldAliases_({ etch: '150', spiff2b: '25', windshield: '75' });
   assert.strictEqual(a.paint, '150');
   assert.strictEqual(a.spiff2, '25');
   assert.strictEqual(a.etch, '150');
+  assert.strictEqual(a.windshield, '75');
   const b = ctx.logDealFieldAliases_({ paint: '90', etch: '', spiff2: '10', spiff2b: '99' });
   assert.strictEqual(b.paint, '90');
   assert.strictEqual(b.spiff2, '10');
+  const legacy = ctx.logDealFieldAliases_({ uvpProd: '10', starguard: '20', safeshield: '30' });
+  assert.strictEqual(legacy.key, '10');
+  assert.strictEqual(legacy.tire, '20');
+  assert.strictEqual(legacy.windshield, '30');
   const c = ctx.logDealFieldAliases_(null);
   assert.strictEqual(Object.keys(c).length, 0);
 });
@@ -766,7 +778,7 @@ const logMock = [
   '    recallDealForDialog: function() {',
   "      api._ok({ date:'09/21/2026', dealNo:'1102', saleType:'RETAIL', newUsed:'NEW', sales1:'JANE SALES',",
   "        stock:'SC1001', year:'2026', make:'CHEV', model:'TRAVERSE', vin:'1GNEVJK00TJ000001',",
-  "        custFirst:'Maria', custLast:'Barrient', agFront:200, frontGross:1500, warranty:400, etch:150,",
+  "        custFirst:'Maria', custLast:'Barrient', frontGross:1500, warranty:400, etch:150, windshield:75,",
   "        salesPrice:45000, weowes:0, commCost:100, dlrCash:0, spiff1:50, spiff2:25,",
   "        rebate1Submitted:500, rebate1Code:'BC' });",
   '    },',

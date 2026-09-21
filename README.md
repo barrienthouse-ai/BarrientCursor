@@ -36,10 +36,24 @@ Existing `SETUP` (salespeople A7:A52, managers A57:A62), `INV`, and `DESKDATA` k
 `DealManager.gs` + `logDealDialog.html` is a **different tool** from GEAUX Desk. It writes sold deals to `DEALINPUT` through the `LOGDEAL` formula row. It does **not** read or write `DESKDATA`.
 
 1. **GEAUX TOOLS → Deal Log → Open Deal Log Entry** (copy `DealManager.gs` and `logDealDialog.html` into the bound script).
-2. Add / Update / Recall / Clear talk to `LOGDEAL` then paste `A1:EC1` into `DEALINPUT`. Protected formula columns stay formulas (`PROTECTED_INDICES` is unchanged).
-3. The dialog field **etch** maps to LOGDEAL **paint** (B24). **Spiff 2** is the commissions `spiff2b` box and writes `J31`.
-4. Clear resets both the dialog and the LOGDEAL formula cells on the sheet.
-5. Sidebar **Deal Manager** (`OPENDEALMANAGER` / `dealDialog.html`) is not in the menu until that HTML file exists. Do not add a second `onOpen()` in `DealManager.gs`.
+2. Add / Update / Recall / Clear talk to `LOGDEAL` then paste `A1:EC1` into `DEALINPUT`. Protected formula columns stay formulas (`PROTECTED_INDICES` is unchanged). Do **not** insert a column after etch/`Y` — `Z` is FIN TOTAL (`SUM(R:Y)`) and `AA` is TOTAL GROSS. `SUMMARY` (and other reports) sum `Q` (F TOTAL) and `Z`.
+3. **AG / Autoguard is off the dialog.** New deals write blank to LOGDEAL `B15` / DEALINPUT `O` (header `F/P`). Front total is `P` only (`C17=B16`, engine `Q1=O1+P1`).
+4. Live product map (dialog shows Windshield after Etch; cells stay in this order so history does not swap):
+
+| Dialog | LOGDEAL | DEALINPUT |
+|---|---|---|
+| Front Gross | B16 | P FRONTE |
+| Participation | B17 | R PART |
+| Warranty | B18 | S WARRANT |
+| GAP | B19 | T GAP |
+| Maintenance | B20 | U MAINT |
+| Key | B21 | V |
+| Tire | B22 | W |
+| etch / paint | B24 | Y |
+| Windshield | B23 | X |
+
+5. **Spiff 2** is the commissions `spiff2b` box and writes `J31`. Clear resets LOGDEAL formulas (`H22=0` so AG is not in comm). Opening Deal Log relabels `V:Y` headers to KEY / TIRE / WINDSHIELD / PAINT.
+6. Sidebar **Deal Manager** (`OPENDEALMANAGER` / `dealDialog.html`) is not in the menu until that HTML file exists. Do not add a second `onOpen()` in `DealManager.gs`.
 
 ## Changing customer quote options (no code deploy)
 
