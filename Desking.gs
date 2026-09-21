@@ -1,0 +1,572 @@
+/**
+ * Shared Desking Tool — spreadsheet CRUD.
+ * DESKDATA rows 1-4 = optional manager staging (MANAGER_STAGING sheet; default row 1)
+ * DESKDATA row 5+   = history
+ * Column BG (59)    = deal number
+ * Columns 72-73     = daysToFirst, firstPaymentDate
+ */
+
+function OPEN_DESKING_TOOL() {
+  var data = {};
+  try {
+    data = getDeskingInitialData();
+  } catch (e) {
+    console.error(e);
+  }
+  var raw = HtmlService.createHtmlOutputFromFile('deskingDialog').getContent();
+  var html = HtmlService.createHtmlOutput(injectJson_(raw, '__DESK_INITIAL_PLACEHOLDER__', data))
+    .setTitle('Shared Desking Tool')
+    .setWidth(1600)
+    .setHeight(950);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Shared Desking Tool');
+}
+
+function getDeskingInitialData() {
+  ensureConfigSheets();
+  var ss = getActiveSs_();
+  var setupSheet = ss.getSheetByName('SETUP');
+  var salespeople = [];
+  var managers = [];
+  if (setupSheet) {
+    var setupVals = setupSheet.getRange('A7:A62').getValues();
+    for (var i = 0; i < 46; i++) {
+      if (setupVals[i][0] !== '' && setupVals[i][0] !== null) salespeople.push(setupVals[i][0]);
+    }
+    for (var m = 50; m < setupVals.length; m++) {
+      if (setupVals[m][0] !== '' && setupVals[m][0] !== null) managers.push(setupVals[m][0]);
+    }
+  }
+  var store = getStoreSettings();
+  var catalog = getQuoteCatalog();
+  return {
+    salespeople: salespeople,
+    managers: managers,
+    defaultFees: getDefaultFees(),
+    quoteCatalog: {
+      protection: catalog.filter(function (i) { return i.category === 'protection' && i.active; }),
+      accessories: catalog.filter(function (i) { return i.category === 'accessory' && i.active; })
+    },
+    quoteSettings: {
+      defaultTerm: store.defaultTerm,
+      allowTermChange: store.allowTermChange,
+      defaultCreditTier: store.defaultCreditTier
+    },
+    rateTerms: Object.keys(getRateMatrix()).map(Number).sort(function (a, b) { return a - b; }),
+    tiers: getCreditTiers(),
+    store: store
+  };
+}
+
+function getVehicleByStock(stockNum) {
+  if (!stockNum) return null;
+  var ss = getActiveSs_();
+  var invSheet = ss.getSheetByName('INV');
+  if (!invSheet) return null;
+  var data = invSheet.getDataRange().getValues();
+  for (var i = 5; i < data.length; i++) {
+    if (String(data[i][0]).trim() === String(stockNum).trim()) {
+      var row = data[i];
+      return {
+        newUsed: row[1] || '',
+        year: row[2] || '',
+        make: row[3] || '',
+        model: row[4] || '',
+        type: row[6] || '',
+        color: row[8] || '',
+        vin: row[16] || '',
+        mileage: row[18] || '',
+        msrp: row[10] || 0,
+        cost: row[11] || 0,
+        rebate: 0
+      };
+    }
+  }
+  return null;
+}
+
+function getNextDealNumber_(deskSheet) {
+  var lastRow = deskSheet.getLastRow();
+  if (lastRow < 5) return 1001;
+  var dealNums = deskSheet.getRange(5, DEAL_NUMBER_COL, lastRow - 4, 1).getValues();
+  var maxBase = 1000;
+  for (var i = 0; i < dealNums.length; i++) {
+    var raw = String(dealNums[i][0]).trim();
+    if (!raw) continue;
+    var base = parseInt(raw.split('.')[0], 10);
+    if (!isNaN(base) && base > maxBase) maxBase = base;
+  }
+  return maxBase + 1;
+}
+
+function findDealRow_(deskSheet, dealNumber) {
+  var lastRow = deskSheet.getLastRow();
+  if (lastRow < 5) return -1;
+  var dealNums = deskSheet.getRange(5, DEAL_NUMBER_COL, lastRow - 4, 1).getValues();
+  var target = String(dealNumber).trim();
+  for (var i = dealNums.length - 1; i >= 0; i--) {
+    if (String(dealNums[i][0]).trim() === target) return i + 5;
+  }
+  return -1;
+}
+
+function getNextPrintVersion_(deskSheet, baseDealNum) {
+  var lastRow = deskSheet.getLastRow();
+  if (lastRow < 5) return String(baseDealNum) + '.1';
+  var dealNums = deskSheet.getRange(5, DEAL_NUMBER_COL, lastRow - 4, 1).getValues();
+  var baseStr = String(baseDealNum);
+  var maxVersion = 0;
+  for (var i = 0; i < dealNums.length; i++) {
+    var raw = String(dealNums[i][0]).trim();
+    if (!raw) continue;
+    var parts = raw.split('.');
+    if (parts[0] === baseStr && parts.length > 1) {
+      var v = parseInt(parts[1], 10);
+      if (!isNaN(v) && v > maxVersion) maxVersion = v;
+    }
+  }
+  return baseStr + '.' + (maxVersion + 1);
+}
+
+function buildRowData_(deskData, dealNum) {
+  var d = normalizeDeskData(deskData);
+  var calc = calculateDeal(d, {});
+  var rowData = new Array(DESK_COL_COUNT).fill('');
+  rowData[0]  = d.date || new Date();
+  rowData[1]  = d.salesperson;
+  rowData[2]  = d.manager;
+  rowData[3]  = d.customerName;
+  rowData[4]  = d.address;
+  rowData[5]  = d.ssn;
+  rowData[6]  = d.email;
+  rowData[7]  = d.homePhone;
+  rowData[8]  = d.workPhone;
+  rowData[9]  = d.cellPhone;
+  rowData[10] = d.dob;
+  rowData[11] = d.stockNum;
+  rowData[12] = d.newUsed;
+  rowData[13] = d.vin;
+  rowData[14] = d.mileage;
+  rowData[15] = d.year;
+  rowData[16] = d.make;
+  rowData[17] = d.model;
+  rowData[18] = d.color;
+  rowData[19] = d.vehicleType;
+  rowData[20] = d.tradePayoff;
+  rowData[21] = d.tradeVin;
+  rowData[22] = d.tradeMileage;
+  rowData[23] = d.tradeVehicle;
+  rowData[24] = d.tradeColor;
+  rowData[25] = d.tradeType;
+  rowData[26] = d.marketValue;
+  rowData[27] = d.savings;
+  rowData[28] = d.rebate1;
+  rowData[29] = d.rebate2;
+  rowData[30] = d.adjustedMarketValue != null && d.adjustedMarketValue !== ''
+    ? d.adjustedMarketValue : calc.adjMV;
+  rowData[31] = d.autoguardPrice;
+  rowData[32] = d.acc1Price;
+  rowData[33] = d.acc2Price;
+  rowData[34] = d.acc3Price;
+  rowData[35] = d.tradeAllowance;
+  rowData[36] = d.balanceToRelease;
+  rowData[37] = d.cashDeposit;
+  rowData[38] = d.creditYN;
+  rowData[39] = d.rate;
+  rowData[40] = d.term;
+  rowData[41] = d.taxRate;
+  rowData[42] = d.docFee;
+  rowData[43] = d.titleFee;
+  rowData[44] = d.licenseFee;
+  rowData[45] = d.recordationFee;
+  rowData[46] = d.tempTag;
+  rowData[47] = d.wasteTire;
+  rowData[48] = d.stateInspection;
+  rowData[49] = d.handlingFee;
+  rowData[50] = d.notaryFee;
+  rowData[51] = d.convenienceFee;
+  rowData[52] = d.msrpCost;
+  rowData[53] = d.autoguardCost;
+  rowData[54] = d.acc1Cost;
+  rowData[55] = d.tradeAcv;
+  rowData[56] = d.acc1Label;
+  rowData[57] = d.acc2Label;
+  rowData[58] = dealNum;
+  rowData[59] = d.acc3Label;
+  rowData[60] = d.autoguardLabel;
+  rowData[61] = d.rebate1Label;
+  rowData[62] = d.rebate2Label;
+  rowData[63] = d.acc2Cost;
+  rowData[64] = d.acc3Cost;
+  rowData[65] = d.rebate3;
+  rowData[66] = d.rebate4;
+  rowData[67] = d.rebate5;
+  rowData[68] = d.rebate3Label;
+  rowData[69] = d.rebate4Label;
+  rowData[70] = d.rebate5Label;
+  rowData[71] = d.daysToFirst;
+  rowData[72] = d.firstPaymentDate || calc.firstPaymentDate;
+  return rowData;
+}
+
+function rowToDesk_(row) {
+  var rawDate = row[0];
+  var dateStr = '';
+  var dateDisplay = '';
+  var parsed = parseLocalDate_(rawDate);
+  if (parsed) {
+    dateStr = formatIsoDate_(parsed);
+    dateDisplay = formatUsDate_(parsed);
+  } else if (rawDate) {
+    dateStr = String(rawDate);
+    dateDisplay = String(rawDate);
+  }
+  return {
+    date: dateStr,
+    dateDisplay: dateDisplay,
+    salesperson: row[1],
+    manager: row[2],
+    customerName: deskValueText_(row[3]),
+    address: row[4],
+    ssn: row[5],
+    email: row[6],
+    homePhone: row[7],
+    workPhone: row[8],
+    cellPhone: row[9],
+    dob: row[10],
+    stockNum: deskValueText_(row[11]),
+    newUsed: row[12],
+    vin: row[13],
+    mileage: row[14],
+    year: row[15],
+    make: row[16],
+    model: row[17],
+    color: row[18],
+    vehicleType: row[19],
+    tradePayoff: row[20],
+    tradeVin: row[21],
+    tradeMileage: row[22],
+    tradeVehicle: row[23],
+    tradeColor: row[24],
+    tradeType: row[25],
+    marketValue: row[26],
+    savings: row[27],
+    rebate1: row[28],
+    rebate2: row[29],
+    adjustedMarketValue: row[30],
+    autoguardPrice: row[31],
+    acc1Price: row[32],
+    acc2Price: row[33],
+    acc3Price: row[34],
+    tradeAllowance: row[35],
+    balanceToRelease: row[36],
+    cashDeposit: row[37],
+    creditYN: row[38],
+    rate: row[39],
+    term: row[40],
+    taxRate: row[41],
+    docFee: row[42],
+    titleFee: row[43],
+    licenseFee: row[44],
+    recordationFee: row[45],
+    tempTag: row[46],
+    wasteTire: row[47],
+    stateInspection: row[48],
+    handlingFee: row[49],
+    notaryFee: row[50],
+    convenienceFee: row[51],
+    msrpCost: row[52],
+    autoguardCost: row[53],
+    acc1Cost: row[54],
+    tradeAcv: row[55],
+    acc1Label: row[56],
+    acc2Label: row[57],
+    dealNumber: dealNumberText_(row[58]),
+    acc3Label: row[59],
+    autoguardLabel: row[60],
+    rebate1Label: row[61],
+    rebate2Label: row[62],
+    acc2Cost: row[63],
+    acc3Cost: row[64],
+    rebate3: row[65],
+    rebate4: row[66],
+    rebate5: row[67],
+    rebate3Label: row[68],
+    rebate4Label: row[69],
+    rebate5Label: row[70],
+    daysToFirst: row.length > 71 ? row[71] : '',
+    firstPaymentDate: row.length > 72 ? row[72] : ''
+  };
+}
+
+function getDeskSheet_() {
+  var ss = getActiveSs_();
+  var deskSheet = ss.getSheetByName('DESKDATA');
+  if (!deskSheet) throw new Error('DESKDATA sheet not found!');
+  return deskSheet;
+}
+
+function writeDeskRow_(deskSheet, row, rowData) {
+  deskSheet.getRange(row, 1, 1, DESK_COL_COUNT).setValues([rowData]);
+}
+
+function saveDesk(deskData, isStagingOnly) {
+  ensureConfigSheets();
+  var d = normalizeDeskData(deskData);
+  if (isStagingOnly && !String(d.manager || '').trim()) {
+    return { success: true, message: 'Staging skipped (no manager).', dealNumber: String(d.dealNumber || '') };
+  }
+  var stagingRow = resolveStagingRow_(d.manager);
+
+  return withSheetLock_(function () {
+    var deskSheet = getDeskSheet_();
+    var existingDealNum = String(d.dealNumber || '').trim();
+    var dealNum;
+    var isNewDeal = false;
+    if (!existingDealNum) {
+      dealNum = getNextDealNumber_(deskSheet);
+      isNewDeal = true;
+    } else {
+      dealNum = existingDealNum;
+    }
+    var rowData = buildRowData_(d, dealNum);
+    writeDeskRow_(deskSheet, stagingRow, rowData);
+
+    if (!isStagingOnly) {
+      if (isNewDeal) {
+        var lastRow = Math.max(4, deskSheet.getLastRow());
+        writeDeskRow_(deskSheet, lastRow + 1, rowData);
+        return { success: true, message: 'Deal saved! Deal #', dealNumber: String(dealNum) };
+      }
+      var existingRow = findDealRow_(deskSheet, dealNum);
+      if (existingRow > 0) {
+        writeDeskRow_(deskSheet, existingRow, rowData);
+        return { success: true, message: 'Deal updated! Deal #', dealNumber: String(dealNum) };
+      }
+      lastRow = Math.max(4, deskSheet.getLastRow());
+      writeDeskRow_(deskSheet, lastRow + 1, rowData);
+      return { success: true, message: 'Deal saved! Deal #', dealNumber: String(dealNum) };
+    }
+    return { success: true, message: 'Staging updated.', dealNumber: String(dealNum) };
+  });
+}
+
+function assignPrintDealNumber_(deskSheet, deskData) {
+  var existingDealNum = String(deskData.dealNumber || '').trim();
+  if (!existingDealNum) return String(getNextDealNumber_(deskSheet));
+  var base = existingDealNum.split('.')[0];
+  return getNextPrintVersion_(deskSheet, base);
+}
+
+function getDeskPrintHtmlWithSave(deskData) {
+  ensureConfigSheets();
+  var d = normalizeDeskData(deskData);
+  var stagingRow = resolveStagingRow_(d.manager);
+
+  return withSheetLock_(function () {
+    var deskSheet = getDeskSheet_();
+    var printDealNum = assignPrintDealNumber_(deskSheet, d);
+    d.dealNumber = printDealNum;
+    d._calc = calculateDeal(d, {});
+    var rowData = buildRowData_(d, printDealNum);
+    writeDeskRow_(deskSheet, stagingRow, rowData);
+    var lastRow = Math.max(4, deskSheet.getLastRow());
+    writeDeskRow_(deskSheet, lastRow + 1, rowData);
+
+    var rawHtml = HtmlService.createHtmlOutputFromFile('deskPrint').getContent();
+    var finalHtml = injectJson_(rawHtml, '__DESK_DATA_PLACEHOLDER__', d);
+    return { htmlStr: finalHtml, dealNumber: printDealNum };
+  });
+}
+
+function getDeskPrintHtml(deskData) {
+  var d = normalizeDeskData(deskData);
+  d._calc = calculateDeal(d, {});
+  var rawHtml = HtmlService.createHtmlOutputFromFile('deskPrint').getContent();
+  return injectJson_(rawHtml, '__DESK_DATA_PLACEHOLDER__', d);
+}
+
+function openDeskPrint(deskData) {
+  var htmlContent = getDeskPrintHtml(deskData);
+  var html = HtmlService.createHtmlOutput(htmlContent)
+    .setTitle('Desk Presentation Print')
+    .setWidth(920)
+    .setHeight(780);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Desk Presentation');
+}
+
+function deskValueText_(value) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number' && isFinite(value)) return String(value);
+  return String(value).trim();
+}
+
+function dealNumberText_(value) {
+  var text = deskValueText_(value).replace(/,/g, '').trim();
+  if (!text) return '';
+  if (/^[0-9]+\.0+$/.test(text)) return text.split('.')[0];
+  return text;
+}
+
+function dealNumberBase_(value) {
+  var text = dealNumberText_(value);
+  if (!text) return '';
+  return text.split('.')[0];
+}
+
+function dealVersion_(value) {
+  var text = dealNumberText_(value);
+  var parts = text.split('.');
+  if (parts.length < 2) return 0;
+  var v = parseInt(parts[1], 10);
+  return isNaN(v) ? 0 : v;
+}
+
+function isDealNumberQuery_(query) {
+  var q = String(query || '').trim().replace(/,/g, '');
+  return /^[0-9]+(\.[0-9]+)?$/.test(q);
+}
+
+function deskRowLooksLikeHeader_(desk) {
+  var name = String(desk.customerName || '').trim().toLowerCase();
+  var deal = dealNumberText_(desk.dealNumber).toLowerCase();
+  var stock = String(desk.stockNum || '').trim().toLowerCase();
+  if (name === 'customer' || name === 'purchaser' || name === 'purchaser name' || name === 'customer name') return true;
+  if (deal === 'deal' || deal === 'deal #' || deal === 'deal number' || deal === 'deal#') return true;
+  if (stock === 'stock' || stock === 'stock #' || stock === 'stock number') return true;
+  return false;
+}
+
+function deskRowHasContent_(desk) {
+  return !!(dealNumberText_(desk.dealNumber) ||
+    String(desk.customerName || '').trim() ||
+    String(desk.stockNum || '').trim());
+}
+
+function deskRowMatchesQuery_(desk, query) {
+  var q = String(query || '').trim().toLowerCase();
+  if (!q) return false;
+  var qDeal = q.replace(/,/g, '');
+  var deal = dealNumberText_(desk.dealNumber).toLowerCase();
+  var name = String(desk.customerName || '').trim().toLowerCase();
+  var stock = String(desk.stockNum || '').trim().toLowerCase();
+  if (deal) {
+    if (deal === qDeal) return true;
+    if (isDealNumberQuery_(qDeal) && dealNumberBase_(deal) === dealNumberBase_(qDeal)) return true;
+    if (isDealNumberQuery_(qDeal) && qDeal.length >= 3 && deal.indexOf(qDeal) === 0) return true;
+  }
+  if (name && name.indexOf(q) !== -1) return true;
+  if (stock && stock.indexOf(qDeal) !== -1) return true;
+  return false;
+}
+
+function matchScore_(desk, query) {
+  var q = String(query || '').trim().toLowerCase();
+  var qDeal = q.replace(/,/g, '');
+  var deal = dealNumberText_(desk.dealNumber).toLowerCase();
+  var stock = String(desk.stockNum || '').trim().toLowerCase();
+  var name = String(desk.customerName || '').trim().toLowerCase();
+  if (deal && deal === qDeal) return 100;
+  if (deal && isDealNumberQuery_(qDeal) && dealNumberBase_(deal) === dealNumberBase_(qDeal)) return 90;
+  if (stock && stock === qDeal) return 80;
+  if (deal && isDealNumberQuery_(qDeal) && deal.indexOf(qDeal) === 0) return 70;
+  if (stock && stock.indexOf(qDeal) !== -1) return 60;
+  if (name && name.indexOf(q) !== -1) return 50;
+  return 0;
+}
+
+function readAllDesks_(deskSheet) {
+  var lastRow = deskSheet.getLastRow();
+  if (lastRow < 1) return [];
+  var width = Math.max(DESK_COL_COUNT, deskSheet.getLastColumn() || 0);
+  var data = deskSheet.getRange(1, 1, lastRow, width).getValues();
+  var desks = [];
+  for (var i = 0; i < data.length; i++) {
+    var desk = rowToDesk_(data[i]);
+    desk._sheetRow = i + 1;
+    if (!deskRowHasContent_(desk) || deskRowLooksLikeHeader_(desk)) continue;
+    desks.push(desk);
+  }
+  return desks;
+}
+
+function stripInternalDeskFields_(desk) {
+  var copy = {};
+  for (var key in desk) {
+    if (!Object.prototype.hasOwnProperty.call(desk, key)) continue;
+    if (String(key).charAt(0) === '_') continue;
+    copy[key] = desk[key];
+  }
+  return copy;
+}
+
+function searchDeals(query) {
+  if (!query || !String(query).trim()) return [];
+  var desks = readAllDesks_(getDeskSheet_());
+  var q = String(query).trim();
+  var bestByKey = {};
+  var order = [];
+  for (var i = 0; i < desks.length; i++) {
+    var desk = desks[i];
+    if (!deskRowMatchesQuery_(desk, q)) continue;
+    var key = dealNumberText_(desk.dealNumber) || ('row:' + desk._sheetRow);
+    var prev = bestByKey[key];
+    if (!prev) {
+      bestByKey[key] = desk;
+      order.push(key);
+    } else if ((desk._sheetRow || 0) >= (prev._sheetRow || 0)) {
+      bestByKey[key] = desk;
+    }
+  }
+  var matches = [];
+  for (var k = 0; k < order.length; k++) matches.push(bestByKey[order[k]]);
+  matches.sort(function (a, b) {
+    var scoreDiff = matchScore_(b, q) - matchScore_(a, q);
+    if (scoreDiff) return scoreDiff;
+    return (b._sheetRow || 0) - (a._sheetRow || 0);
+  });
+  if (matches.length > 20) matches = matches.slice(0, 20);
+  return matches.map(stripInternalDeskFields_);
+}
+
+function pickRecallDesk_(matches, query) {
+  if (!matches || !matches.length) return null;
+  var q = String(query || '').trim();
+  if (isDealNumberQuery_(q)) {
+    var qText = dealNumberText_(q).toLowerCase();
+    if (qText.indexOf('.') !== -1) {
+      for (var i = 0; i < matches.length; i++) {
+        if (dealNumberText_(matches[i].dealNumber).toLowerCase() === qText) return matches[i];
+      }
+    }
+    var family = [];
+    var qBase = dealNumberBase_(q);
+    for (var f = 0; f < matches.length; f++) {
+      if (dealNumberBase_(matches[f].dealNumber) === qBase) family.push(matches[f]);
+    }
+    if (family.length) {
+      family.sort(function (a, b) {
+        var versionDiff = dealVersion_(b.dealNumber) - dealVersion_(a.dealNumber);
+        if (versionDiff) return versionDiff;
+        return dealNumberText_(b.dealNumber).length - dealNumberText_(a.dealNumber).length;
+      });
+      return family[0];
+    }
+  }
+  if (matches.length === 1) return matches[0];
+  var bases = {};
+  for (var j = 0; j < matches.length; j++) {
+    bases[dealNumberBase_(matches[j].dealNumber) || ('row' + j)] = true;
+  }
+  if (Object.keys(bases).length === 1) return matches[0];
+  return null;
+}
+
+function recallDesk(query) {
+  var q = String(query || '').trim();
+  var matches = searchDeals(q);
+  return {
+    desk: pickRecallDesk_(matches, q),
+    matches: matches,
+    query: q
+  };
+}

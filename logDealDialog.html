@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Deal Log Entry</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body { font-family: Arial, sans-serif; font-size: 10px; background: #f0f2f5; color: #1a1a2e; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+  .topbar { background: #1a1a2e; color: #fff; padding: 4px 10px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .topbar-title { font-size: 12px; font-weight: bold; letter-spacing: 1px; }
+  .topbar-btns { display: flex; gap: 5px; }
+  .btn { padding: 3px 11px; border: none; border-radius: 3px; font-size: 10px; font-weight: bold; cursor: pointer; }
+  .btn-save   { background: #27ae60; color: #fff; }
+  .btn-update { background: #2980b9; color: #fff; }
+  .btn-recall { background: #8e44ad; color: #fff; }
+  .btn-clear  { background: #e74c3c; color: #fff; }
+  .btn-close  { background: #555; color: #fff; }
+  .btn:hover { opacity: 0.85; }
+  .recall-panel { background: #2c2c54; color: #fff; padding: 6px 12px; flex-shrink: 0; display: none; }
+  .recall-panel.open { display: flex; align-items: center; gap: 8px; }
+  .recall-panel input { width: 220px; padding: 4px 7px; border-radius: 3px; border: none; font-size: 11px; }
+  .recall-panel button { padding: 4px 12px; border: none; border-radius: 3px; font-size: 11px; font-weight: bold; cursor: pointer; background: #8e44ad; color: #fff; }
+  .recall-panel button:hover { opacity: 0.85; }
+  .recall-results { max-height: 160px; overflow-y: auto; background: #fff; border-radius: 3px; margin-top: 4px; }
+  .recall-row { display: flex; gap: 8px; padding: 4px 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 10px; color: #1a1a2e; align-items: center; }
+  .recall-row:hover { background: #f0e6ff; }
+  .recall-row span { flex: 1; }
+  .main { flex: 1; display: flex; gap: 4px; padding: 4px; overflow: hidden; width: 100%; }
+  .col { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
+  .col-a { flex: 1.15; min-width: 0; }
+  .col-b { flex: 1; min-width: 0; }
+  .col-c { flex: 1.3; min-width: 0; }
+  .col-d { flex: 1; min-width: 0; }
+  .col-e { flex: 1.2; min-width: 0; }
+  .section { background: #fff; border-radius: 3px; border: 1px solid #dde; overflow: hidden; }
+  .sec-title { background: #1a1a2e; color: #fff; font-size: 9px; font-weight: bold; padding: 2px 7px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .sec-body { padding: 3px 5px; display: flex; flex-direction: column; gap: 2px; }
+  .field { display: flex; flex-direction: column; gap: 0px; }
+  .field-row { display: flex; gap: 3px; }
+  .field label { font-size: 7.5px; color: #666; text-transform: uppercase; font-weight: bold; line-height: 1.3; }
+  input, select {
+    width: 100%;
+    padding: 1px 4px;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    font-size: 10px;
+    background: #fafafa;
+    height: 19px;
+  }
+  input:focus, select:focus { outline: none; border-color: #2980b9; background: #fff; }
+  input[readonly] { background: #eef2f7; color: #333; }
+  .num-input { text-align: right; }
+  .calc-row { display: flex; justify-content: space-between; align-items: center; padding: 1px 4px; border-bottom: 1px solid #f0f0f0; }
+  .calc-row:last-child { border-bottom: none; }
+  .calc-label { font-size: 8.5px; color: #555; font-weight: bold; }
+  .calc-value { font-size: 9.5px; font-weight: bold; color: #1a1a2e; min-width: 70px; text-align: right; }
+  .calc-value.pos { color: #27ae60; }
+  .calc-value.neg { color: #e74c3c; }
+  .calc-value.total { color: #1a1a2e; font-size: 11px; }
+  .comm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+  .rebate-block { border: 1px solid #e8e8e8; border-radius: 2px; padding: 2px 4px; margin-bottom: 2px; }
+  .rebate-title { font-size: 7.5px; font-weight: bold; color: #2980b9; margin-bottom: 1px; text-transform: uppercase; }
+  .rebate-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2px; }
+  .statusbar { background: #1a1a2e; color: #aaa; font-size: 9px; padding: 2px 10px; flex-shrink: 0; display: flex; justify-content: space-between; }
+  .status-msg { color: #2ecc71; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="topbar-title">▶ GEAUX CHEVROLET — DEAL LOG ENTRY</span>
+  <div class="topbar-btns">
+    <button class="btn btn-save"   onclick="saveDeal()">💾 ADD DEAL</button>
+    <button class="btn btn-update" onclick="updateDeal()">✏ UPDATE DEAL</button>
+    <button class="btn btn-recall" onclick="toggleRecallPanel()">🔍 RECALL DEAL</button>
+    <button class="btn btn-clear"  onclick="clearForm()">✕ CLEAR</button>
+    <button class="btn btn-close"  onclick="google.script.host.close()">✕ CLOSE</button>
+  </div>
+</div>
+<div class="recall-panel" id="recallPanel">
+  <div style="flex-shrink:0;font-size:11px;font-weight:bold;color:#ccc">RECALL DEAL:</div>
+  <input type="text" id="recallQuery" placeholder="Deal #, Stock #, or Customer Name" onkeydown="if(event.key==='Enter')runRecallSearch()">
+  <button onclick="runRecallSearch()">SEARCH</button>
+  <button onclick="toggleRecallPanel()" style="background:#555">✕</button>
+  <div id="recallStatus" style="font-size:10px;color:#aaa"></div>
+</div>
+<div id="recallResultsWrap" style="display:none;background:#2c2c54;padding:0 12px 6px">
+  <div class="recall-results" id="recallResults"></div>
+</div>
+<div class="main">
+  <div class="col col-a">
+    <div class="section">
+      <div class="sec-title">Deal Information</div>
+      <div class="sec-body">
+        <div class="field-row">
+          <div class="field" style="flex:1">
+            <label>Date</label>
+            <input type="date" id="dealDate" tabindex="1" onchange="calculate()">
+          </div>
+          <div class="field" style="flex:1">
+            <label>Deal #</label>
+            <input type="text" id="dealNo" tabindex="2">
+          </div>
+        </div>
+        <div class="field">
+          <label>Sale Type</label>
+          <select id="saleType" tabindex="3" onchange="calculate()">
+            <option value="">-- Type --</option>
+            <option>RETAIL</option>
+            <option>WHOLESALE</option>
+            <option>CBK</option>
+            <option>FO</option>
+            <option>ACCT</option>
+            <option>REBATE</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>New / Used / Whsl</label>
+          <select id="newUsed" tabindex="4" onchange="calculate()">
+            <option value="">-- --</option>
+            <option>NEW</option>
+            <option>USED</option>
+            <option>WHSL</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Sales 1</label>
+          <select id="sales1" tabindex="5" onchange="calculate()">
+            <option value="">-- Sales 1 --</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Sales 2</label>
+          <select id="sales2" tabindex="6" onchange="calculate()">
+            <option value="">-- Sales 2 --</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Finance Manager</label>
+          <select id="financeMgr" tabindex="7">
+            <option value="">-- Finance Mgr --</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Sales Manager</label>
+          <select id="salesMgr" tabindex="8">
+            <option value="">-- Sales Mgr --</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Lienholder</label>
+          <input type="text" id="lienholder" tabindex="9">
+        </div>
+        <div class="field">
+          <label>Total Financed</label>
+          <input type="number" id="totalFinanced" class="num-input" tabindex="10">
+        </div>
+        <div class="field">
+          <label>RDR Type</label>
+          <input type="text" id="rdrType" tabindex="7">
+        </div>
+        <div class="field">
+          <label>RDR Date</label>
+          <input type="date" id="rdrDate" tabindex="8">
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="sec-title">Customer / Vehicle</div>
+      <div class="sec-body">
+        <div class="field-row">
+          <div class="field" style="flex:1">
+            <label>First Name</label>
+            <input type="text" id="custFirst" tabindex="9">
+          </div>
+          <div class="field" style="flex:1">
+            <label>Last Name</label>
+            <input type="text" id="custLast" tabindex="10">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field" style="flex:1">
+            <label>Stock #</label>
+            <input type="text" id="stockNo" tabindex="11" onblur="lookupVehicle()">
+          </div>
+          <button class="btn btn-update" style="margin-top:11px;padding:2px 8px;font-size:10px;height:19px" onclick="lookupVehicle()">GET</button>
+        </div>
+        <div class="field-row">
+          <div class="field" style="width:44px">
+            <label>Year</label>
+            <input type="text" id="vehYear">
+          </div>
+          <div class="field" style="flex:1">
+            <label>Make</label>
+            <input type="text" id="vehMake">
+          </div>
+          <div class="field" style="flex:1">
+            <label>Model</label>
+            <input type="text" id="vehModel">
+          </div>
+        </div>
+        <div class="field">
+          <label>VIN</label>
+          <input type="text" id="vehVin">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col col-b">
+    <div class="section" style="flex:1">
+      <div class="sec-title">Deal Financials</div>
+      <div class="sec-body">
+        <div class="field"><label>Front Gross</label><input type="number" id="frontGross" class="num-input" tabindex="16" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>AG / Front</label><input type="number" id="agFront" class="num-input" tabindex="17" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Participation</label><input type="number" id="participation" class="num-input" tabindex="18" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Warranty</label><input type="number" id="warranty" class="num-input" tabindex="19" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>GAP</label><input type="number" id="gap" class="num-input" tabindex="20" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Maintenance</label><input type="number" id="maint" class="num-input" tabindex="21" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>uvp</label><input type="number" id="uvpProd" class="num-input" tabindex="22" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>starguard</label><input type="number" id="starguard" class="num-input" tabindex="23" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>safeshield</label><input type="number" id="safeshield" class="num-input" tabindex="24" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>etch</label><input type="number" id="etch" class="num-input" tabindex="25" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Sales Price</label><input type="number" id="salesPrice" class="num-input" tabindex="26" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Weowes / BF</label><input type="number" id="weowes" class="num-input" tabindex="27" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Comm Cost</label><input type="number" id="commCost" class="num-input" tabindex="28" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>DLR Cash</label><input type="number" id="dlrCash" class="num-input" tabindex="29" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Down Payment</label><input type="number" id="downPayment" class="num-input" tabindex="30" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Spiff 1</label><input type="number" id="spiff1" class="num-input" tabindex="31" oninput="syncSpiff(1)" step="0.01"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col col-c">
+    <div class="section">
+      <div class="sec-title">Trade-In 1</div>
+      <div class="sec-body">
+        <div class="field"><label>Trade 1 Stock #</label><input type="text" id="trade1Stk" tabindex="33"></div>
+        <div class="field-row">
+          <div class="field" style="width:48px"><label>Year</label><input type="text" id="trade1Year" tabindex="34"></div>
+          <div class="field" style="flex:1"><label>Make</label><input type="text" id="trade1Make" tabindex="35"></div>
+          <div class="field" style="flex:1"><label>Model</label><input type="text" id="trade1Model" tabindex="36"></div>
+        </div>
+        <div class="field"><label>VIN</label><input type="text" id="trade1Vin" tabindex="37"></div>
+        <div class="field-row">
+          <div class="field" style="flex:1"><label>Miles</label><input type="number" id="trade1Miles" class="num-input" tabindex="38" oninput="calculate()"></div>
+          <div class="field" style="flex:1"><label>ACV</label><input type="number" id="trade1Acv" class="num-input" tabindex="39" oninput="calculate()" step="0.01"></div>
+        </div>
+        <div class="field-row">
+          <div class="field" style="flex:1"><label>Allowance</label><input type="number" id="trade1Allow" class="num-input" tabindex="40" oninput="calculate()" step="0.01"></div>
+          <div class="field" style="flex:1"><label>Title</label><input type="text" id="trade1Title" tabindex="41"></div>
+        </div>
+        <div class="calc-row" style="margin-top:3px;background:#f8f9fa;border-radius:3px">
+          <span class="calc-label">TRADE 1 O/U</span>
+          <span class="calc-value" id="trade1OU">0.00</span>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="sec-title">Trade-In 2</div>
+      <div class="sec-body">
+        <div class="field"><label>Trade 2 Stock #</label><input type="text" id="trade2Stk" tabindex="42"></div>
+        <div class="field-row">
+          <div class="field" style="width:48px"><label>Year</label><input type="text" id="trade2Year" tabindex="43"></div>
+          <div class="field" style="flex:1"><label>Make</label><input type="text" id="trade2Make" tabindex="44"></div>
+          <div class="field" style="flex:1"><label>Model</label><input type="text" id="trade2Model" tabindex="45"></div>
+        </div>
+        <div class="field"><label>VIN</label><input type="text" id="trade2Vin" tabindex="46"></div>
+        <div class="field-row">
+          <div class="field" style="flex:1"><label>Miles</label><input type="number" id="trade2Miles" class="num-input" tabindex="47" oninput="calculate()"></div>
+          <div class="field" style="flex:1"><label>ACV</label><input type="number" id="trade2Acv" class="num-input" tabindex="48" oninput="calculate()" step="0.01"></div>
+        </div>
+        <div class="field-row">
+          <div class="field" style="flex:1"><label>Allowance</label><input type="number" id="trade2Allow" class="num-input" tabindex="49" oninput="calculate()" step="0.01"></div>
+          <div class="field" style="flex:1"><label>Title</label><input type="text" id="trade2Title" tabindex="50"></div>
+        </div>
+        <div class="calc-row" style="margin-top:3px;background:#f8f9fa;border-radius:3px">
+          <span class="calc-label">TRADE 2 O/U</span>
+          <span class="calc-value" id="trade2OU">0.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col col-d">
+    <div class="section" style="flex:1">
+      <div class="sec-title">Rebates</div>
+      <div class="sec-body">
+        <div id="rebatesContainer"></div>
+        <div class="calc-row" style="background:#eef6ff;border-radius:3px;margin-top:3px">
+          <span class="calc-label">TOTAL REBATES SUBMITTED</span>
+          <span class="calc-value pos" id="totalRebatesSubmitted">0.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col col-e">
+    <div class="section">
+      <div class="sec-title">Gross Summary</div>
+      <div class="sec-body">
+        <div class="calc-row"><span class="calc-label">AG / FRONT</span><span class="calc-value" id="disp_agFront">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">FRONT GROSS</span><span class="calc-value" id="disp_frontGross">0.00</span></div>
+        <div class="calc-row" style="background:#f0f7ff;border-top:2px solid #2980b9">
+          <span class="calc-label" style="font-size:10px">TOTAL FRONT GROSS</span>
+          <span class="calc-value total" id="totalFrontGross">0.00</span>
+        </div>
+        <div style="height:3px"></div>
+        <div class="calc-row"><span class="calc-label">WARRANTY</span><span class="calc-value" id="disp_warranty">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">GAP</span><span class="calc-value" id="disp_gap">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">MAINTENANCE</span><span class="calc-value" id="disp_maint">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">UVP</span><span class="calc-value" id="disp_uvp">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">starguard</span><span class="calc-value" id="disp_starguard">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">safeshield</span><span class="calc-value" id="disp_safeshield">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">etch</span><span class="calc-value" id="disp_etch">0.00</span></div>
+        <div class="calc-row" style="background:#f0f7ff;border-top:2px solid #2980b9">
+          <span class="calc-label" style="font-size:10px">BACK GROSS</span>
+          <span class="calc-value total" id="backGross">0.00</span>
+        </div>
+        <div class="calc-row" style="background:#1a1a2e;border-radius:3px;margin-top:4px">
+          <span class="calc-label" style="color:#fff;font-size:11px">TOTAL GROSS</span>
+          <span class="calc-value" style="color:#2ecc71;font-size:13px" id="totalGross">0.00</span>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="sec-title">Commissions</div>
+      <div class="sec-body">
+        <div class="calc-row" style="background:#fff8e1;border-radius:3px;margin-bottom:3px;border:1px solid #f0c040">
+          <span class="calc-label" style="color:#7a5800">COMM GROSS (PRE-PACK)</span>
+          <span class="calc-value" id="commGrossDisp" style="color:#7a5800">0.00</span>
+        </div>
+        <div class="comm-grid">
+          <div>
+            <div class="calc-row" style="background:#f8f9fa;border-radius:3px;margin-bottom:2px">
+              <span class="calc-label">SALES COMM 1</span><span class="calc-value pos" id="salesComm1">0.00</span>
+            </div>
+            <div class="calc-row" style="background:#f8f9fa;border-radius:3px">
+              <span class="calc-label">COMM RATE 1</span><span class="calc-value" id="commRate1" style="font-size:10px">0%</span>
+            </div>
+          </div>
+          <div>
+            <div class="calc-row" style="background:#f8f9fa;border-radius:3px;margin-bottom:2px">
+              <span class="calc-label">SALES COMM 2</span><span class="calc-value pos" id="salesComm2">0.00</span>
+            </div>
+            <div class="calc-row" style="background:#f8f9fa;border-radius:3px">
+              <span class="calc-label">COMM RATE 2</span><span class="calc-value" id="commRate2" style="font-size:10px">0%</span>
+            </div>
+          </div>
+        </div>
+        <div style="height:3px"></div>
+        <div class="field-row">
+          <div class="field" style="flex:1"><label>Spiff 1</label><input type="number" id="spiff1b" class="num-input" oninput="syncSpiff(1)" step="0.01"></div>
+          <div class="field" style="flex:1"><label>Spiff 2</label><input type="number" id="spiff2b" class="num-input" oninput="syncSpiff(2)" step="0.01"></div>
+        </div>
+        <div style="height:3px"></div>
+        <div class="calc-row" style="background:#f8f9fa;border-radius:3px">
+          <span class="calc-label">TRADE O/U (TOTAL)</span><span class="calc-value" id="tradeOU">0.00</span>
+        </div>
+        <div class="calc-row" style="background:#f8f9fa;border-radius:3px">
+          <span class="calc-label">DLR CASH</span><span class="calc-value" id="disp_dlrCash">0.00</span>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="sec-title">Hit List Status</div>
+      <div class="sec-body">
+        <div class="calc-row" style="background:#f8f9fa;border-radius:3px">
+          <span class="calc-label">HITLIST AMOUNT</span>
+          <span class="calc-value" id="hitlistStatus" style="font-size:11px;color:#7a5800">NOT ON HITLIST</span>
+        </div>
+        <div style="font-size:9px;color:#888;margin-top:3px">Updated when stock # is looked up. NEW: ≤1225=25%, ≥1226=30% &nbsp;|&nbsp; USED: ≤1350=25%, ≥1351=30%</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="statusbar">
+  <span id="statusMsg" class="status-msg">Ready</span>
+  <span id="dealNoDisplay"></span>
+</div>
+<script>
+var NAV_ORDER = [
+  'dealDate','dealNo','saleType','newUsed','sales1','sales2','financeMgr','salesMgr','lienholder','totalFinanced','rdrType','rdrDate',
+  'custFirst','custLast','stockNo',
+  'frontGross','agFront','participation','warranty','gap','maint','uvpProd',
+  'starguard','safeshield','etch','salesPrice','weowes','commCost','dlrCash','downPayment','spiff1',
+  'trade1Stk','trade1Year','trade1Make','trade1Model','trade1Vin','trade1Miles','trade1Acv','trade1Allow','trade1Title',
+  'trade2Stk','trade2Year','trade2Make','trade2Model','trade2Vin','trade2Miles','trade2Acv','trade2Allow','trade2Title',
+  'rebate1Code','rebate1Submitted','rebate1Approval',
+  'rebate2Code','rebate2Submitted','rebate2Approval',
+  'rebate3Code','rebate3Submitted','rebate3Approval',
+  'rebate4Code','rebate4Submitted','rebate4Approval',
+  'rebate5Code','rebate5Submitted','rebate5Approval'
+];
+window.addEventListener('load', function() {
+  buildRebateBlocks();
+  loadDropdowns();
+  attachEnterNav();
+  var today = new Date();
+  document.getElementById('dealDate').value = today.getFullYear() + '-' +
+    String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+});
+function attachEnterNav() {
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    var active = document.activeElement;
+    if (!active || (active.tagName !== 'INPUT' && active.tagName !== 'SELECT')) return;
+    if (active.tagName === 'BUTTON') return;
+    e.preventDefault();
+    var idx = NAV_ORDER.indexOf(active.id);
+    if (idx === -1) return;
+    var next = null;
+    for (var i = idx + 1; i < NAV_ORDER.length; i++) {
+      var el = document.getElementById(NAV_ORDER[i]);
+      if (el && !el.disabled && !el.readOnly) { next = el; break; }
+    }
+    if (!next) {
+      for (var j = 0; j < idx; j++) {
+        var el2 = document.getElementById(NAV_ORDER[j]);
+        if (el2 && !el2.disabled && !el2.readOnly) { next = el2; break; }
+      }
+    }
+    if (next) { next.focus(); if (next.select) next.select(); }
+  });
+}
+function buildRebateBlocks() {
+  var container = document.getElementById('rebatesContainer');
+  for (var i = 1; i <= 5; i++) {
+    var block = document.createElement('div');
+    block.className = 'rebate-block';
+    var title = document.createElement('div');
+    title.className = 'rebate-title';
+    title.textContent = 'Rebate ' + i;
+    var grid = document.createElement('div');
+    grid.className = 'rebate-grid';
+    [['$ Submitted', 'rebate'+i+'Submitted', 'number'], ['Code', 'rebate'+i+'Code', 'text'], ['Approval #', 'rebate'+i+'Approval', 'text']].forEach(function(spec) {
+      var field = document.createElement('div');
+      field.className = 'field';
+      var lab = document.createElement('label');
+      lab.textContent = spec[0];
+      var inp = document.createElement('input');
+      inp.type = spec[2];
+      inp.id = spec[1];
+      if (spec[2] === 'number') { inp.className = 'num-input'; inp.step = '0.01'; inp.oninput = calculate; }
+      field.appendChild(lab);
+      field.appendChild(inp);
+      grid.appendChild(field);
+    });
+    block.appendChild(title);
+    block.appendChild(grid);
+    container.appendChild(block);
+  }
+}
+function loadDropdowns() {
+  google.script.run
+    .withSuccessHandler(function(data) {
+      populateSelect('sales1',    data.salesReps, '-- Sales 1 --');
+      populateSelect('sales2',    data.salesReps, '-- Sales 2 --');
+      populateSelect('financeMgr',data.managers,  '-- Finance Mgr --');
+      populateSelect('salesMgr',  data.managers,  '-- Sales Mgr --');
+      window._salesRoles = data.salesRoles || {};
+    })
+    .withFailureHandler(function(e) { setStatus('Error loading dropdowns: ' + e.message, true); })
+    .getLogDealDropdowns();
+}
+function populateSelect(id, items, placeholder) {
+  var sel = document.getElementById(id);
+  sel.textContent = '';
+  var first = document.createElement('option');
+  first.value = '';
+  first.textContent = placeholder;
+  sel.appendChild(first);
+  (items || []).forEach(function(item) {
+    var opt = document.createElement('option');
+    opt.value = item;
+    opt.textContent = item;
+    sel.appendChild(opt);
+  });
+}
+function lookupVehicle() {
+  var stock = document.getElementById('stockNo').value.trim();
+  if (!stock) return;
+  setStatus('Looking up stock #' + stock + '...');
+  google.script.run
+    .withSuccessHandler(function(v) {
+      if (v) {
+        document.getElementById('vehYear').value  = v.year  || '';
+        document.getElementById('vehMake').value  = v.make  || '';
+        document.getElementById('vehModel').value = v.model || '';
+        document.getElementById('vehVin').value   = v.vin   || '';
+        var hitlistEl = document.getElementById('hitlistStatus');
+        if (v.hitlistOnList && v.hitlistAmount > 0) {
+          window._hitlistAmount = v.hitlistAmount;
+          if (hitlistEl) hitlistEl.textContent = '$' + fmt(v.hitlistAmount);
+        } else {
+          window._hitlistAmount = 0;
+          if (hitlistEl) hitlistEl.textContent = 'NOT ON HITLIST';
+        }
+        setStatus('Vehicle loaded: ' + v.year + ' ' + v.make + ' ' + v.model);
+        calculate();
+      } else {
+        setStatus('Stock #' + stock + ' not found in INV', true);
+      }
+    })
+    .withFailureHandler(function(e) { setStatus('Lookup error: ' + e.message, true); })
+    .getVehicleByStockForLog(stock);
+}
+function n(id) { return parseFloat(document.getElementById(id).value) || 0; }
+function fmt(v) { return v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function setVal(id, v) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = (v < 0 ? '-$' : '$') + fmt(Math.abs(v));
+}
+function calculate() {
+  var agFront    = n('agFront');
+  var frontGross = n('frontGross');
+  var warranty   = n('warranty');
+  var gap        = n('gap');
+  var maint      = n('maint');
+  var uvp        = n('uvpProd');
+  var starguard  = n('starguard');
+  var safeshield = n('safeshield');
+  var etch       = n('etch');
+  var trade1Net  = n('trade1Acv') - n('trade1Allow');
+  var trade2Net  = n('trade2Acv') - n('trade2Allow');
+  var totalTradeNet = trade1Net + trade2Net;
+  var totalFrontGross = frontGross + agFront;
+  var participation   = n('participation');
+  var backGross       = warranty + gap + maint + uvp + starguard + safeshield + etch + participation;
+  var totalGross      = totalFrontGross + backGross;
+  var salesPrice = n('salesPrice');
+  var weowes     = n('weowes');
+  var commCost   = n('commCost');
+  var dlrCash    = n('dlrCash');
+  var commGross = salesPrice - weowes - commCost + agFront + totalTradeNet;
+  var commGrossAfterPack = commGross - 250;
+  var newUsed    = document.getElementById('newUsed').value;
+  var rate1 = calcCommRate(getSalesRole('sales1'), newUsed, commGross, 1225, 1350);
+  var rate2 = calcCommRate(getSalesRole('sales2'), newUsed, commGross, 1225, 1350);
+  var hitlistAmt = window._hitlistAmount || 0;
+  var salesComm1 = rate1 > 0 ? Math.max(200, rate1 * commGrossAfterPack, hitlistAmt) : 0;
+  var salesComm2 = rate2 > 0 ? Math.max(200, rate2 * commGrossAfterPack, hitlistAmt) : 0;
+  var totalRebSub = 0;
+  for (var i = 1; i <= 5; i++) {
+    var reb = document.getElementById('rebate'+i+'Submitted');
+    totalRebSub += reb ? (parseFloat(reb.value) || 0) : 0;
+  }
+  setVal('disp_agFront', agFront);
+  setVal('disp_frontGross', frontGross);
+  setVal('totalFrontGross', totalFrontGross);
+  setVal('disp_warranty', warranty);
+  setVal('disp_gap', gap);
+  setVal('disp_maint', maint);
+  setVal('disp_uvp', uvp);
+  setVal('disp_starguard', starguard);
+  setVal('disp_safeshield', safeshield);
+  setVal('disp_etch', etch);
+  setVal('backGross', backGross);
+  setVal('totalGross', totalGross);
+  setVal('salesComm1', salesComm1);
+  setVal('salesComm2', salesComm2);
+  setVal('commGrossDisp', commGross);
+  setVal('tradeOU', totalTradeNet);
+  setVal('trade1OU', trade1Net);
+  setVal('trade2OU', trade2Net);
+  setVal('disp_dlrCash', dlrCash);
+  setVal('totalRebatesSubmitted', totalRebSub);
+  document.getElementById('commRate1').textContent = (rate1*100).toFixed(0) + '%';
+  document.getElementById('commRate2').textContent = (rate2*100).toFixed(0) + '%';
+  ['totalGross','totalFrontGross','backGross','trade1OU','trade2OU','tradeOU'].forEach(function(id) {
+    colorValue(id, id === 'totalGross' ? totalGross : id === 'totalFrontGross' ? totalFrontGross : id === 'backGross' ? backGross : id === 'trade1OU' ? trade1Net : id === 'trade2OU' ? trade2Net : totalTradeNet);
+  });
+}
+function calcCommRate(role, newUsed, commGross, newThresh, usedThresh) {
+  if (!role) return 0;
+  if (newUsed === 'USED') {
+    if (role === 'ASM') return 0.30;
+    if ((role === 'SALES' || role === 'SALESN') && commGross <= usedThresh) return 0.25;
+    if ((role === 'SALES' || role === 'SALESN') && commGross > usedThresh) return 0.30;
+  } else if (newUsed === 'NEW') {
+    if (role === 'ASM') return 0.30;
+    if ((role === 'SALES' || role === 'SALESN') && commGross <= newThresh) return 0.25;
+    if ((role === 'SALES' || role === 'SALESN') && commGross > newThresh) return 0.30;
+  }
+  return 0;
+}
+function getSalesRole(selectId) {
+  var val = document.getElementById(selectId).value;
+  if (!val) return '';
+  return (window._salesRoles && window._salesRoles[val]) || '';
+}
+function colorValue(id, v) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('pos','neg');
+  if (v > 0) el.classList.add('pos');
+  else if (v < 0) el.classList.add('neg');
+}
+function syncSpiff(which) {
+  var a = document.getElementById('spiff1');
+  var b = document.getElementById('spiff1b');
+  if (which === 1 && a && b) {
+    if (document.activeElement === b) a.value = b.value;
+    else b.value = a.value;
+  }
+  calculate();
+}
+function collectFormData() {
+  var d = {};
+  var ids = ['dealDate','dealNo','saleType','newUsed','sales1','sales2','rdrType','rdrDate',
+             'custFirst','custLast','stockNo','vehYear','vehMake','vehModel','vehVin',
+             'agFront','frontGross','participation','warranty','gap','maint','uvpProd','starguard',
+             'safeshield','etch','downPayment','salesPrice','weowes','commCost','dlrCash',
+             'financeMgr','salesMgr','lienholder','totalFinanced',
+             'spiff1',
+             'trade1Stk','trade1Year','trade1Make','trade1Model','trade1Vin','trade1Miles','trade1Acv','trade1Allow','trade1Title',
+             'trade2Stk','trade2Year','trade2Make','trade2Model','trade2Vin','trade2Miles','trade2Acv','trade2Allow','trade2Title'];
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    d[id] = el ? el.value : '';
+  });
+  d.paint = d.etch;
+  var s2 = document.getElementById('spiff2b');
+  d.spiff2 = s2 ? s2.value : '';
+  for (var i = 1; i <= 5; i++) {
+    d['rebate'+i+'Code']      = document.getElementById('rebate'+i+'Code').value;
+    d['rebate'+i+'Submitted'] = document.getElementById('rebate'+i+'Submitted').value;
+    d['rebate'+i+'Approval']  = document.getElementById('rebate'+i+'Approval').value;
+  }
+  return d;
+}
+function saveDeal() {
+  var data = collectFormData();
+  if (!data.dealNo) { setStatus('Deal # is required to add a deal.', true); return; }
+  setStatus('Adding deal...');
+  google.script.run
+    .withSuccessHandler(function(msg) { setStatus(msg); })
+    .withFailureHandler(function(e)   { setStatus('Error: ' + e.message, true); })
+    .addDeal(data.dealNo, data);
+}
+function updateDeal() {
+  var data = collectFormData();
+  if (!data.dealNo) { setStatus('Deal # is required to update a deal.', true); return; }
+  setStatus('Updating deal...');
+  google.script.run
+    .withSuccessHandler(function(msg) { setStatus(msg); })
+    .withFailureHandler(function(e)   { setStatus('Error: ' + e.message, true); })
+    .updateDeal(data.dealNo, data);
+}
+function resetDialogFields_() {
+  var inputs = document.querySelectorAll('input:not([readonly]), select');
+  inputs.forEach(function(el) { el.value = ''; });
+  var today = new Date();
+  document.getElementById('dealDate').value = today.getFullYear() + '-' +
+    String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  window._hitlistAmount = 0;
+  var hit = document.getElementById('hitlistStatus');
+  if (hit) hit.textContent = 'NOT ON HITLIST';
+  calculate();
+}
+function clearForm() {
+  resetDialogFields_();
+  setStatus('Clearing LOGDEAL formulas...');
+  google.script.run
+    .withSuccessHandler(function() { setStatus('Form cleared.'); })
+    .withFailureHandler(function(e) { setStatus('Dialog cleared. LOGDEAL reset failed: ' + e.message, true); })
+    .clearForm();
+}
+function setStatus(msg, isError) {
+  var el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.style.color = isError ? '#e74c3c' : '#2ecc71';
+}
+function toggleRecallPanel() {
+  var panel = document.getElementById('recallPanel');
+  var wrap  = document.getElementById('recallResultsWrap');
+  if (panel.classList.contains('open')) {
+    panel.classList.remove('open');
+    wrap.style.display = 'none';
+  } else {
+    panel.classList.add('open');
+    document.getElementById('recallQuery').focus();
+  }
+}
+function runRecallSearch() {
+  var q = (document.getElementById('recallQuery').value || '').trim();
+  if (!q) return;
+  document.getElementById('recallStatus').textContent = 'Searching...';
+  var box = document.getElementById('recallResults');
+  box.textContent = '';
+  document.getElementById('recallResultsWrap').style.display = 'none';
+  google.script.run
+    .withSuccessHandler(function(results) {
+      document.getElementById('recallStatus').textContent = results.length + ' result(s)';
+      if (!results.length) return;
+      results.forEach(function(r) {
+        var row = document.createElement('div');
+        row.className = 'recall-row';
+        row.onclick = function() { recallSelectedDeal(r.rowIndex); };
+        function addSpan(text, style) {
+          var s = document.createElement('span');
+          if (style) s.style.cssText = style;
+          s.textContent = text;
+          row.appendChild(s);
+        }
+        addSpan('#' + (r.dealNo || ''), 'min-width:60px;font-weight:bold');
+        addSpan(r.date || '');
+        addSpan(((r.firstName || '') + ' ' + (r.lastName || '')).trim());
+        addSpan(r.stock || '', 'color:#888');
+        box.appendChild(row);
+      });
+      document.getElementById('recallResultsWrap').style.display = 'block';
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById('recallStatus').textContent = 'Error: ' + e.message;
+    })
+    .locateDeals(q);
+}
+function recallSelectedDeal(rowIndex) {
+  document.getElementById('recallStatus').textContent = 'Loading deal...';
+  google.script.run
+    .withSuccessHandler(function(d) {
+      if (d) populateForm(d);
+      document.getElementById('recallStatus').textContent = 'Deal loaded.';
+      document.getElementById('recallResultsWrap').style.display = 'none';
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById('recallStatus').textContent = 'Error: ' + e.message;
+    })
+    .recallDealForDialog(rowIndex);
+}
+function toIsoDate(v) {
+  if (!v) return '';
+  var s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return m[3] + '-' + m[1].padStart(2,'0') + '-' + m[2].padStart(2,'0');
+  return s;
+}
+function populateForm(d) {
+  if (!d) return;
+  var map = {
+    dealDate: toIsoDate(d.date), dealNo: d.dealNo, saleType: d.saleType, newUsed: d.newUsed,
+    sales1: d.sales1, sales2: d.sales2, rdrType: d.rdrType, rdrDate: toIsoDate(d.rdrDate),
+    custFirst: d.custFirst, custLast: d.custLast, stockNo: d.stock,
+    vehYear: d.year, vehMake: d.make, vehModel: d.model, vehVin: d.vin,
+    agFront: d.agFront, frontGross: d.frontGross, participation: d.participation,
+    warranty: d.warranty, gap: d.gap, maint: d.maint, uvpProd: d.uvpProd,
+    starguard: d.starguard, safeshield: d.safeshield, etch: d.etch || d.paint,
+    downPayment: d.downPayment, financeMgr: d.financeMgr, salesMgr: d.salesMgr,
+    lienholder: d.lienholder, totalFinanced: d.totalFinanced,
+    salesPrice: d.salesPrice, weowes: d.weowes, commCost: d.commCost, dlrCash: d.dlrCash,
+    spiff1: d.spiff1,
+    trade1Stk: d.trade1Stk, trade1Year: d.trade1Year, trade1Make: d.trade1Make, trade1Model: d.trade1Model,
+    trade1Vin: d.trade1Vin, trade1Miles: d.trade1Miles, trade1Acv: d.trade1Acv, trade1Allow: d.trade1Allow, trade1Title: d.trade1Title,
+    trade2Stk: d.trade2Stk, trade2Year: d.trade2Year, trade2Make: d.trade2Make, trade2Model: d.trade2Model,
+    trade2Vin: d.trade2Vin, trade2Miles: d.trade2Miles, trade2Acv: d.trade2Acv, trade2Allow: d.trade2Allow, trade2Title: d.trade2Title
+  };
+  Object.keys(map).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && map[id] !== undefined) el.value = map[id];
+  });
+  var s1b = document.getElementById('spiff1b');
+  var s2b = document.getElementById('spiff2b');
+  if (s1b && d.spiff1 !== undefined) s1b.value = d.spiff1;
+  if (s2b && d.spiff2 !== undefined) s2b.value = d.spiff2;
+  for (var i = 1; i <= 5; i++) {
+    var sub  = document.getElementById('rebate'+i+'Submitted');
+    var code = document.getElementById('rebate'+i+'Code');
+    var appr = document.getElementById('rebate'+i+'Approval');
+    if (sub  && d['rebate'+i+'Submitted'] !== undefined) sub.value  = d['rebate'+i+'Submitted'];
+    if (code && d['rebate'+i+'Code']      !== undefined) code.value = d['rebate'+i+'Code'];
+    if (appr && d['rebate'+i+'Approval']  !== undefined) appr.value = d['rebate'+i+'Approval'];
+  }
+  calculate();
+  setStatus('Deal #' + d.dealNo + ' loaded.');
+}
+</script>
+</body>
+</html>
