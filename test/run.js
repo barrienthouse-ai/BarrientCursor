@@ -627,6 +627,11 @@ test('Deal Log is a separate GEAUX TOOLS item and does not use onOpen', function
   assert.ok(html.indexOf('id="tire"') === -1);
   assert.ok(html.indexOf('id="agFront"') === -1);
   assert.ok(html.indexOf('id="spiff2b"') !== -1);
+  assert.ok(html.indexOf('<option>NEW</option>') !== -1);
+  assert.ok(html.indexOf('<option>USED</option>') !== -1);
+  assert.ok(html.indexOf('<option>WHSL</option>') !== -1);
+  assert.ok(html.indexOf('<option>FLEET</option>') !== -1);
+  assert.ok(html.indexOf('New / Used / Whsl / Fleet') !== -1);
   assert.ok(src.indexOf("getRange('EB1')") === -1);
   assert.ok(src.indexOf("{ input: 'B39', logCol: 104 }") !== -1);
   assert.ok(src.indexOf("{ input: 'B40', logCol: 123 }") !== -1);
