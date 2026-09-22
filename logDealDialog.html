@@ -212,13 +212,15 @@
       <div class="sec-body">
         <div class="field"><label>Front Gross</label><input type="number" id="frontGross" class="num-input" tabindex="16" oninput="calculate()" step="0.01"></div>
         <div class="field"><label>Participation</label><input type="number" id="participation" class="num-input" tabindex="17" oninput="calculate()" step="0.01"></div>
-        <div class="field"><label>Warranty</label><input type="number" id="warranty" class="num-input" tabindex="19" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>MBI</label><input type="number" id="warranty" class="num-input" tabindex="18" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>UVP</label><input type="number" id="uvp" class="num-input" tabindex="19" oninput="calculate()" step="0.01"></div>
         <div class="field"><label>GAP</label><input type="number" id="gap" class="num-input" tabindex="20" oninput="calculate()" step="0.01"></div>
-        <div class="field"><label>Maintenance</label><input type="number" id="maint" class="num-input" tabindex="21" oninput="calculate()" step="0.01"></div>
-        <div class="field"><label>Key</label><input type="number" id="key" class="num-input" tabindex="22" oninput="calculate()" step="0.01"></div>
-        <div class="field"><label>Tire</label><input type="number" id="tire" class="num-input" tabindex="23" oninput="calculate()" step="0.01"></div>
-        <div class="field"><label>etch</label><input type="number" id="etch" class="num-input" tabindex="24" oninput="calculate()" step="0.01"></div>
-        <div class="field"><label>Windshield</label><input type="number" id="windshield" class="num-input" tabindex="25" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Pre-Paid Maint</label><input type="number" id="maint" class="num-input" tabindex="21" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Safe-Shield</label><input type="number" id="ceramic" class="num-input" tabindex="22" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Windshield</label><input type="number" id="windshield" class="num-input" tabindex="23" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>Theft Protection</label><input type="number" id="theft" class="num-input" tabindex="24" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>GPS</label><input type="number" id="gps" class="num-input" tabindex="25" oninput="calculate()" step="0.01"></div>
+        <div class="field"><label>etch</label><input type="number" id="etch" class="num-input" tabindex="26" oninput="calculate()" step="0.01"></div>
         <div class="field"><label>Sales Price</label><input type="number" id="salesPrice" class="num-input" tabindex="27" oninput="calculate()" step="0.01"></div>
         <div class="field"><label>Weowes / BF</label><input type="number" id="weowes" class="num-input" tabindex="27" oninput="calculate()" step="0.01"></div>
         <div class="field"><label>Comm Cost</label><input type="number" id="commCost" class="num-input" tabindex="28" oninput="calculate()" step="0.01"></div>
@@ -300,13 +302,15 @@
           <span class="calc-value total" id="totalFrontGross">0.00</span>
         </div>
         <div style="height:3px"></div>
-        <div class="calc-row"><span class="calc-label">WARRANTY</span><span class="calc-value" id="disp_warranty">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">MBI</span><span class="calc-value" id="disp_warranty">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">UVP</span><span class="calc-value" id="disp_uvp">0.00</span></div>
         <div class="calc-row"><span class="calc-label">GAP</span><span class="calc-value" id="disp_gap">0.00</span></div>
-        <div class="calc-row"><span class="calc-label">MAINTENANCE</span><span class="calc-value" id="disp_maint">0.00</span></div>
-        <div class="calc-row"><span class="calc-label">KEY</span><span class="calc-value" id="disp_key">0.00</span></div>
-        <div class="calc-row"><span class="calc-label">TIRE</span><span class="calc-value" id="disp_tire">0.00</span></div>
-        <div class="calc-row"><span class="calc-label">etch</span><span class="calc-value" id="disp_etch">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">PRE-PAID MAINT</span><span class="calc-value" id="disp_maint">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">SAFE-SHIELD</span><span class="calc-value" id="disp_ceramic">0.00</span></div>
         <div class="calc-row"><span class="calc-label">WINDSHIELD</span><span class="calc-value" id="disp_windshield">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">THEFT</span><span class="calc-value" id="disp_theft">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">GPS</span><span class="calc-value" id="disp_gps">0.00</span></div>
+        <div class="calc-row"><span class="calc-label">etch</span><span class="calc-value" id="disp_etch">0.00</span></div>
         <div class="calc-row" style="background:#f0f7ff;border-top:2px solid #2980b9">
           <span class="calc-label" style="font-size:10px">BACK GROSS</span>
           <span class="calc-value total" id="backGross">0.00</span>
@@ -376,7 +380,7 @@
 var NAV_ORDER = [
   'dealDate','dealNo','saleType','newUsed','sales1','sales2','financeMgr','salesMgr','lienholder','totalFinanced','rdrType','rdrDate',
   'custFirst','custLast','stockNo',
-  'frontGross','participation','warranty','gap','maint','key','tire','etch','windshield',
+  'frontGross','participation','warranty','uvp','gap','maint','ceramic','windshield','theft','gps','etch',
   'salesPrice','weowes','commCost','dlrCash','downPayment','spiff1',
   'trade1Stk','trade1Year','trade1Make','trade1Model','trade1Vin','trade1Miles','trade1Acv','trade1Allow','trade1Title',
   'trade2Stk','trade2Year','trade2Make','trade2Model','trade2Vin','trade2Miles','trade2Acv','trade2Allow','trade2Title',
@@ -508,18 +512,20 @@ function setVal(id, v) {
 function calculate() {
   var frontGross = n('frontGross');
   var warranty   = n('warranty');
+  var uvp        = n('uvp');
   var gap        = n('gap');
   var maint      = n('maint');
-  var key        = n('key');
-  var tire       = n('tire');
-  var etch       = n('etch');
+  var ceramic    = n('ceramic');
   var windshield = n('windshield');
+  var theft      = n('theft');
+  var gps        = n('gps');
+  var etch       = n('etch');
   var trade1Net  = n('trade1Acv') - n('trade1Allow');
   var trade2Net  = n('trade2Acv') - n('trade2Allow');
   var totalTradeNet = trade1Net + trade2Net;
   var totalFrontGross = frontGross;
   var participation   = n('participation');
-  var backGross       = warranty + gap + maint + key + tire + etch + windshield + participation;
+  var backGross       = participation + warranty + uvp + gap + maint + ceramic + windshield + theft + gps + etch;
   var totalGross      = totalFrontGross + backGross;
   var salesPrice = n('salesPrice');
   var weowes     = n('weowes');
@@ -541,12 +547,14 @@ function calculate() {
   setVal('disp_frontGross', frontGross);
   setVal('totalFrontGross', totalFrontGross);
   setVal('disp_warranty', warranty);
+  setVal('disp_uvp', uvp);
   setVal('disp_gap', gap);
   setVal('disp_maint', maint);
-  setVal('disp_key', key);
-  setVal('disp_tire', tire);
-  setVal('disp_etch', etch);
+  setVal('disp_ceramic', ceramic);
   setVal('disp_windshield', windshield);
+  setVal('disp_theft', theft);
+  setVal('disp_gps', gps);
+  setVal('disp_etch', etch);
   setVal('backGross', backGross);
   setVal('totalGross', totalGross);
   setVal('salesComm1', salesComm1);
@@ -601,8 +609,8 @@ function collectFormData() {
   var d = {};
   var ids = ['dealDate','dealNo','saleType','newUsed','sales1','sales2','rdrType','rdrDate',
              'custFirst','custLast','stockNo','vehYear','vehMake','vehModel','vehVin',
-             'frontGross','participation','warranty','gap','maint','key','tire',
-             'etch','windshield','downPayment','salesPrice','weowes','commCost','dlrCash',
+             'frontGross','participation','warranty','uvp','gap','maint','ceramic','windshield','theft','gps',
+             'etch','downPayment','salesPrice','weowes','commCost','dlrCash',
              'financeMgr','salesMgr','lienholder','totalFinanced',
              'spiff1',
              'trade1Stk','trade1Year','trade1Make','trade1Model','trade1Vin','trade1Miles','trade1Acv','trade1Allow','trade1Title',
@@ -737,9 +745,10 @@ function populateForm(d) {
     custFirst: d.custFirst, custLast: d.custLast, stockNo: d.stock,
     vehYear: d.year, vehMake: d.make, vehModel: d.model, vehVin: d.vin,
     frontGross: d.frontGross, participation: d.participation,
-    warranty: d.warranty, gap: d.gap, maint: d.maint,
-    key: d.key || d.uvpProd, tire: d.tire || d.starguard,
-    etch: d.etch || d.paint, windshield: d.windshield || d.safeshield,
+    warranty: d.warranty, uvp: d.uvp || d.uvpProd || d.key, gap: d.gap, maint: d.maint,
+    ceramic: d.ceramic || d.safeshield, windshield: d.windshield,
+    theft: d.theft, gps: d.gps || d.starguard || d.tire,
+    etch: d.etch || d.paint,
     downPayment: d.downPayment, financeMgr: d.financeMgr, salesMgr: d.salesMgr,
     lienholder: d.lienholder, totalFinanced: d.totalFinanced,
     salesPrice: d.salesPrice, weowes: d.weowes, commCost: d.commCost, dlrCash: d.dlrCash,
