@@ -618,22 +618,77 @@ test('Deal Log is a separate GEAUX TOOLS item and does not use onOpen', function
   assert.ok(html.indexOf('s.textContent = text') !== -1);
   assert.ok(html.indexOf('etch: d.etch || d.paint') !== -1);
   assert.ok(html.indexOf('id="etch"') !== -1);
+  assert.ok(html.indexOf('id="windshield"') !== -1);
+  assert.ok(html.indexOf('id="uvp"') !== -1);
+  assert.ok(html.indexOf('id="gps"') !== -1);
+  assert.ok(html.indexOf('id="ceramic"') !== -1);
+  assert.ok(html.indexOf('id="theft"') !== -1);
+  assert.ok(html.indexOf('id="key"') === -1);
+  assert.ok(html.indexOf('id="tire"') === -1);
+  assert.ok(html.indexOf('id="agFront"') === -1);
   assert.ok(html.indexOf('id="spiff2b"') !== -1);
+  assert.ok(html.indexOf('<option>NEW</option>') !== -1);
+  assert.ok(html.indexOf('<option>USED</option>') !== -1);
+  assert.ok(html.indexOf('<option>WHSL</option>') !== -1);
+  assert.ok(html.indexOf('<option>FLEET</option>') !== -1);
+  assert.ok(html.indexOf('New / Used / Whsl / Fleet') !== -1);
+  assert.ok(src.indexOf('function applyLogDealDialogPatches_') !== -1);
+  assert.ok(src.indexOf("applyLogDealDialogPatches_(raw)") !== -1);
+  assert.ok(src.indexOf("requireValueInList(['NEW', 'USED', 'WHSL', 'FLEET']") !== -1);
+  assert.ok(src.indexOf("getRange('EB1')") === -1);
+  assert.ok(src.indexOf("{ input: 'B39', logCol: 104 }") !== -1);
+  assert.ok(src.indexOf("{ input: 'B40', logCol: 123 }") !== -1);
+  assert.ok(src.indexOf("setFormula('=SUM(R1:Y1)+DA1+DT1')") !== -1);
+  assert.ok(src.indexOf("setFormula('=$B$39')") !== -1);
+  assert.ok(src.indexOf("setFormula('=$B$40')") !== -1);
+  assert.ok(src.indexOf("=SUM(B17:B24,B39,B40)") !== -1);
+  assert.ok(src.indexOf("'', 'frontGross', 'participation', 'warranty', 'gap', 'maint', 'uvp', 'gps'") !== -1);
+  assert.ok(src.indexOf("'ceramic', 'paint', 'downPayment'") !== -1);
+  assert.ok(html.indexOf('participation + warranty + uvp + gap + maint + ceramic + windshield + theft + gps + etch') !== -1);
   assert.ok(!fs.existsSync(path.join(root, 'dealDialog.html')));
 });
 
 vm.runInContext(fs.readFileSync(path.join(root, 'DealManager.gs'), 'utf8'), ctx);
 
-test('logDealFieldAliases_ maps etch to paint and spiff2b to spiff2', function() {
-  const a = ctx.logDealFieldAliases_({ etch: '150', spiff2b: '25' });
+test('logDealFieldAliases_ maps etch to paint, F&I aliases, and spiff2b', function() {
+  const a = ctx.logDealFieldAliases_({ etch: '150', spiff2b: '25', windshield: '75', theft: '40' });
   assert.strictEqual(a.paint, '150');
   assert.strictEqual(a.spiff2, '25');
   assert.strictEqual(a.etch, '150');
+  assert.strictEqual(a.windshield, '75');
+  assert.strictEqual(a.theft, '40');
   const b = ctx.logDealFieldAliases_({ paint: '90', etch: '', spiff2: '10', spiff2b: '99' });
   assert.strictEqual(b.paint, '90');
   assert.strictEqual(b.spiff2, '10');
+  const legacy = ctx.logDealFieldAliases_({ uvpProd: '10', starguard: '20', safeshield: '30', key: '11', tire: '22' });
+  assert.strictEqual(legacy.uvp, '10');
+  assert.strictEqual(legacy.gps, '20');
+  assert.strictEqual(legacy.ceramic, '30');
+  const fromOldSlots = ctx.logDealFieldAliases_({ key: '15', tire: '25' });
+  assert.strictEqual(fromOldSlots.uvp, '15');
+  assert.strictEqual(fromOldSlots.gps, '25');
   const c = ctx.logDealFieldAliases_(null);
   assert.strictEqual(Object.keys(c).length, 0);
+  assert.ok(ctx.PROTECTED_INDICES.indexOf(25) !== -1, 'Z stays a formula');
+  assert.ok(ctx.PROTECTED_INDICES.indexOf(104) === -1, 'DA windshield is a value column');
+  assert.ok(ctx.PROTECTED_INDICES.indexOf(123) === -1, 'DT theft is a value column');
+});
+
+test('applyLogDealDialogPatches_ inserts FLEET into the old New/Used/WHSL select', function() {
+  const oldHtml = [
+    '<label>New / Used / Whsl</label>',
+    '<select id="newUsed">',
+    '<option>NEW</option>',
+    '<option>USED</option>',
+    '<option>WHSL</option>',
+    '</select>'
+  ].join('\n');
+  const patched = ctx.applyLogDealDialogPatches_(oldHtml);
+  assert.ok(patched.indexOf('<option>FLEET</option>') !== -1);
+  assert.ok(patched.indexOf('New / Used / Whsl / Fleet') !== -1);
+  const current = fs.readFileSync(path.join(root, 'logDealDialog.html'), 'utf8');
+  const twice = ctx.applyLogDealDialogPatches_(current);
+  assert.strictEqual(twice.split('<option>FLEET</option>').length, 2);
 });
 
 test('desking dialog recalls by deal #, customer, or stock and lists multiples', function() {
@@ -766,7 +821,8 @@ const logMock = [
   '    recallDealForDialog: function() {',
   "      api._ok({ date:'09/21/2026', dealNo:'1102', saleType:'RETAIL', newUsed:'NEW', sales1:'JANE SALES',",
   "        stock:'SC1001', year:'2026', make:'CHEV', model:'TRAVERSE', vin:'1GNEVJK00TJ000001',",
-  "        custFirst:'Maria', custLast:'Barrient', agFront:200, frontGross:1500, warranty:400, etch:150,",
+  "        custFirst:'Maria', custLast:'Barrient', frontGross:1500, warranty:400, uvp:1995, gap:895, maint:1295,",
+  "        ceramic:795, windshield:759, theft:695, gps:995, etch:150,",
   "        salesPrice:45000, weowes:0, commCost:100, dlrCash:0, spiff1:50, spiff2:25,",
   "        rebate1Submitted:500, rebate1Code:'BC' });",
   '    },',

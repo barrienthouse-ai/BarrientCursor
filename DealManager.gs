@@ -3,6 +3,15 @@
  * SPEED PASS — same DEALINPUT paste/formula rules.
  * Menus live in Code.gs (GEAUX TOOLS → Deal Log). Do not add onOpen() here.
  * LOGDEAL = input form. DEALINPUT = sold-deal log (headers row 5, data row 6+).
+ *
+ * Live F&I products (do not insert columns; Z/AA stay formulas):
+ *   B15 AG/FRONT → O (removed; blank)
+ *   B16 FRONT → P     B17 PART → R     B18 MBI → S     B19 GAP → T
+ *   B20 PPM → U       B21 UVP → V      B22 GPS → W     B23 SAFE-SHIELD → X
+ *   B24 PAINT/etch → Y
+ *   B39 WINDSHIELD → DA   B40 THEFT → DT
+ *   Q = O+P   Z = SUM(R:Y)+DA+DT   AA = Q+Z
+ *   EB1 is trade O/U — never overwrite.
  */
 
 function OPENDEALMANAGER() {
@@ -12,9 +21,20 @@ function OPENDEALMANAGER() {
 }
 
 function OPENLOGDEAL() {
-  var html = HtmlService.createHtmlOutputFromFile('logDealDialog')
+  ensureLogDealProductLayout_();
+  var raw = HtmlService.createHtmlOutputFromFile('logDealDialog').getContent();
+  var html = HtmlService.createHtmlOutput(applyLogDealDialogPatches_(raw))
       .setWidth(1400).setHeight(900).setTitle('Deal Log Entry');
   SpreadsheetApp.getUi().showModalDialog(html, 'Deal Log Entry');
+}
+
+function applyLogDealDialogPatches_(html) {
+  html = String(html || '');
+  if (html.indexOf('<option>FLEET</option>') === -1) {
+    html = html.replace('<option>WHSL</option>', '<option>WHSL</option>\n            <option>FLEET</option>');
+  }
+  html = html.replace('>New / Used / Whsl<', '>New / Used / Whsl / Fleet<');
+  return html;
 }
 
 function getLogDealDropdowns() {
@@ -160,7 +180,9 @@ var FIELD_MAPPING = [
   { input: 'H16', logCol: 127 },
   { input: 'H17', logCol: 128 },
   { input: 'H18', logCol: 129 },
-  { input: 'H19', logCol: 130 }
+  { input: 'H19', logCol: 130 },
+  { input: 'B39', logCol: 104 },
+  { input: 'B40', logCol: 123 }
 ];
 
 function safeVal(val) {
@@ -328,6 +350,11 @@ function logDealFieldAliases_(d) {
     if (Object.prototype.hasOwnProperty.call(d, k)) out[k] = d[k];
   }
   if (out.etch !== undefined && String(out.etch) !== '') out.paint = out.etch;
+  if ((out.uvp === undefined || out.uvp === '') && out.uvpProd !== undefined) out.uvp = out.uvpProd;
+  if ((out.uvp === undefined || out.uvp === '') && out.key !== undefined) out.uvp = out.key;
+  if ((out.gps === undefined || out.gps === '') && out.starguard !== undefined) out.gps = out.starguard;
+  if ((out.gps === undefined || out.gps === '') && out.tire !== undefined) out.gps = out.tire;
+  if ((out.ceramic === undefined || out.ceramic === '') && out.safeshield !== undefined) out.ceramic = out.safeshield;
   if ((out.spiff2 === undefined || out.spiff2 === '') && out.spiff2b !== undefined) out.spiff2 = out.spiff2b;
   return out;
 }
@@ -335,7 +362,7 @@ function logDealFieldAliases_(d) {
 function writeFormToSheet_(s, d) {
   d = logDealFieldAliases_(d);
 
-  s.getRange('B2:B38').clearContent();
+  s.getRange('B2:B40').clearContent();
   s.getRange('E4:E38').clearContent();
   s.getRange('G4').clearContent();
   s.getRange('H16:H21').clearContent();
@@ -345,8 +372,8 @@ function writeFormToSheet_(s, d) {
     'dealDate', 'dealNo', 'saleType', 'newUsed', 'sales1', 'sales2', 'stockNo',
     'vehYear', 'vehMake', 'vehModel', 'vehVin',
     'custFirst', 'custLast',
-    'agFront', 'frontGross', 'participation', 'warranty', 'gap', 'maint', 'uvpProd', 'starguard',
-    'safeshield', 'paint', 'downPayment', 'financeMgr', 'salesMgr', 'lienholder', 'totalFinanced',
+    '', 'frontGross', 'participation', 'warranty', 'gap', 'maint', 'uvp', 'gps',
+    'ceramic', 'paint', 'downPayment', 'financeMgr', 'salesMgr', 'lienholder', 'totalFinanced',
     'trade1Stk', 'trade1Year', 'trade1Make', 'trade1Model', 'trade1Vin', 'trade1Miles',
     'trade1Acv', 'trade1Allow', 'trade1Title'
   ]));
@@ -391,6 +418,13 @@ function writeFormToSheet_(s, d) {
 
   s.getRange('J30:J31').setValues(colVals_(d, ['spiff1', 'spiff2']));
 
+  var windshield = formVal_(d, 'windshield');
+  var theft = formVal_(d, 'theft');
+  s.getRange('B39').setValue(windshield === undefined ? '' : windshield);
+  s.getRange('B40').setValue(theft === undefined ? '' : theft);
+  s.getRange('DA1').setFormula('=$B$39');
+  s.getRange('DT1').setFormula('=$B$40');
+
   SpreadsheetApp.flush();
 }
 
@@ -405,6 +439,7 @@ function addDeal(dealNo, formData) {
   dealNo = (dealNo || '').toString().trim();
   if (!dealNo) throw new Error('Deal Number is required to add a deal.');
 
+  ensureLogDealWindshieldLayout_();
   if (formData) writeFormToSheet_(frmSheet, formData);
   else {
     frmSheet.getRange('B3').setValue(dealNo);
@@ -440,6 +475,7 @@ function updateDeal(dealNo, formData) {
   var match = existing.find(function(m) { return m.dealNo.toString() === dealNo; });
   if (!match) throw new Error('Deal #' + dealNo + ' not found. Use Add Deal instead.');
 
+  ensureLogDealWindshieldLayout_();
   if (formData) writeFormToSheet_(frmSheet, formData);
   else {
     frmSheet.getRange('B3').setValue(dealNo);
@@ -483,17 +519,18 @@ function getRecalledFormData() {
     vin:                fmt(b[10][0]),
     custFirst:          fmt(b[11][0]),
     custLast:           fmt(b[12][0]),
-    agFront:            fmt(b[13][0]),
     frontGross:         fmt(b[14][0]),
     participation:      fmt(b[15][0]),
     warranty:           fmt(b[16][0]),
     gap:                fmt(b[17][0]),
     maint:              fmt(b[18][0]),
-    uvpProd:            fmt(b[19][0]),
-    starguard:          fmt(b[20][0]),
-    safeshield:         fmt(b[21][0]),
+    uvp:                fmt(b[19][0]),
+    gps:                fmt(b[20][0]),
+    ceramic:            fmt(b[21][0]),
     paint:              paintVal,
     etch:               paintVal,
+    windshield:         fmt(s.getRange('B39').getValue()),
+    theft:              fmt(s.getRange('B40').getValue()),
     downPayment:        fmt(b[23][0]),
     financeMgr:         fmt(b[24][0]),
     salesMgr:           fmt(b[25][0]),
@@ -546,7 +583,7 @@ function clearForm() {
   if (!sheet) throw new Error("Sheet 'LOGDEAL' not found.");
 
   sheet.getRange("E2:E38").clearContent();
-  sheet.getRange("B2:B38").clearContent();
+  sheet.getRange("B2:B40").clearContent();
   sheet.getRange("H16:H20").clearContent();
   sheet.getRange("H36").clearContent();
   sheet.getRange("G4").clearContent();
@@ -561,13 +598,13 @@ function clearForm() {
   sheet.getRange('G31').setValue('=IF(K24=0,0,MAX(K24:K26))');
   sheet.getRange('F36').setValue('=E36-E37');
   sheet.getRange('C37').setValue('=B36-B37');
-  sheet.getRange('C17').setValue('=SUM(B16,B15)');
-  sheet.getRange('C19').setValue('=SUM(B17:B24)');
+  sheet.getRange('C17').setValue('=B16');
+  sheet.getRange('C19').setValue('=SUM(B17:B24,B39,B40)');
   sheet.getRange('H30').setValue('=IF($B$5="USED",(IF(C6="ASM", 0.3, 0)+IF(AND(C6="SALES", $H$24<$J$18), 0.25, 0)+IF(AND(C6="SALESN", $H$24<$J$18), 0.25, 0)+IF(AND(C6="SALES", $H$24>=$J$18),0.3,0)+IF(AND(C6="SALESN", $H$24>=$J$18),0.3,0)),0)+IF($B$5="NEW",(IF(C6="ASM", 0.3, 0)+IF(AND(C6="SALES", $H$24<$J$17), 0.25, 0)+IF(AND(C6="SALESN", $H$24<$J$17), 0.25, 0)+IF(AND(C6="SALES", $H$24>=$J$17),0.3,0)+IF(AND(C6="SALESN", $H$24>=$J$17),0.3,0)),0)');
   sheet.getRange('H31').setValue('=IF($B$5="USED",(IF(C7="ASM", 0.3, 0)+IF(AND(C7="SALES", $H$24<$J$18), 0.25, 0)+IF(AND(C7="SALESN", $H$24<$J$18), 0.25, 0)+IF(AND(C7="SALES", $H$24>=$J$18),0.3,0)+IF(AND(C7="SALESN", $H$24>=$J$18),0.3,0)),0)+IF($B$5="NEW",(IF(C7="ASM", 0.3, 0)+IF(AND(C7="SALES", $H$24<$J$17), 0.25, 0)+IF(AND(C7="SALESN", $H$24<$J$17), 0.25, 0)+IF(AND(C7="SALES", $H$24>=$J$17),0.3,0)+IF(AND(C7="SALESN", $H$24>=$J$17),0.3,0)),0)');
   sheet.getRange('H20').setValue('=(C37+F36)');
   sheet.getRange('H21').setValue('=SUM(H17:H18)');
-  sheet.getRange('H22').setValue('=B15');
+  sheet.getRange('H22').setValue('=0');
   sheet.getRange('H24').setValue('=H16-H21+H20+H22');
   sheet.getRange('H25').setValue('=H24-H23');
   sheet.getRange('J24').setValue('=H30*H25');
@@ -577,4 +614,46 @@ function clearForm() {
   sheet.getRange('K25').setValue('200');
   sheet.getRange('K26').setValue('=IFERROR(INDEX(HITLIST!$I$23:$I,MATCH($B$8,HITLIST!$A$23:$A,0)),)');
   sheet.getRange('F19').setValue('=SUM($F$17,$F$14,$F$10,$F$11,$F$8,$F$5)');
+  ensureLogDealProductLayout_();
+}
+
+function ensureLogDealWindshieldLayout_() {
+  ensureLogDealProductLayout_();
+}
+
+function ensureLogDealProductLayout_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var logDeal = ss.getSheetByName('LOGDEAL');
+  var dealInput = ss.getSheetByName('DEALINPUT');
+  if (logDeal) {
+    logDeal.getRange('A18').setValue('MBI');
+    logDeal.getRange('A20').setValue('MAINT');
+    logDeal.getRange('A21').setValue('UVP');
+    logDeal.getRange('A22').setValue('GPS');
+    logDeal.getRange('A23').setValue('SAFE-SHIELD');
+    logDeal.getRange('A24').setValue('PAINT');
+    logDeal.getRange('A39').setValue('WINDSHIELD');
+    logDeal.getRange('A40').setValue('THEFT');
+    logDeal.getRange('C17').setFormula('=B16');
+    logDeal.getRange('C19').setFormula('=SUM(B17:B24,B39,B40)');
+    logDeal.getRange('H22').setFormula('=0');
+    logDeal.getRange('DA1').setFormula('=$B$39');
+    logDeal.getRange('DT1').setFormula('=$B$40');
+    logDeal.getRange('Z1').setFormula('=SUM(R1:Y1)+DA1+DT1');
+    logDeal.getRange('B5').setDataValidation(
+      SpreadsheetApp.newDataValidation()
+        .requireValueInList(['NEW', 'USED', 'WHSL', 'FLEET'], true)
+        .setAllowInvalid(true)
+        .build()
+    );
+  }
+  if (dealInput) {
+    dealInput.getRange(5, 19).setValue('MBI');
+    dealInput.getRange(5, 22).setValue('UVP');
+    dealInput.getRange(5, 23).setValue('GPS');
+    dealInput.getRange(5, 24).setValue('SAFE-SHIELD');
+    dealInput.getRange(5, 25).setValue('PAINT');
+    dealInput.getRange(5, 105).setValue('WINDSHIELD');
+    dealInput.getRange(5, 124).setValue('THEFT');
+  }
 }
