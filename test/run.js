@@ -632,6 +632,9 @@ test('Deal Log is a separate GEAUX TOOLS item and does not use onOpen', function
   assert.ok(html.indexOf('<option>WHSL</option>') !== -1);
   assert.ok(html.indexOf('<option>FLEET</option>') !== -1);
   assert.ok(html.indexOf('New / Used / Whsl / Fleet') !== -1);
+  assert.ok(src.indexOf('function applyLogDealDialogPatches_') !== -1);
+  assert.ok(src.indexOf("applyLogDealDialogPatches_(raw)") !== -1);
+  assert.ok(src.indexOf("requireValueInList(['NEW', 'USED', 'WHSL', 'FLEET']") !== -1);
   assert.ok(src.indexOf("getRange('EB1')") === -1);
   assert.ok(src.indexOf("{ input: 'B39', logCol: 104 }") !== -1);
   assert.ok(src.indexOf("{ input: 'B40', logCol: 123 }") !== -1);
@@ -669,6 +672,23 @@ test('logDealFieldAliases_ maps etch to paint, F&I aliases, and spiff2b', functi
   assert.ok(ctx.PROTECTED_INDICES.indexOf(25) !== -1, 'Z stays a formula');
   assert.ok(ctx.PROTECTED_INDICES.indexOf(104) === -1, 'DA windshield is a value column');
   assert.ok(ctx.PROTECTED_INDICES.indexOf(123) === -1, 'DT theft is a value column');
+});
+
+test('applyLogDealDialogPatches_ inserts FLEET into the old New/Used/WHSL select', function() {
+  const oldHtml = [
+    '<label>New / Used / Whsl</label>',
+    '<select id="newUsed">',
+    '<option>NEW</option>',
+    '<option>USED</option>',
+    '<option>WHSL</option>',
+    '</select>'
+  ].join('\n');
+  const patched = ctx.applyLogDealDialogPatches_(oldHtml);
+  assert.ok(patched.indexOf('<option>FLEET</option>') !== -1);
+  assert.ok(patched.indexOf('New / Used / Whsl / Fleet') !== -1);
+  const current = fs.readFileSync(path.join(root, 'logDealDialog.html'), 'utf8');
+  const twice = ctx.applyLogDealDialogPatches_(current);
+  assert.strictEqual(twice.split('<option>FLEET</option>').length, 2);
 });
 
 test('desking dialog recalls by deal #, customer, or stock and lists multiples', function() {

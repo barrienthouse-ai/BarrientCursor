@@ -22,9 +22,19 @@ function OPENDEALMANAGER() {
 
 function OPENLOGDEAL() {
   ensureLogDealProductLayout_();
-  var html = HtmlService.createHtmlOutputFromFile('logDealDialog')
+  var raw = HtmlService.createHtmlOutputFromFile('logDealDialog').getContent();
+  var html = HtmlService.createHtmlOutput(applyLogDealDialogPatches_(raw))
       .setWidth(1400).setHeight(900).setTitle('Deal Log Entry');
   SpreadsheetApp.getUi().showModalDialog(html, 'Deal Log Entry');
+}
+
+function applyLogDealDialogPatches_(html) {
+  html = String(html || '');
+  if (html.indexOf('<option>FLEET</option>') === -1) {
+    html = html.replace('<option>WHSL</option>', '<option>WHSL</option>\n            <option>FLEET</option>');
+  }
+  html = html.replace('>New / Used / Whsl<', '>New / Used / Whsl / Fleet<');
+  return html;
 }
 
 function getLogDealDropdowns() {
@@ -630,6 +640,12 @@ function ensureLogDealProductLayout_() {
     logDeal.getRange('DA1').setFormula('=$B$39');
     logDeal.getRange('DT1').setFormula('=$B$40');
     logDeal.getRange('Z1').setFormula('=SUM(R1:Y1)+DA1+DT1');
+    logDeal.getRange('B5').setDataValidation(
+      SpreadsheetApp.newDataValidation()
+        .requireValueInList(['NEW', 'USED', 'WHSL', 'FLEET'], true)
+        .setAllowInvalid(true)
+        .build()
+    );
   }
   if (dealInput) {
     dealInput.getRange(5, 19).setValue('MBI');
