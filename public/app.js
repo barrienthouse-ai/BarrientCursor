@@ -98,6 +98,18 @@ function render(job) {
   pulled.textContent = job.pulledAt ? `Pulled ${new Date(job.pulledAt).toLocaleString()}` : "";
 }
 
+async function loadLatest() {
+  const jobResponse = await fetch("/api/jobs/latest");
+  if (!jobResponse.ok) return;
+  const job = await jobResponse.json();
+  if (job.status !== "done") return;
+  render(job);
+  statusBox.hidden = false;
+  statusBox.textContent = job.rows.length ? `${job.rows.length} matching trims.` : "No matching trims in the last comparison.";
+}
+
+loadLatest();
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const home = homeInput.value.trim();

@@ -3,6 +3,16 @@ import test from "node:test";
 import { attachDiscount, compareDealers } from "../src/compare.js";
 import { classifyPriceBlocks, normalizeTrim, vehicleKey } from "../src/pricing.js";
 
+test("a store-named discount line is the dealer discount", () => {
+  const priced = classifyPriceBlocks([
+    { className: "price-block original", label: "MSRP", amount: "$28,000" },
+    { className: "price-block discounts", label: "Banner Discount*", amount: "$1,500" },
+    { className: "price-block incentive-bonus-cash subtract", label: "Bonus Cash", amount: "$1,000" },
+  ]);
+  assert.equal(priced.dealerDiscount, 1500);
+  assert.equal(priced.rebates, 1000);
+});
+
 test("dealer discount ignores manufacturer rebates", () => {
   const priced = classifyPriceBlocks([
     { className: "price-block", label: "MSRP", amount: "$67,145" },

@@ -68,8 +68,8 @@ export function classifyPriceBlocks(blocks) {
     if (/^msrp$/i.test(label) && amount != null) msrp = amount;
     if (amount == null) continue;
     const dealerLine =
-      /dealer-incentive|dealer-discount/i.test(cls) ||
-      /dealer discount/i.test(label);
+      /dealer-incentive|dealer-discount|\bdiscounts\b/i.test(cls) ||
+      (/discount/i.test(label) && !/cash|rebate/i.test(label));
     const rebateLine =
       !dealerLine &&
       (/incentive-|rebate/i.test(cls) ||

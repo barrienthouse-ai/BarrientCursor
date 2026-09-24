@@ -85,6 +85,11 @@ const server = createServer(async (request, response) => {
       });
       return send(response, 202, JSON.stringify({ id }));
     }
+    if (request.method === "GET" && url.pathname === "/api/jobs/latest") {
+      const latest = [...jobs.values()].at(-1);
+      if (!latest) return send(response, 404, JSON.stringify({ error: "No comparison yet." }));
+      return send(response, 200, JSON.stringify(latest));
+    }
     if (request.method === "GET" && url.pathname.startsWith("/api/jobs/")) {
       const job = jobs.get(url.pathname.split("/").pop());
       if (!job) return send(response, 404, JSON.stringify({ error: "That comparison is no longer available." }));

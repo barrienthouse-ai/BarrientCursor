@@ -166,7 +166,7 @@ function NIP_price_(html) {
     var label = match[2].replace(/\s+/g, ' ').trim();
     var amount = Math.round(Math.abs(Number(String(match[3]).replace(/[^0-9.-]/g, '')) || 0));
     if (/^msrp$/i.test(label)) msrp = amount;
-    if (/dealer-incentive|dealer-discount/i.test(cls) || /dealer discount/i.test(label)) {
+    if (/dealer-incentive|dealer-discount|\bdiscounts\b/i.test(cls) || (/discount/i.test(label) && !/cash|rebate/i.test(label))) {
       dealerDiscount += amount;
       sawDealerLine = true;
     }
