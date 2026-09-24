@@ -18,4 +18,5 @@ test("inventory pricing adds a sheet menu without a second onOpen", () => {
   assert.doesNotMatch(api, /function onOpen\(/);
   assert.doesNotMatch(api, /DEALINPUT/);
   assert.match(api, /dealer-incentive\|dealer-discount/);
+  assert.match(api, /sitemap\.xml/);
 });

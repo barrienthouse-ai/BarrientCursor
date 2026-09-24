@@ -245,6 +245,7 @@ function NIP_sitemapCards_(origin) {
       urls = urls.concat(NIP_newUrls_(NIP_fetch_(maps[i])));
     }
   }
+  if (urls.length < 5) urls = urls.concat(NIP_newUrls_(NIP_fetch_(origin + '/sitemap.xml')));
   var cards = [];
   var seen = {};
   for (var u = 0; u < urls.length && cards.length < 400; u++) {
