@@ -6,6 +6,9 @@ test("inventory pricing adds a sheet menu without a second onOpen", () => {
   const menu = readFileSync(new URL("../apps-script/NIP_Menu.gs", import.meta.url), "utf8");
   const api = readFileSync(new URL("../apps-script/NIP_Api.gs", import.meta.url), "utf8");
   const code = readFileSync(new URL("../apps-script/Code.gs", import.meta.url), "utf8");
+  const manifest = readFileSync(new URL("../apps-script/appsscript.json", import.meta.url), "utf8");
+  assert.match(manifest, /script\.external_request/);
+  assert.match(api, /new-inventory/);
   assert.match(code, /\{ title: 'New Inventory Pricing', onOpen: 'NIP_onOpen' \}/);
   assert.equal(code.split("\n").filter((line) => line.startsWith("function onOpen(")).length, 1);
   assert.match(menu, /function NIP_onOpen\(/);

@@ -61,9 +61,16 @@ function NIP_host_(website) {
   return website.replace(/^https?:\/\//i, '').replace(/^www\./, '').split('/')[0];
 }
 
+function NIP_origin_(website) {
+  var match = String(website).match(/^(https?:\/\/[^\/]+)/i);
+  return match ? match[1] : website;
+}
+
 function NIP_scrapeSite_(website) {
-  var origin = website.replace(/\/new-vehicles.*$/i, '');
-  var inventoryUrl = origin + '/new-vehicles/';
+  var origin = NIP_origin_(website);
+  var inventoryUrl = /new-vehicles|new-inventory|searchnew/i.test(website)
+    ? String(website).replace(/[?#].*$/, '')
+    : origin + '/new-vehicles/';
   var list = NIP_fetch_(inventoryUrl);
   if (NIP_blocked_(list)) throw new Error('The dealer site blocked the inventory request.');
   var name = NIP_storeName_(list, NIP_host_(origin));
