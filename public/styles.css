@@ -1,0 +1,66 @@
+:root {
+  color-scheme: light;
+  --ink: #172018;
+  --muted: #5d6b60;
+  --line: #d7e0d6;
+  --paper: #f6f7f3;
+  --card: #ffffff;
+  --green: #1f6b3a;
+  --green-dark: #144828;
+  --gold: #c4a15a;
+  --bad: #8d2d2d;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 16px/1.45 Georgia, "Iowan Old Style", serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+.top, .setup, #status, #errors, #report { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+.top { display: flex; justify-content: space-between; gap: 24px; padding: 28px 0 8px; }
+.eyebrow { margin: 0; letter-spacing: 0.14em; text-transform: uppercase; font: 600 12px/1.2 system-ui, sans-serif; color: var(--green); }
+h1 { margin: 6px 0 0; font-size: 34px; font-weight: 600; }
+.pulled { color: var(--muted); font: 14px/1.4 system-ui, sans-serif; }
+.setup, #status, #errors { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+.setup { display: grid; gap: 14px; margin-top: 12px; }
+label, .competitors-head span { display: grid; gap: 6px; font: 600 13px/1.2 system-ui, sans-serif; }
+input {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font: 16px/1.2 system-ui, sans-serif;
+}
+.competitors-head, .competitor-row { display: flex; gap: 8px; align-items: center; }
+.competitor-row { margin-top: 8px; }
+.competitor-row input { flex: 1; }
+button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--green);
+  color: white;
+  font: 600 14px/1 system-ui, sans-serif;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+button.secondary { background: transparent; color: var(--green-dark); border: 1px solid var(--line); }
+.hint, .source, #status, .errors li { font: 14px/1.45 system-ui, sans-serif; color: var(--muted); }
+#status, #errors, #report { margin-top: 16px; }
+.errors { color: var(--bad); }
+.report-head h2 { margin: 8px 0; }
+.report-head p { margin: 0 0 12px; color: var(--muted); font: 14px/1.45 system-ui, sans-serif; }
+.table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+table { width: 100%; border-collapse: collapse; font: 14px/1.35 system-ui, sans-serif; }
+th, td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--line); vertical-align: top; }
+th:first-child, td:first-child, .vehicle { text-align: left; }
+th { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr.summary { cursor: pointer; }
+tr.summary:hover { background: #f3f8f3; }
+.gap-pos { color: var(--bad); font-weight: 700; }
+.gap-neg { color: var(--green-dark); font-weight: 700; }
+.detail { background: #fbfcf8; }
+.detail table { background: transparent; }
+.vins { width: 100%; }
+.caret { display: inline-block; width: 1em; color: var(--green); }
+.source { padding: 14px 4px 28px; }

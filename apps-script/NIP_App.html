@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <style>
+      body { margin: 0; font: 15px/1.4 Georgia, serif; color: #172018; background: #f6f7f3; }
+      .wrap { padding: 16px; }
+      h1 { font-size: 26px; margin: 0 0 8px; }
+      label, .head { display: block; font: 600 12px/1.2 system-ui, sans-serif; margin-top: 10px; }
+      input { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px; border: 1px solid #d7e0d6; border-radius: 8px; font: 15px system-ui, sans-serif; }
+      .row { display: flex; gap: 8px; align-items: center; }
+      button { margin-top: 12px; border: 0; border-radius: 999px; background: #1f6b3a; color: white; padding: 10px 14px; font: 600 14px system-ui, sans-serif; }
+      button.secondary { background: white; color: #144828; border: 1px solid #d7e0d6; }
+      .hint, .status, .source { font: 13px/1.4 system-ui, sans-serif; color: #5d6b60; }
+      table { width: 100%; border-collapse: collapse; background: white; font: 13px system-ui, sans-serif; }
+      th, td { padding: 8px; border-bottom: 1px solid #d7e0d6; text-align: right; }
+      th:first-child, td:first-child { text-align: left; }
+      tr.summary { cursor: pointer; }
+      .gap-pos { color: #8d2d2d; font-weight: 700; }
+      .gap-neg { color: #144828; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>New inventory discount comparison</h1>
+      <p class="hint">Your site plus two or three competitors. Discount is the dealer discount line on each new vehicle, separate from manufacturer rebates.</p>
+      <label>Your website <input id="home" value="https://www.geauxchevrolet.com" /></label>
+      <div class="head">Competitor websites</div>
+      <div id="list"></div>
+      <button type="button" class="secondary" id="add">Add website</button>
+      <button type="button" id="go">Compare new inventory</button>
+      <p class="status" id="status"></p>
+      <div id="report"></div>
+      <p class="source">Opened from the GEAUX REPORTS menu. Gap is how much more a competitor is discounting than your store on the same year, make, model, and trim your store has in stock. Refresh at least monthly.</p>
+    </div>
+    <script>
+      var list = document.getElementById('list');
+      function add(value) {
+        if (list.children.length >= 3) return;
+        var row = document.createElement('div');
+        row.className = 'row';
+        var input = document.createElement('input');
+        input.placeholder = 'https://competitor.com';
+        input.value = value || '';
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'secondary';
+        remove.textContent = 'Remove';
+        remove.onclick = function () { row.remove(); };
+        row.appendChild(input);
+        row.appendChild(remove);
+        list.appendChild(row);
+      }
+      add('');
+      add('');
+      document.getElementById('add').onclick = function () { add(''); };
+      function money(value) {
+        if (value == null) return '—';
+        return Number(value).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+      }
+      function render(job) {
+        var report = document.getElementById('report');
+        if (!job.rows || !job.rows.length) {
+          report.innerHTML = '<p class="hint">No matching new vehicles with a dealer discount line.</p>';
+          return;
+        }
+        var competitors = job.dealers.filter(function (dealer) { return dealer.website !== job.home; });
+        var html = '<table><tr><th>Vehicle</th><th>Your discount</th>' + competitors.map(function (dealer) {
+          return '<th>' + dealer.name + '<br>discount / gap</th>';
+        }).join('') + '</tr>';
+        job.rows.forEach(function (row, index) {
+          html += '<tr class="summary" data-i="' + index + '"><td>▸ ' + row.label + '<div>' + row.home.count + ' on your lot</div></td><td>' + money(row.home.avgDiscount) + '</td>';
+          row.competitors.forEach(function (dealer) {
+            html += '<td>' + (dealer.count ? money(dealer.avgDiscount) + '<div class="' + (dealer.gap > 0 ? 'gap-pos' : 'gap-neg') + '">' + (dealer.gap > 0 ? '+' : '') + money(dealer.gap) + ' gap</div>' : '—') + '</td>';
+          });
+          html += '</tr><tr id="detail-' + index + '" hidden><td colspan="' + (2 + competitors.length) + '">';
+          [row.home].concat(row.competitors.filter(function (dealer) { return dealer.count; })).forEach(function (dealer) {
+            html += '<strong>' + (dealer.name || 'Your store') + '</strong><table><tr><th>Stock</th><th>VIN</th><th>Dealer discount</th><th>%</th></tr>';
+            (dealer.units || []).forEach(function (unit) {
+              html += '<tr><td>' + (unit.stock || '') + '</td><td>' + unit.vin + '</td><td>' + money(unit.dealerDiscount) + '</td><td>' + (unit.discountPercent == null ? '' : unit.discountPercent + '%') + '</td></tr>';
+            });
+            html += '</table>';
+          });
+          html += '</td></tr>';
+        });
+        report.innerHTML = html + '</table>';
+        report.querySelectorAll('tr.summary').forEach(function (summary) {
+          summary.onclick = function () {
+            var detail = document.getElementById('detail-' + summary.getAttribute('data-i'));
+            detail.hidden = !detail.hidden;
+          };
+        });
+      }
+      document.getElementById('go').onclick = function () {
+        var competitors = [].map.call(list.querySelectorAll('input'), function (input) { return input.value.trim(); }).filter(Boolean);
+        document.getElementById('status').textContent = 'Reading public new inventory…';
+        google.script.run.withSuccessHandler(function (job) {
+          var extra = (job.errors || []).map(function (error) { return error.website + ': ' + error.message; }).join(' ');
+          document.getElementById('status').textContent = (job.rows || []).length + ' matching trims. ' + extra;
+          render(job);
+        }).withFailureHandler(function (error) {
+          document.getElementById('status').textContent = error.message;
+        }).NIP_compare({ home: document.getElementById('home').value.trim(), competitors: competitors });
+      };
+    </script>
+  </body>
+</html>

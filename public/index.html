@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>New inventory pricing</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div>
+        <p class="eyebrow">Geaux pricing</p>
+        <h1>New inventory discount comparison</h1>
+      </div>
+      <p class="pulled" id="pulled"></p>
+    </header>
+
+    <form id="setup" class="setup">
+      <label>
+        Your website
+        <input id="home" name="home" type="url" value="https://www.geauxchevrolet.com" placeholder="www.geauxchevrolet.com" required />
+      </label>
+      <div class="competitors">
+        <div class="competitors-head">
+          <span>Competitor websites</span>
+          <button type="button" id="add-competitor">Add website</button>
+        </div>
+        <div id="competitor-list"></div>
+      </div>
+      <button type="submit" id="compare">Compare new inventory</button>
+      <p class="hint">Add two or three competitor sites. In the workbook, open this from GEAUX REPORTS → New Inventory Pricing. The comparison uses each store’s public new-vehicle inventory and the dealer discount line only, separate from manufacturer rebates.</p>
+    </form>
+
+    <section id="status" class="status" hidden></section>
+    <section id="errors" class="errors" hidden></section>
+    <section id="report" hidden>
+      <div class="report-head">
+        <h2>Same year, make, model, and trim</h2>
+        <p>Gap is how much more a competitor is discounting than your store, on vehicles your store actually has in new inventory. Open a row for the VIN breakdown.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead id="head"></thead>
+          <tbody id="body"></tbody>
+        </table>
+      </div>
+      <p class="source">Dealer discount is the live dealer-discount line on each vehicle’s public pricing widget. Manufacturer rebates such as customer cash and bonus cash are not included. Trim labels ignore drivetrain and cab suffixes so the same trim can be compared across sites. Refresh this report at least monthly. Competitor discount programs change often and many are tied to expiring manufacturer incentive periods.</p>
+    </section>
+    <script src="/app.js"></script>
+  </body>
+</html>
