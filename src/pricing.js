@@ -62,7 +62,7 @@ export function isStoreSavingsLine(className, label) {
   if (/incentive-|consumer-cash|bonus-cash|dealer-fee|left-discounts/i.test(cls)) return false;
   if (/^msrp$|total savings|sales price|selling price|internet price|documentation|doc fee|notary|title fee/i.test(text)) return false;
   if (/customer cash|bonus cash|rebate|military|first responder|college|lease loyalty|conquest/i.test(text)) return false;
-  return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls);
+  return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls) || /(^|\s)subtract(\s|$)/i.test(cls);
 }
 
 export function classifyPriceBlocks(blocks) {
@@ -123,6 +123,16 @@ export function priceFromHtml(html) {
     seenLines.add(lineKey);
     if (isStoreSavingsLine("priceBlockItem", label)) {
       dealerDiscount += amount;
+      sawDealerLine = true;
+    }
+  }
+  const msrpRow = /class="amount msrp"[^>]*>\s*([^<]+)/i.exec(source);
+  if (msrp == null && msrpRow) msrp = money(msrpRow[1]);
+  const discountRow = /class="price-row discount"[^>]*>[\s\S]{0,500}?class="amount discount"[^>]*>\s*([^<]+)/i.exec(source);
+  if (!sawDealerLine && discountRow) {
+    const amount = money(discountRow[1]);
+    if (amount != null) {
+      dealerDiscount = amount;
       sawDealerLine = true;
     }
   }

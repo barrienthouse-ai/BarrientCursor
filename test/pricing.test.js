@@ -46,6 +46,22 @@ test("DealerOn Supreme Savings is the dealer line and the SAVINGS headline is no
   assert.equal(priced.sawDealerLine, true);
 });
 
+test("Hollingsworth subtract row and Robinson discount row are the dealer discount", () => {
+  const hollingsworth = priceFromHtml(`
+    <div class="price-block "><span class="price-label">MSRP</span><span class="price">$66,625</span></div>
+    <div class="price-block subtract"><span class="price-label">Dealer Discount</span><span class="price">$7,520</span></div>
+    <div class="incentives cash-incentives-breakdown subtract"><div class="price-block"><span class="price-label">Retail Customer Cash</span><span class="price">$3,000</span></div></div>
+  `);
+  assert.equal(hollingsworth.dealerDiscount, 7520);
+  const robinson = priceFromHtml(`
+    <div class="price-row msrp"><div class="label msrp">MSRP:</div><div class="amount msrp">$58,629</div></div>
+    <div class="price-row discount" data-section="discount"><div class="label discount">Robinson Brothers Discount:</div><div class="amount discount">$2,237</div></div>
+    <div class="price-row internet-price"><span class="priceBlocItemPriceLabel">Internet Price:</span><span class="priceBlocItemPriceValue">$51,392</span></div>
+  `);
+  assert.equal(robinson.dealerDiscount, 2237);
+  assert.equal(robinson.msrp, 58629);
+});
+
 test("a store-named discount line is the dealer discount", () => {
   const priced = classifyPriceBlocks([
     { className: "price-block original", label: "MSRP", amount: "$28,000" },

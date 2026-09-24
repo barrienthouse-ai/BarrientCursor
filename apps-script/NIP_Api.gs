@@ -259,7 +259,9 @@ function NIP_newUrls_(xml) {
   var urls = [];
   var matches = String(xml || '').match(/https?:\/\/[^<\s"]+/gi) || [];
   for (var i = 0; i < matches.length; i++) {
-    if (!/\/inventory\/new-|\/new\/[^/]+\/20\d{2}-/i.test(matches[i])) continue;
+    var isNew = /\/inventory\/new-|\/new\/[^/]+\/20\d{2}-/i.test(matches[i]);
+    var isRetail = /\/for-sale\//i.test(matches[i]) && !/\/for-sale\/(?:used|certified)-/i.test(matches[i]) && /20\d{2}-/i.test(matches[i]);
+    if (!isNew && !isRetail) continue;
     urls.push(matches[i].replace(/\/$/, '') + '/');
   }
   return urls;
@@ -270,7 +272,7 @@ function NIP_isStoreSavings_(cls, label) {
   if (/incentive-|consumer-cash|bonus-cash|dealer-fee|left-discounts/i.test(cls)) return false;
   if (/^msrp$|total savings|sales price|selling price|internet price|documentation|doc fee|notary|title fee/i.test(text)) return false;
   if (/customer cash|bonus cash|rebate|military|first responder|college|lease loyalty|conquest/i.test(text)) return false;
-  return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls);
+  return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls) || /(^|\s)subtract(\s|$)/i.test(cls);
 }
 
 function NIP_fillIdentity_(vehicle, html) {
@@ -348,6 +350,16 @@ function NIP_price_(html) {
     seenLines[lineKey] = true;
     if (NIP_isStoreSavings_('priceBlockItem', line)) {
       dealerDiscount += dollars;
+      sawDealerLine = true;
+    }
+  }
+  var msrpRow = /class="amount msrp"[^>]*>\s*([^<]+)/i.exec(source);
+  if (msrp == null && msrpRow) msrp = Math.round(Math.abs(Number(String(msrpRow[1]).replace(/[^0-9.-]/g, '')) || 0)) || null;
+  var discountRow = /class="price-row discount"[^>]*>[\s\S]{0,500}?class="amount discount"[^>]*>\s*([^<]+)/i.exec(source);
+  if (!sawDealerLine && discountRow) {
+    var rowAmount = Math.round(Math.abs(Number(String(discountRow[1]).replace(/[^0-9.-]/g, '')) || 0));
+    if (rowAmount) {
+      dealerDiscount = rowAmount;
       sawDealerLine = true;
     }
   }
