@@ -74,16 +74,19 @@ function NIP_scrapeSite_(website) {
   var list = NIP_fetch_(inventoryUrl);
   if (NIP_blocked_(list)) throw new Error('The dealer site blocked the inventory request.');
   var name = NIP_storeName_(list, NIP_host_(origin));
-  var cards = NIP_cards_(list, origin);
-  var page = 2;
-  while (page <= 12) {
-    var html = NIP_fetch_(inventoryUrl + '?_p=' + page);
-    var more = NIP_cards_(html, origin);
-    if (!more.length) break;
-    var before = cards.length;
-    cards = NIP_merge_(cards, more);
-    if (cards.length === before) break;
-    page++;
+  var algolia = NIP_algoliaConfig_(list);
+  var cards = algolia ? NIP_algoliaCards_(algolia, origin) : NIP_cards_(list, origin);
+  if (!algolia) {
+    var page = 2;
+    while (page <= 12) {
+      var html = NIP_fetch_(inventoryUrl + '?_p=' + page);
+      var more = NIP_cards_(html, origin);
+      if (!more.length) break;
+      var before = cards.length;
+      cards = NIP_merge_(cards, more);
+      if (cards.length === before) break;
+      page++;
+    }
   }
   var fresh = [];
   for (var i = 0; i < cards.length; i++) if (/^new$/i.test(cards[i].type || 'New')) fresh.push(cards[i]);
@@ -109,7 +112,70 @@ function NIP_scrapeSite_(website) {
       });
     }
   }
+  if (!vehicles.length) throw new Error('No dealer-discount line was found on new vehicles at ' + inventoryUrl);
   return { id: NIP_host_(origin), name: name, vehicles: vehicles };
+}
+
+function NIP_algoliaConfig_(html) {
+  var match = String(html).match(/algoliaConfig\s*=\s*(\{[\s\S]*?\})/);
+  if (!match) return null;
+  try { return JSON.parse(match[1]); } catch (error) { return null; }
+}
+
+function NIP_algoliaCards_(cfg, origin) {
+  var hosts = [
+    'https://' + cfg.appId + '-dsn.algolia.net',
+    'https://' + String(cfg.appId).toLowerCase() + '-1.algolianet.com',
+    'https://' + String(cfg.appId).toLowerCase() + '-2.algolianet.com',
+    'https://' + String(cfg.appId).toLowerCase() + '-3.algolianet.com'
+  ];
+  var lastError = 'Could not read the inventory search index.';
+  for (var h = 0; h < hosts.length; h++) {
+    try {
+      var cards = [];
+      for (var page = 0; page < 15; page++) {
+        var response = UrlFetchApp.fetch(hosts[h] + '/1/indexes/' + encodeURIComponent(cfg.indexName) + '/query', {
+          method: 'post',
+          contentType: 'application/json',
+          muteHttpExceptions: true,
+          followRedirects: true,
+          headers: {
+            'X-Algolia-Application-Id': cfg.appId,
+            'X-Algolia-API-Key': cfg.apiKeySearch
+          },
+          payload: JSON.stringify({ params: 'hitsPerPage=100&page=' + page + '&filters=type:New' })
+        });
+        if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) {
+          lastError = 'Inventory search returned ' + response.getResponseCode();
+          cards = [];
+          break;
+        }
+        var data = JSON.parse(response.getContentText() || '{}');
+        var hits = data.hits || [];
+        for (var i = 0; i < hits.length; i++) {
+          var hit = hits[i];
+          var href = hit.link || hit.url || hit.vdp_url || '';
+          if (href && href.indexOf('http') !== 0) href = origin + (href.charAt(0) === '/' ? href : '/' + href);
+          if (!hit.vin || !href) continue;
+          cards.push({
+            vin: hit.vin,
+            stock: hit.stock || hit.stock_number || '',
+            year: hit.year,
+            make: hit.make,
+            model: hit.model,
+            trim: hit.trim,
+            type: hit.type || 'New',
+            href: href
+          });
+        }
+        if (!hits.length || page + 1 >= (data.nbPages || 1)) return cards;
+      }
+      if (cards.length) return cards;
+    } catch (error) {
+      lastError = String(error.message || error);
+    }
+  }
+  throw new Error(lastError);
 }
 
 function NIP_fetch_(url) {
