@@ -100,7 +100,8 @@ function NIP_scrapeSite_(website) {
     for (var r = 0; r < responses.length; r++) {
       var html = responses[r].getContentText() || '';
       var priced = NIP_price_(html);
-      if (!priced.sawDealerLine || priced.msrp == null) continue;
+      if (priced.msrp == null) continue;
+      if (!priced.sawDealerLine) priced.dealerDiscount = 0;
       NIP_fillIdentity_(slice[r], html);
       vehicles.push({
         vin: slice[r].vin,
@@ -117,7 +118,7 @@ function NIP_scrapeSite_(website) {
   }
   if (!vehicles.length) {
     if (!fresh.length) throw new Error('No new-vehicle list was found at ' + origin + '.');
-    throw new Error('No branded savings line was found on ' + fresh.length + ' new vehicles at ' + origin + '.');
+    throw new Error('No MSRP was found on ' + fresh.length + ' new vehicles at ' + origin + '.');
   }
   return { id: NIP_host_(origin), name: name, vehicles: vehicles };
 }

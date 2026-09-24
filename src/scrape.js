@@ -127,7 +127,7 @@ export async function scrapeDealer(website, onProgress, options = {}) {
     for (const vehicle of scraped.vehicles || []) {
       const priced = classifyPriceBlocks(vehicle.blocks || []);
       const msrp = priced.msrp || money(vehicle.msrp);
-      if (!priced.sawDealerLine || msrp == null) continue;
+      if (msrp == null) continue;
       vehicles.push({
         vin: vehicle.vin,
         stock: vehicle.stock || "",
@@ -136,7 +136,7 @@ export async function scrapeDealer(website, onProgress, options = {}) {
         model: vehicle.model,
         trim: vehicle.trim,
         msrp,
-        dealerDiscount: priced.dealerDiscount,
+        dealerDiscount: priced.sawDealerLine ? priced.dealerDiscount : 0,
         rebates: priced.rebates,
         url: vehicle.href,
       });

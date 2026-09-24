@@ -90,6 +90,21 @@ test("trim normalization drops cab and drivetrain suffixes", () => {
   assert.equal(vehicleKey({ year: "2026", make: "Chevrolet", model: "Silverado 1500", trim: "LT Trail Boss 4x4" }), "2026|chevrolet|silverado 1500|lt trail boss");
 });
 
+test("a home unit with no dealer discount stays when a competitor discounts that trim", () => {
+  const home = { id: "geauxford.com", name: "Geaux Ford" };
+  const other = { id: "hollingsworth.com", name: "Hollingsworth" };
+  const vehicles = [
+    attachDiscount({ dealerId: home.id, year: "2026", make: "Ford", model: "F-150", trim: "XLT", vin: "A", stock: "TT14922", msrp: 55935, dealerDiscount: 0 }),
+    attachDiscount({ dealerId: other.id, year: "2026", make: "Ford", model: "F-150", trim: "XLT", vin: "B", stock: "160088", msrp: 66625, dealerDiscount: 7520 }),
+    attachDiscount({ dealerId: home.id, year: "2026", make: "Ford", model: "Ranger", trim: "XLT", vin: "C", stock: "TT14667", msrp: 43200, dealerDiscount: 0 }),
+  ];
+  const rows = compareDealers({ home, dealers: [home, other], vehicles });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].label, "2026 Ford F-150 XLT");
+  assert.equal(rows[0].home.avgDiscount, 0);
+  assert.equal(rows[0].competitors[0].gap, 7520);
+});
+
 test("gap is the extra competitor discount on units the home store stocks", () => {
   const home = { id: "geauxchevrolet.com", name: "Geaux" };
   const other = { id: "bannerchevrolet.com", name: "Banner" };
