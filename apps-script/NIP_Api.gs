@@ -424,8 +424,22 @@ function NIP_rows_(home, dealers, vehicles) {
   var rows = [];
   for (var key in groups) {
     var homeUnits = groups[key].by[home.id] || [];
-    if (!homeUnits.length) continue;
-    var homeAvg = NIP_avg_(homeUnits);
+    var stocked = [];
+    var someoneDiscounts = false;
+    for (var s = 0; s < dealers.length; s++) {
+      var stock = groups[key].by[dealers[s].id] || [];
+      if (!stock.length) continue;
+      stocked.push(dealers[s].id);
+      for (var u = 0; u < stock.length; u++) if (stock[u].dealerDiscount > 0) someoneDiscounts = true;
+    }
+    if (stocked.length < 2 || !someoneDiscounts) continue;
+    var baseline = homeUnits.length ? NIP_avg_(homeUnits) : null;
+    if (baseline == null) {
+      for (var b = 0; b < stocked.length; b++) {
+        var stockAvg = NIP_avg_(groups[key].by[stocked[b]]);
+        if (baseline == null || stockAvg < baseline) baseline = stockAvg;
+      }
+    }
     var competitors = [];
     var widest = null;
     for (var d = 0; d < dealers.length; d++) {
@@ -436,16 +450,16 @@ function NIP_rows_(home, dealers, vehicles) {
         continue;
       }
       var avg = NIP_avg_(units);
-      var gap = avg - homeAvg;
+      var gap = avg - baseline;
       if (widest == null || gap > widest) widest = gap;
       competitors.push({ id: dealers[d].id, name: dealers[d].name, count: units.length, avgDiscount: avg, avgPercent: NIP_avgPercent_(units), gap: gap, units: units });
     }
-    if (widest == null) continue;
+    if (widest == null) widest = 0;
     homeUnits.sort(function (a, b) { return b.dealerDiscount - a.dealerDiscount; });
     rows.push({
       label: groups[key].label,
       widestGap: widest,
-      home: { id: home.id, name: home.name, count: homeUnits.length, avgDiscount: homeAvg, avgPercent: NIP_avgPercent_(homeUnits), units: homeUnits },
+      home: { id: home.id, name: home.name, count: homeUnits.length, avgDiscount: homeUnits.length ? NIP_avg_(homeUnits) : null, avgPercent: homeUnits.length ? NIP_avgPercent_(homeUnits) : null, units: homeUnits },
       competitors: competitors
     });
   }

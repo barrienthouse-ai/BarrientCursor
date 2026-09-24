@@ -103,6 +103,20 @@ test("a home unit with no dealer discount stays when a competitor discounts that
   assert.equal(rows[0].label, "2026 Ford F-150 XLT");
   assert.equal(rows[0].home.avgDiscount, 0);
   assert.equal(rows[0].competitors[0].gap, 7520);
+  const ford = { id: "geauxford.com", name: "Geaux Ford" };
+  const otherStore = { id: "hollingsworth.com", name: "Hollingsworth" };
+  const withoutHome = compareDealers({
+    home: { id: "geauxchevrolet.com", name: "Geaux Chevrolet" },
+    dealers: [{ id: "geauxchevrolet.com", name: "Geaux Chevrolet" }, ford, otherStore],
+    vehicles: [
+      attachDiscount({ dealerId: ford.id, year: "2026", make: "Ford", model: "F-150", trim: "XLT", vin: "A", stock: "TT14922", msrp: 55935, dealerDiscount: 0 }),
+      attachDiscount({ dealerId: otherStore.id, year: "2026", make: "Ford", model: "F-150", trim: "XLT", vin: "B", stock: "160088", msrp: 66625, dealerDiscount: 7520 }),
+    ],
+  });
+  assert.equal(withoutHome.length, 1);
+  assert.equal(withoutHome[0].home.count, 0);
+  assert.equal(withoutHome[0].competitors[0].avgDiscount, 0);
+  assert.equal(withoutHome[0].competitors[1].gap, 7520);
 });
 
 test("gap is the extra competitor discount on units the home store stocks", () => {
