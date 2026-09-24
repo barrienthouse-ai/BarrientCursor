@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { attachDiscount, compareDealers } from "../src/compare.js";
-import { classifyPriceBlocks, normalizeTrim, vehicleKey } from "../src/pricing.js";
+import { classifyPriceBlocks, normalizeTrim, priceFromHtml, vehicleKey } from "../src/pricing.js";
 
 test("branded store savings count and total savings does not", () => {
   const priced = classifyPriceBlocks([
@@ -14,6 +14,23 @@ test("branded store savings count and total savings does not", () => {
   ]);
   assert.equal(priced.dealerDiscount, 13500);
   assert.equal(priced.rebates, 3500);
+});
+
+test("DealerOn Supreme Savings is the dealer line and the SAVINGS headline is not", () => {
+  const html = `
+    <div class="vehiclePricingHighlight dealerDiscount">
+      <span class="vehiclePricingHighlightAmount">$13,000</span>
+      <span class="vehiclePricingHighlightLabel">SAVINGS</span>
+    </div>
+    <span class="priceBlocItemPriceLabel">MSRP:</span><span class="priceBlocItemPriceValue">$66,090</span>
+    <span class="priceBlocItemPriceLabel">Supreme Savings:</span><span class="priceBlocItemPriceValue">-$7,000</span>
+    <span class="priceBlocItemPriceLabel">Internet Price:</span><span class="priceBlocItemPriceValue">$59,090</span>
+    <span class="priceBlockItemRebate">Customer Cash</span>
+  `;
+  const priced = priceFromHtml(html);
+  assert.equal(priced.dealerDiscount, 7000);
+  assert.equal(priced.msrp, 66090);
+  assert.equal(priced.sawDealerLine, true);
 });
 
 test("a store-named discount line is the dealer discount", () => {

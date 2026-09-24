@@ -94,6 +94,39 @@ export function classifyPriceBlocks(blocks) {
   return { dealerDiscount, rebates, msrp, sawDealerLine };
 }
 
+export function priceFromHtml(html) {
+  const source = String(html || "");
+  let dealerDiscount = 0;
+  let msrp = null;
+  let sawDealerLine = false;
+  const inspire = /<div[^>]*class="([^"]*price-block[^"]*)"[^>]*>[\s\S]*?class="price-label"[^>]*>([^<]*)[\s\S]*?class="price"[^>]*>([^<]+)/gi;
+  let match;
+  while ((match = inspire.exec(source))) {
+    const label = match[2].replace(/\s+/g, " ").trim();
+    const amount = money(match[3]);
+    if (/^msrp$/i.test(label) && amount != null) msrp = amount;
+    if (amount != null && isStoreSavingsLine(match[1], label)) {
+      dealerDiscount += amount;
+      sawDealerLine = true;
+    }
+  }
+  const dealeron = /priceBloc[k]?ItemPriceLabel[^>]*>\s*([^<]+?)\s*<\/span>[\s\S]{0,1200}?priceBloc[k]?ItemPriceValue[^>]*>\s*([^<]+)/gi;
+  const seenLines = new Set();
+  while ((match = dealeron.exec(source))) {
+    const label = match[1].replace(/\s+/g, " ").replace(/:$/, "").trim();
+    const amount = money(match[2]);
+    if (/^msrp$/i.test(label) && amount != null && msrp == null) msrp = amount;
+    const lineKey = label.toLowerCase();
+    if (amount == null || /^savings$/i.test(label) || seenLines.has(lineKey)) continue;
+    seenLines.add(lineKey);
+    if (isStoreSavingsLine("priceBlockItem", label)) {
+      dealerDiscount += amount;
+      sawDealerLine = true;
+    }
+  }
+  return { dealerDiscount, msrp, sawDealerLine };
+}
+
 export function discountPercent(discount, msrp) {
   if (!msrp) return null;
   return Math.round((discount / msrp) * 1000) / 10;

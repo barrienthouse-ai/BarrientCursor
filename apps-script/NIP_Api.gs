@@ -75,11 +75,9 @@ function NIP_scrapeSite_(website) {
   if (NIP_blocked_(list)) throw new Error('The dealer site blocked the inventory request.');
   var name = NIP_storeName_(list, NIP_host_(origin));
   var cards = NIP_sitemapCards_(origin);
-  if (!cards.length) {
-    var algolia = NIP_algoliaConfig_(list);
-    cards = algolia ? NIP_algoliaCards_(algolia, origin) : NIP_cards_(list, origin);
-  }
-  if (!algolia) {
+  if (!cards.length) cards = NIP_dealeronCards_(origin);
+  if (!cards.length) cards = NIP_cards_(list, origin);
+  if (!cards.length && !/searchnew\.aspx/i.test(inventoryUrl)) {
     var page = 2;
     while (page <= 12) {
       var html = NIP_fetch_(inventoryUrl + '?_p=' + page);
@@ -284,7 +282,7 @@ function NIP_fillIdentity_(vehicle, html) {
   if (!vehicle.model) vehicle.model = parsed.model;
   if (!vehicle.trim) vehicle.trim = parsed.trim;
   if (!vehicle.stock) {
-    var stock = (String(html).match(/<title>[^<]*#([A-Z0-9]+)/i) || [])[1];
+    var stock = (String(html).match(/<title>[^<]*#([A-Z0-9]+)/i) || String(html).match(/data-stock="([A-Z0-9]+)"/i) || [])[1];
     if (stock) vehicle.stock = stock;
   }
 }
@@ -322,19 +320,62 @@ function NIP_price_(html) {
   var dealerDiscount = 0;
   var msrp = null;
   var sawDealerLine = false;
+  var source = String(html || '');
   var re = /<div[^>]*class="([^"]*price-block[^"]*)"[^>]*>[\s\S]*?class="price-label"[^>]*>([^<]*)[\s\S]*?class="price"[^>]*>([^<]+)/gi;
   var match;
-  while ((match = re.exec(html))) {
-    var cls = match[1];
+  while ((match = re.exec(source))) {
     var label = match[2].replace(/\s+/g, ' ').trim();
     var amount = Math.round(Math.abs(Number(String(match[3]).replace(/[^0-9.-]/g, '')) || 0));
     if (/^msrp$/i.test(label)) msrp = amount;
-    if (NIP_isStoreSavings_(cls, label)) {
+    if (NIP_isStoreSavings_(match[1], label)) {
       dealerDiscount += amount;
       sawDealerLine = true;
     }
   }
+  var stack = /priceBloc[k]?ItemPriceLabel[^>]*>\s*([^<]+?)\s*<\/span>[\s\S]{0,1200}?priceBloc[k]?ItemPriceValue[^>]*>\s*([^<]+)/gi;
+  var seenLines = {};
+  while ((match = stack.exec(source))) {
+    var line = match[1].replace(/\s+/g, ' ').replace(/:$/, '').trim();
+    var dollars = Math.round(Math.abs(Number(String(match[2]).replace(/[^0-9.-]/g, '')) || 0));
+    if (/^msrp$/i.test(line) && msrp == null) msrp = dollars;
+    var lineKey = line.toLowerCase();
+    if (!dollars || /^savings$/i.test(line) || seenLines[lineKey]) continue;
+    seenLines[lineKey] = true;
+    if (NIP_isStoreSavings_('priceBlockItem', line)) {
+      dealerDiscount += dollars;
+      sawDealerLine = true;
+    }
+  }
   return { dealerDiscount: dealerDiscount, msrp: msrp, sawDealerLine: sawDealerLine };
+}
+
+function NIP_dealeronCards_(origin) {
+  var cards = [];
+  var seen = {};
+  var url = origin + '/searchnew.aspx';
+  for (var page = 0; page < 16 && cards.length < 200; page++) {
+    var html = NIP_fetch_(url);
+    var block = (String(html).match(/<script type="application\/ld\+json">(\{"@context":"https:\/\/schema\.org","@type":"ItemList"[\s\S]*?\})<\/script>/) || [])[1];
+    if (!block) break;
+    var data;
+    try { data = JSON.parse(block); } catch (error) { break; }
+    var items = data.itemListElement || [];
+    if (!items.length) break;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var href = item.url || '';
+      var vin = String(item.identifier || '').toUpperCase();
+      if (!vin || !href || seen[vin]) continue;
+      seen[vin] = true;
+      var named = NIP_parseTitle_(String(item.name || '').replace(/\u002B/g, ' '));
+      cards.push({ vin: vin, href: href, type: 'New', year: named.year, make: named.make, model: named.model, trim: named.trim, stock: '' });
+    }
+    var next = (String(html).match(/rel="next" href="([^"]+)"/i) || [])[1];
+    if (!next) break;
+    if (next.indexOf('http') !== 0) next = 'https:' + (next.indexOf('//') === 0 ? next : '//' + NIP_host_(origin) + next);
+    url = next;
+  }
+  return cards;
 }
 
 function NIP_trim_(trim) {
