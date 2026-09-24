@@ -63,6 +63,7 @@ export function isStoreSavingsLine(className, label) {
   if (/^msrp$|total savings|sales price|selling price|documentation|doc fee|notary|title fee/i.test(text)) return false;
   if (/incentive-|consumer-cash|bonus-cash|dealer-fee/i.test(cls)) return false;
   if (/customer cash|bonus cash|rebate|military|first responder|college|lease loyalty|conquest/i.test(text)) return false;
+  if (/^savings$/i.test(text)) return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls);
   if (/dealer-incentive|dealer-discount/i.test(cls)) return true;
   if (/(^|\s)discounts(\s|$)/i.test(cls)) return true;
   return /savings|discount/i.test(text);
@@ -99,19 +100,22 @@ export function priceFromHtml(html) {
   let dealerDiscount = 0;
   let msrp = null;
   let sawDealerLine = false;
-  const inspire = /<div[^>]*class="([^"]*price-block[^"]*)"[^>]*>[\s\S]*?class="price-label"[^>]*>([^<]*)[\s\S]*?class="price"[^>]*>([^<]+)/gi;
+  const inspire = /class="([^"]*price-block[^"]*)"[\s\S]{0,700}?class="price-label"[^>]*>([\s\S]*?)<\/span>[\s\S]{0,300}?class="price"[^>]*>([\s\S]*?)<\/span>/gi;
+  const seenLines = new Set();
   let match;
   while ((match = inspire.exec(source))) {
-    const label = match[2].replace(/\s+/g, " ").trim();
-    const amount = money(match[3]);
-    if (/^msrp$/i.test(label) && amount != null) msrp = amount;
-    if (amount != null && isStoreSavingsLine(match[1], label)) {
+    const label = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    const amount = money(match[3].replace(/<[^>]+>/g, " "));
+    if (/^msrp$/i.test(label) && amount != null && msrp == null) msrp = amount;
+    const lineKey = label.toLowerCase();
+    if (amount == null || seenLines.has(lineKey)) continue;
+    seenLines.add(lineKey);
+    if (isStoreSavingsLine(match[1], label)) {
       dealerDiscount += amount;
       sawDealerLine = true;
     }
   }
   const dealeron = /priceBloc[k]?ItemPriceLabel[^>]*>\s*([^<]+?)\s*<\/span>[\s\S]{0,1200}?priceBloc[k]?ItemPriceValue[^>]*>\s*([^<]+)/gi;
-  const seenLines = new Set();
   while ((match = dealeron.exec(source))) {
     const label = match[1].replace(/\s+/g, " ").replace(/:$/, "").trim();
     const amount = money(match[2]);

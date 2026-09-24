@@ -115,7 +115,10 @@ function NIP_scrapeSite_(website) {
       });
     }
   }
-  if (!vehicles.length) throw new Error('No dealer-discount line was found on new vehicles at ' + inventoryUrl);
+  if (!vehicles.length) {
+    if (!fresh.length) throw new Error('No new-vehicle list was found at ' + origin + '.');
+    throw new Error('No branded savings line was found on ' + fresh.length + ' new vehicles at ' + origin + '.');
+  }
   return { id: NIP_host_(origin), name: name, vehicles: vehicles };
 }
 
@@ -268,6 +271,7 @@ function NIP_isStoreSavings_(cls, label) {
   if (/^msrp$|total savings|sales price|selling price|documentation|doc fee|notary|title fee/i.test(text)) return false;
   if (/incentive-|consumer-cash|bonus-cash|dealer-fee/i.test(cls)) return false;
   if (/customer cash|bonus cash|rebate|military|first responder|college|lease loyalty|conquest/i.test(text)) return false;
+  if (/^savings$/i.test(text)) return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls);
   if (/dealer-incentive|dealer-discount/i.test(cls)) return true;
   if (/(^|\s)discounts(\s|$)/i.test(cls)) return true;
   return /savings|discount/i.test(text);
@@ -321,19 +325,22 @@ function NIP_price_(html) {
   var msrp = null;
   var sawDealerLine = false;
   var source = String(html || '');
-  var re = /<div[^>]*class="([^"]*price-block[^"]*)"[^>]*>[\s\S]*?class="price-label"[^>]*>([^<]*)[\s\S]*?class="price"[^>]*>([^<]+)/gi;
+  var re = /class="([^"]*price-block[^"]*)"[\s\S]{0,700}?class="price-label"[^>]*>([\s\S]*?)<\/span>[\s\S]{0,300}?class="price"[^>]*>([\s\S]*?)<\/span>/gi;
   var match;
+  var seenLines = {};
   while ((match = re.exec(source))) {
-    var label = match[2].replace(/\s+/g, ' ').trim();
-    var amount = Math.round(Math.abs(Number(String(match[3]).replace(/[^0-9.-]/g, '')) || 0));
-    if (/^msrp$/i.test(label)) msrp = amount;
+    var label = match[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    var amount = Math.round(Math.abs(Number(String(match[3]).replace(/<[^>]+>/g, '').replace(/[^0-9.-]/g, '')) || 0));
+    if (/^msrp$/i.test(label) && msrp == null) msrp = amount;
+    var lineKey = label.toLowerCase();
+    if (!amount || seenLines[lineKey]) continue;
+    seenLines[lineKey] = true;
     if (NIP_isStoreSavings_(match[1], label)) {
       dealerDiscount += amount;
       sawDealerLine = true;
     }
   }
   var stack = /priceBloc[k]?ItemPriceLabel[^>]*>\s*([^<]+?)\s*<\/span>[\s\S]{0,1200}?priceBloc[k]?ItemPriceValue[^>]*>\s*([^<]+)/gi;
-  var seenLines = {};
   while ((match = stack.exec(source))) {
     var line = match[1].replace(/\s+/g, ' ').replace(/:$/, '').trim();
     var dollars = Math.round(Math.abs(Number(String(match[2]).replace(/[^0-9.-]/g, '')) || 0));
