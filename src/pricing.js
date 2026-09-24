@@ -59,14 +59,10 @@ export function vehicleLabel(vehicle) {
 export function isStoreSavingsLine(className, label) {
   const cls = String(className || "");
   const text = String(label || "").replace(/\s+/g, " ").trim();
-  if (!text) return false;
-  if (/^msrp$|total savings|sales price|selling price|documentation|doc fee|notary|title fee/i.test(text)) return false;
-  if (/incentive-|consumer-cash|bonus-cash|dealer-fee/i.test(cls)) return false;
+  if (/incentive-|consumer-cash|bonus-cash|dealer-fee|left-discounts/i.test(cls)) return false;
+  if (/^msrp$|total savings|sales price|selling price|internet price|documentation|doc fee|notary|title fee/i.test(text)) return false;
   if (/customer cash|bonus cash|rebate|military|first responder|college|lease loyalty|conquest/i.test(text)) return false;
-  if (/^savings$/i.test(text)) return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls);
-  if (/dealer-incentive|dealer-discount/i.test(cls)) return true;
-  if (/(^|\s)discounts(\s|$)/i.test(cls)) return true;
-  return /savings|discount/i.test(text);
+  return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls);
 }
 
 export function classifyPriceBlocks(blocks) {
@@ -116,17 +112,23 @@ export function priceFromHtml(html) {
     }
   }
   const dealeron = /priceBloc[k]?ItemPriceLabel[^>]*>\s*([^<]+?)\s*<\/span>[\s\S]{0,1200}?priceBloc[k]?ItemPriceValue[^>]*>\s*([^<]+)/gi;
+  let internetPrice = null;
   while ((match = dealeron.exec(source))) {
     const label = match[1].replace(/\s+/g, " ").replace(/:$/, "").trim();
     const amount = money(match[2]);
     if (/^msrp$/i.test(label) && amount != null && msrp == null) msrp = amount;
+    if (/^internet price$/i.test(label) && amount != null && internetPrice == null) internetPrice = amount;
     const lineKey = label.toLowerCase();
-    if (amount == null || /^savings$/i.test(label) || seenLines.has(lineKey)) continue;
+    if (amount == null || seenLines.has(lineKey)) continue;
     seenLines.add(lineKey);
     if (isStoreSavingsLine("priceBlockItem", label)) {
       dealerDiscount += amount;
       sawDealerLine = true;
     }
+  }
+  if (!sawDealerLine && msrp != null && internetPrice != null && msrp > internetPrice) {
+    dealerDiscount = msrp - internetPrice;
+    sawDealerLine = true;
   }
   return { dealerDiscount, msrp, sawDealerLine };
 }

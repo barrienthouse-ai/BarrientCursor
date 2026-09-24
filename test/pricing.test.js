@@ -3,16 +3,15 @@ import test from "node:test";
 import { attachDiscount, compareDealers } from "../src/compare.js";
 import { classifyPriceBlocks, normalizeTrim, priceFromHtml, vehicleKey } from "../src/pricing.js";
 
-test("branded store savings count and total savings does not", () => {
+test("the dealer row counts no matter what the store named it", () => {
   const priced = classifyPriceBlocks([
     { className: "price-block", label: "MSRP", amount: "$67,145" },
-    { className: "price-block", label: "Geaux Savings", amount: "$7,000" },
+    { className: "price-block dealer-incentive subtract", label: "Weekend Blowout", amount: "$7,000" },
     { className: "price-block incentive-bonus-cash", label: "Bonus Cash", amount: "$3,500" },
     { className: "price-block left-discounts", label: "Total Savings", amount: "$11,500" },
-    { className: "price-block", label: "Matt's End of September Savings Event on this 2026 Chevrolet Silverado 1500 model", amount: "$4,000" },
-    { className: "price-block", label: "Supreme Savings", amount: "$2,500" },
+    { className: "price-block", label: "Geaux Summer Savings", amount: "$4,000" },
   ]);
-  assert.equal(priced.dealerDiscount, 13500);
+  assert.equal(priced.dealerDiscount, 7000);
   assert.equal(priced.rebates, 3500);
 });
 
@@ -36,7 +35,8 @@ test("DealerOn Supreme Savings is the dealer line and the SAVINGS headline is no
       <span class="vehiclePricingHighlightLabel">SAVINGS</span>
     </div>
     <span class="priceBlocItemPriceLabel">MSRP:</span><span class="priceBlocItemPriceValue">$66,090</span>
-    <span class="priceBlocItemPriceLabel">Supreme Savings:</span><span class="priceBlocItemPriceValue">-$7,000</span>
+    <span class="priceBlocItemPriceLabel">Store Event:</span><span class="priceBlocItemPriceValue">-$7,000</span>
+    <span class="priceBlocItemPriceLabel">Internet Price:</span><span class="priceBlocItemPriceValue">$59,090</span>
     <span class="priceBlocItemPriceLabel">Internet Price:</span><span class="priceBlocItemPriceValue">$59,090</span>
     <span class="priceBlockItemRebate">Customer Cash</span>
   `;

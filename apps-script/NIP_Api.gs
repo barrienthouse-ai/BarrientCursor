@@ -267,14 +267,10 @@ function NIP_newUrls_(xml) {
 
 function NIP_isStoreSavings_(cls, label) {
   var text = String(label || '').replace(/\s+/g, ' ').trim();
-  if (!text) return false;
-  if (/^msrp$|total savings|sales price|selling price|documentation|doc fee|notary|title fee/i.test(text)) return false;
-  if (/incentive-|consumer-cash|bonus-cash|dealer-fee/i.test(cls)) return false;
+  if (/incentive-|consumer-cash|bonus-cash|dealer-fee|left-discounts/i.test(cls)) return false;
+  if (/^msrp$|total savings|sales price|selling price|internet price|documentation|doc fee|notary|title fee/i.test(text)) return false;
   if (/customer cash|bonus cash|rebate|military|first responder|college|lease loyalty|conquest/i.test(text)) return false;
-  if (/^savings$/i.test(text)) return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls);
-  if (/dealer-incentive|dealer-discount/i.test(cls)) return true;
-  if (/(^|\s)discounts(\s|$)/i.test(cls)) return true;
-  return /savings|discount/i.test(text);
+  return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls);
 }
 
 function NIP_fillIdentity_(vehicle, html) {
@@ -341,17 +337,23 @@ function NIP_price_(html) {
     }
   }
   var stack = /priceBloc[k]?ItemPriceLabel[^>]*>\s*([^<]+?)\s*<\/span>[\s\S]{0,1200}?priceBloc[k]?ItemPriceValue[^>]*>\s*([^<]+)/gi;
+  var internetPrice = null;
   while ((match = stack.exec(source))) {
     var line = match[1].replace(/\s+/g, ' ').replace(/:$/, '').trim();
     var dollars = Math.round(Math.abs(Number(String(match[2]).replace(/[^0-9.-]/g, '')) || 0));
     if (/^msrp$/i.test(line) && msrp == null) msrp = dollars;
+    if (/^internet price$/i.test(line) && internetPrice == null) internetPrice = dollars;
     var lineKey = line.toLowerCase();
-    if (!dollars || /^savings$/i.test(line) || seenLines[lineKey]) continue;
+    if (!dollars || seenLines[lineKey]) continue;
     seenLines[lineKey] = true;
     if (NIP_isStoreSavings_('priceBlockItem', line)) {
       dealerDiscount += dollars;
       sawDealerLine = true;
     }
+  }
+  if (!sawDealerLine && msrp != null && internetPrice != null && msrp > internetPrice) {
+    dealerDiscount = msrp - internetPrice;
+    sawDealerLine = true;
   }
   return { dealerDiscount: dealerDiscount, msrp: msrp, sawDealerLine: sawDealerLine };
 }
