@@ -56,6 +56,18 @@ export function vehicleLabel(vehicle) {
     .trim();
 }
 
+export function isStoreSavingsLine(className, label) {
+  const cls = String(className || "");
+  const text = String(label || "").replace(/\s+/g, " ").trim();
+  if (!text) return false;
+  if (/^msrp$|total savings|sales price|selling price|documentation|doc fee|notary|title fee/i.test(text)) return false;
+  if (/incentive-|consumer-cash|bonus-cash|dealer-fee/i.test(cls)) return false;
+  if (/customer cash|bonus cash|rebate|military|first responder|college|lease loyalty|conquest/i.test(text)) return false;
+  if (/dealer-incentive|dealer-discount/i.test(cls)) return true;
+  if (/(^|\s)discounts(\s|$)/i.test(cls)) return true;
+  return /savings|discount/i.test(text);
+}
+
 export function classifyPriceBlocks(blocks) {
   let dealerDiscount = 0;
   let rebates = 0;
@@ -67,13 +79,11 @@ export function classifyPriceBlocks(blocks) {
     const amount = money(block.amount);
     if (/^msrp$/i.test(label) && amount != null) msrp = amount;
     if (amount == null) continue;
-    const dealerLine =
-      /dealer-incentive|dealer-discount|\bdiscounts\b/i.test(cls) ||
-      (/discount/i.test(label) && !/cash|rebate/i.test(label));
+    const dealerLine = isStoreSavingsLine(cls, label);
     const rebateLine =
       !dealerLine &&
       (/incentive-|rebate/i.test(cls) ||
-        /customer cash|bonus cash|rebate|manufacturer/i.test(label));
+        /customer cash|bonus cash|rebate|military|first responder|manufacturer/i.test(label));
     if (dealerLine) {
       dealerDiscount += amount;
       sawDealerLine = true;

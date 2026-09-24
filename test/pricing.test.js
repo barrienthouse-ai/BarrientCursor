@@ -3,6 +3,19 @@ import test from "node:test";
 import { attachDiscount, compareDealers } from "../src/compare.js";
 import { classifyPriceBlocks, normalizeTrim, vehicleKey } from "../src/pricing.js";
 
+test("branded store savings count and total savings does not", () => {
+  const priced = classifyPriceBlocks([
+    { className: "price-block", label: "MSRP", amount: "$67,145" },
+    { className: "price-block", label: "Geaux Savings", amount: "$7,000" },
+    { className: "price-block incentive-bonus-cash", label: "Bonus Cash", amount: "$3,500" },
+    { className: "price-block left-discounts", label: "Total Savings", amount: "$11,500" },
+    { className: "price-block", label: "Matt's End of September Savings Event on this 2026 Chevrolet Silverado 1500 model", amount: "$4,000" },
+    { className: "price-block", label: "Supreme Savings", amount: "$2,500" },
+  ]);
+  assert.equal(priced.dealerDiscount, 13500);
+  assert.equal(priced.rebates, 3500);
+});
+
 test("a store-named discount line is the dealer discount", () => {
   const priced = classifyPriceBlocks([
     { className: "price-block original", label: "MSRP", amount: "$28,000" },
