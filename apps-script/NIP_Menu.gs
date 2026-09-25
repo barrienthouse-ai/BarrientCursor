@@ -32,5 +32,5 @@ function NIP_showWebAppUrl() {
     SpreadsheetApp.getUi().alert('Deploy the web app first. In Apps Script choose Deploy, then New deployment, then Web app. Execute as Me. Who has access: Anyone.');
     return;
   }
-  SpreadsheetApp.getUi().alert('Web app', url);
+  SpreadsheetApp.getUi().alert('Web app', url, SpreadsheetApp.getUi().ButtonSet.OK);
 }
