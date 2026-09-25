@@ -280,14 +280,27 @@ function NIP_isStoreSavings_(cls, label) {
   return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls) || /(^|\s)subtract(\s|$)/i.test(cls);
 }
 
+function NIP_fromUrl_(url) {
+  var slug = decodeURIComponent(String(url || '').split('?')[0].split('/').pop() || '');
+  slug = NIP_clean_(slug).replace(/\b[A-HJ-NPR-Z0-9]{17}$/i, '').replace(/\s+/g, ' ').trim();
+  var year = (slug.match(/\b20\d{2}\b/) || [''])[0];
+  if (!year) return null;
+  var after = slug.split(year).pop().replace(/\s+/g, ' ').trim();
+  var parts = after.split(' ');
+  var make = parts.shift() || '';
+  if (!/^ford|chevrolet|gmc|lincoln|jeep|ram|dodge|chrysler$/i.test(make)) return null;
+  return { year: year, make: make, model: parts.join(' '), trim: '' };
+}
+
 function NIP_fillIdentity_(vehicle, html) {
+  var fromUrl = NIP_fromUrl_(vehicle.href);
   var title = (String(html).match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || String(html).match(/<title>([^<|]+)/i) || [''])[1] || '';
-  title = title.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').replace(/\s+in\s+.*/i, '').trim();
-  var parsed = NIP_parseTitle_(title);
-  if (!vehicle.year) vehicle.year = parsed.year;
-  if (!vehicle.make) vehicle.make = parsed.make;
-  if (!vehicle.model) vehicle.model = parsed.model;
-  if (!vehicle.trim) vehicle.trim = parsed.trim;
+  title = title.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').replace(/\s+in\s+.*/i, '').replace(/\s+\|.*/, '').trim();
+  var parsed = fromUrl || NIP_parseTitle_(title);
+  if (fromUrl || !vehicle.year) vehicle.year = parsed.year;
+  if (fromUrl || !vehicle.make) vehicle.make = parsed.make;
+  if (fromUrl || !vehicle.model) vehicle.model = parsed.model;
+  if (fromUrl || !vehicle.trim) vehicle.trim = parsed.trim;
   if (!vehicle.stock) {
     var stock = (String(html).match(/<title>[^<]*#([A-Z0-9]+)/i) || String(html).match(/data-stock="([A-Z0-9]+)"/i) || [])[1];
     if (stock) vehicle.stock = stock;
@@ -383,6 +396,10 @@ function NIP_price_(html) {
     dealerDiscount = msrp - internetPrice;
     sawDealerLine = true;
   }
+  if (msrp == null) {
+    var loose = source.match(/MSRP[^$]{0,80}\$([0-9,]{4,})/i) || source.match(/Retail Value[^$]{0,80}\$([0-9,]{4,})/i);
+    if (loose) msrp = Math.round(Number(String(loose[1]).replace(/,/g, '')));
+  }
   return { dealerDiscount: dealerDiscount, msrp: msrp, sawDealerLine: sawDealerLine };
 }
 
@@ -438,16 +455,22 @@ function NIP_trim_(trim) {
 function NIP_align_(vehicle) {
   var text = NIP_clean_((vehicle.model || '') + ' ' + (vehicle.trim || ''));
   text = text.replace(NIP_DRIVETRAIN_, ' ').replace(NIP_CAB_, ' ').replace(/\b(srw|drw)\b/ig, ' ').replace(/\s+/g, ' ').trim();
-  var trims = ['custom trail boss', 'lt trail boss', 'high country', 'work truck', 'outer banks', 'black diamond', 'king ranch', 'dark horse', 'big bend', 'trail boss', 'wildtrak', 'badlands', 'platinum', 'heritage', 'limited', 'lariat', 'tremor', 'raptor', 'premier', 'activ', 'custom', 'lobo', 'ecoboost', 'stx', 'xlt', 'st line', 'rst', 'z71', 'zr2', 'ltz', 'wt', 'xl', 'st', 'rs', 'lt', 'ls', 'gt'];
-  var lower = text.toLowerCase();
+  text = text.replace(/\b\d{2,3}a\b/ig, ' ').replace(/\s+/g, ' ').trim();
+  var trims = ['custom trail boss', 'lt trail boss', 'high country', 'work truck', 'outer banks', 'black diamond', 'king ranch', 'dark horse', 'big bend', 'trail boss', 'wildtrak', 'badlands', 'platinum', 'heritage', 'limited', 'lariat', 'tremor', 'raptor', 'premier', 'active', 'activ', 'custom', 'lobo', 'ecoboost', 'stx', 'xlt', 'st line', 'rst', 'z71', 'zr2', 'ltz', 'wt', 'xl', 'st', 'rs', 'lt', 'ls', 'gt'];
   var trim = '';
-  for (var i = 0; i < trims.length; i++) {
-    var needle = trims[i];
-    if (lower.length < needle.length || lower.slice(lower.length - needle.length) !== needle) continue;
-    if (lower.length !== needle.length && lower.charAt(lower.length - needle.length - 1) !== ' ') continue;
-    trim = needle;
-    text = text.slice(0, text.length - needle.length).replace(/\s+/g, ' ').trim();
-    break;
+  for (var pass = 0; pass < 3; pass++) {
+    var lower = text.toLowerCase();
+    var found = '';
+    for (var i = 0; i < trims.length; i++) {
+      var needle = trims[i];
+      if (lower.length < needle.length || lower.slice(lower.length - needle.length) !== needle) continue;
+      if (lower.length !== needle.length && lower.charAt(lower.length - needle.length - 1) !== ' ') continue;
+      found = needle;
+      break;
+    }
+    if (!found) break;
+    if (!trim) trim = found;
+    text = text.slice(0, text.length - found.length).replace(/\s+/g, ' ').trim();
   }
   vehicle.model = NIP_model_(text);
   vehicle.trim = NIP_trim_(trim || vehicle.trim);
