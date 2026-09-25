@@ -574,6 +574,15 @@ function NIP_dedupe_(text) {
   return words.join(' ');
 }
 
+function NIP_line_(text) {
+  var lines = ['bronco sport', 'expedition max', 'transit connect', 'f-450', 'f-350', 'f-250', 'f-150', 'explorer', 'expedition', 'mustang', 'maverick', 'ranger', 'bronco', 'escape', 'edge', 'transit'];
+  var lower = ' ' + NIP_model_(text) + ' ';
+  for (var i = 0; i < lines.length; i++) {
+    if (lower.indexOf(' ' + lines[i] + ' ') >= 0) return lines[i];
+  }
+  return text;
+}
+
 function NIP_align_(vehicle) {
   var text = NIP_dedupe_(NIP_clean_((vehicle.model || '') + ' ' + (vehicle.trim || '')));
   text = text.replace(NIP_DRIVETRAIN_, ' ').replace(NIP_CAB_, ' ').replace(NIP_BODY_, ' ').replace(/\b(srw|drw)\b/ig, ' ').replace(/\s+/g, ' ').trim();
@@ -597,6 +606,7 @@ function NIP_align_(vehicle) {
     if (!trim) trim = found;
     text = (text.slice(0, Math.max(0, at - 1)) + ' ' + text.slice(at - 1 + found.length + 1)).replace(/\s+/g, ' ').trim();
   }
+  text = NIP_line_(text);
   vehicle.model = NIP_model_(text);
   vehicle.trim = NIP_trim_(trim || vehicle.trim);
   if (vehicle.model) {
