@@ -607,7 +607,7 @@ function NIP_align_(vehicle) {
 
 function NIP_key_(vehicle) {
   NIP_align_(vehicle);
-  return [String(vehicle.make || '').toLowerCase(), NIP_model_(vehicle.model), NIP_trim_(vehicle.trim).toLowerCase()].join('|');
+  return [vehicle.year, String(vehicle.make || '').toLowerCase(), NIP_model_(vehicle.model), NIP_trim_(vehicle.trim).toLowerCase()].join('|');
 }
 
 function NIP_rows_(home, dealers, vehicles) {
@@ -616,20 +616,16 @@ function NIP_rows_(home, dealers, vehicles) {
     var vehicle = vehicles[i];
     NIP_align_(vehicle);
     if (!vehicle.year || !vehicle.make || !vehicle.model || !vehicle.trim || vehicle.dealerDiscount == null) continue;
-    var key = [String(vehicle.make || '').toLowerCase(), NIP_model_(vehicle.model), NIP_trim_(vehicle.trim).toLowerCase()].join('|');
+    var key = [vehicle.year, String(vehicle.make || '').toLowerCase(), NIP_model_(vehicle.model), NIP_trim_(vehicle.trim).toLowerCase()].join('|');
     if (!groups[key]) groups[key] = { year: vehicle.year, make: vehicle.make, model: vehicle.model, trim: vehicle.trim, label: [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].join(' '), by: {} };
     if (!groups[key].by[vehicle.dealerId]) groups[key].by[vehicle.dealerId] = [];
     groups[key].by[vehicle.dealerId].push(vehicle);
-    if (vehicle.dealerId === home.id) {
-      groups[key].year = vehicle.year;
-      groups[key].label = [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].join(' ');
-    }
+    if (vehicle.dealerId === home.id) groups[key].label = [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].join(' ');
   }
   var rows = [];
   for (var key in groups) {
     var homeUnits = groups[key].by[home.id] || [];
-    if (!homeUnits.length) continue;
-    var baseline = NIP_avg_(homeUnits);
+    var baseline = homeUnits.length ? NIP_avg_(homeUnits) : null;
     var matched = false;
     var competitors = [];
     var widest = null;
@@ -642,11 +638,11 @@ function NIP_rows_(home, dealers, vehicles) {
       }
       matched = true;
       var avg = NIP_avg_(units);
-      var gap = avg - baseline;
-      if (widest == null || gap > widest) widest = gap;
+      var gap = baseline == null ? null : avg - baseline;
+      if (gap != null && (widest == null || gap > widest)) widest = gap;
       competitors.push({ id: dealers[d].id, name: dealers[d].name, count: units.length, avgDiscount: avg, avgPercent: NIP_avgPercent_(units), gap: gap, units: units });
     }
-    if (!matched) continue;
+    if (!matched && !homeUnits.length) continue;
     homeUnits.sort(function (a, b) { return b.dealerDiscount - a.dealerDiscount; });
     rows.push({
       year: groups[key].year,
@@ -659,7 +655,9 @@ function NIP_rows_(home, dealers, vehicles) {
       competitors: competitors
     });
   }
-  rows.sort(function (a, b) { return b.home.count - a.home.count || String(a.label).localeCompare(String(b.label)); });
+  rows.sort(function (a, b) {
+    return String(a.model).localeCompare(String(b.model)) || String(a.trim).localeCompare(String(b.trim)) || String(a.year).localeCompare(String(b.year));
+  });
   return rows;
 }
 

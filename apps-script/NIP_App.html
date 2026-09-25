@@ -43,7 +43,7 @@
       <button type="button" id="go">Compare new inventory</button>
       <p class="status" id="status"></p>
       <div id="report"></div>
-      <p class="source">Opened from the GEAUX REPORTS menu. Gap is how much more a competitor is discounting than your store on the same make, model, and trim, including other model years. A dash means that store has none of that trim in stock. Refresh at least monthly.</p>
+      <p class="source">Opened from the GEAUX REPORTS menu. Each model year is its own row. NO STOCK means that store has none of that year, make, model, and trim. Gap is how much more a competitor is discounting than your store. Refresh at least monthly.</p>
     </div>
     <script>
       var list = document.getElementById('list');
@@ -83,7 +83,7 @@
       }
       function render(job) {
         var report = document.getElementById('report');
-        var rows = (job.rows || []).filter(function (row) { return row.home && row.home.count; });
+        var rows = job.rows || [];
         if (!rows.length) {
           report.innerHTML = '<p class="hint">No matching new vehicles with a dealer discount line.</p>';
           return;
@@ -99,7 +99,8 @@
             if (!best || dealer.avgDiscount > best.avgDiscount) best = dealer;
           });
           row.best = best;
-          row.beatenBy = best ? best.avgDiscount - row.home.avgDiscount : 0;
+          row.beatenBy = best && row.home.count ? best.avgDiscount - (row.home.avgDiscount || 0) : null;
+          if (row.beatenBy == null) return;
           if (row.beatenBy > 0) { beaten += 1; gapSum += row.beatenBy; }
           else ahead += 1;
         });
@@ -112,15 +113,15 @@
           + competitors.map(function (dealer) { return '<th>' + code(dealer) + ' $</th>'; }).join('')
           + '<th>Leader</th><th>Gap</th></tr></thead>';
         rows.forEach(function (row, index) {
-          var tone = row.beatenBy >= 3000 ? 'red' : row.beatenBy > 0 ? 'orange' : 'green';
-          var gapText = row.beatenBy > 0 ? money(row.beatenBy) : row.beatenBy < 0 ? '+' + money(Math.abs(row.beatenBy)) : 'even';
-          html += '<tr class="summary" data-i="' + index + '"><td class="left">' + (row.year || '') + '</td><td class="left">' + (row.make || '') + '</td><td class="left">' + (row.model || '') + '</td><td class="left">' + (row.trim || '') + '</td><td>' + row.home.count + '</td><td>' + money(row.home.avgDiscount) + '</td><td>' + (row.home.avgPercent == null ? '' : row.home.avgPercent + '%') + '</td>';
+          var tone = row.beatenBy == null ? '' : row.beatenBy >= 3000 ? 'red' : row.beatenBy > 0 ? 'orange' : 'green';
+          var gapText = row.beatenBy == null ? 'NO STOCK' : row.beatenBy > 0 ? money(row.beatenBy) : row.beatenBy < 0 ? '+' + money(Math.abs(row.beatenBy)) : 'even';
+          html += '<tr class="summary" data-i="' + index + '"><td class="left">' + (row.year || '') + '</td><td class="left">' + (row.make || '') + '</td><td class="left">' + (row.model || '') + '</td><td class="left">' + (row.trim || '') + '</td><td>' + (row.home.count || 0) + '</td><td>' + (row.home.count ? money(row.home.avgDiscount) : 'NO STOCK') + '</td><td>' + (row.home.count ? (row.home.avgPercent == null ? '' : row.home.avgPercent + '%') : 'NO STOCK') + '</td>';
           competitors.forEach(function (dealer) {
             var match = null;
             row.competitors.forEach(function (item) { if (item.id === dealer.id || item.name === dealer.name) match = item; });
-            html += '<td>' + (match && match.count ? money(match.avgDiscount) + ' (' + match.count + ')' : '—') + '</td>';
+            html += '<td>' + (match && match.count ? money(match.avgDiscount) + ' (' + match.count + ')' : 'NO STOCK') + '</td>';
           });
-          html += '<td class="' + tone + '">' + (row.best ? code(row.best) : '—') + '</td><td class="' + tone + '">' + gapText + '</td></tr>';
+          html += '<td class="' + tone + '">' + (row.best ? code(row.best) : 'NO STOCK') + '</td><td class="' + tone + '">' + gapText + '</td></tr>';
           html += '<tr id="detail-' + index + '" hidden><td colspan="' + (9 + competitors.length) + '">';
           [{ name: 'Geaux Ford', units: row.home.units }].concat(row.competitors.filter(function (dealer) { return dealer.count; })).forEach(function (dealer) {
             html += '<strong>' + (dealer.name || 'Geaux Ford') + '</strong><table><tr><th class="left">Stock</th><th class="left">VIN</th><th>Dealer discount</th><th>%</th></tr>';
