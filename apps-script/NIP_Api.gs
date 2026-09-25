@@ -1,6 +1,6 @@
 var NIP_DRIVETRAIN_ = /\b(4x4|4x2|4wd|2wd|awd|fwd|rwd|four wheel drive|rear wheel drive|front wheel drive|all wheel drive)\b/gi;
 var NIP_CAB_ = /\b(crew cab|double cab|regular cab|extended cab|quad cab|mega cab|supercrew|supercab|king cab)\b/gi;
-var NIP_BODY_ = /\b(advanced with automatic on demand engagement|with part time selectable engagement|part time selectable engagement|automatic on demand engagement|advanced with|on demand|selectable engagement|part time|full time|4 door|2 door|four door|two door|fastback|convertible|sport utility|4d|2d|4dr|2dr|regular|advanced|automatic|engagement|with)\b/gi;
+var NIP_BODY_ = /\b(advanced with automatic on demand engagement|with part time selectable engagement|part time selectable engagement|automatic on demand engagement|advanced with|on demand|selectable engagement|part time|full time|4 door|2 door|four door|two door|fastback|convertible|sport utility|4d|2d|4dr|2dr|regular|advanced|automatic|engagement|with|rocky ridge|black widow|harley davidson|standard)\b/gi;
 
 function NIP_compare(payload) {
   var homeUrl = NIP_website_(payload && payload.home);
