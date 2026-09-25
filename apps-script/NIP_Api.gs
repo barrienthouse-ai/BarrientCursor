@@ -625,7 +625,8 @@ function NIP_rows_(home, dealers, vehicles) {
   var rows = [];
   for (var key in groups) {
     var homeUnits = groups[key].by[home.id] || [];
-    var baseline = homeUnits.length ? NIP_avg_(homeUnits) : null;
+    if (!homeUnits.length) continue;
+    var baseline = NIP_avg_(homeUnits);
     var matched = false;
     var competitors = [];
     var widest = null;
@@ -638,7 +639,7 @@ function NIP_rows_(home, dealers, vehicles) {
       }
       matched = true;
       var avg = NIP_avg_(units);
-      var gap = baseline == null ? null : avg - baseline;
+      var gap = avg - baseline;
       if (gap != null && (widest == null || gap > widest)) widest = gap;
       competitors.push({ id: dealers[d].id, name: dealers[d].name, count: units.length, avgDiscount: avg, avgPercent: NIP_avgPercent_(units), gap: gap, units: units });
     }
