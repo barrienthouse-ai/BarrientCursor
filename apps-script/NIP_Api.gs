@@ -23,6 +23,7 @@ function NIP_compare(payload) {
       }
     } catch (error) {
       errors.push({ website: sites[i], message: String(error.message || error) });
+      dealers.push({ id: NIP_host_(sites[i]), name: NIP_host_(sites[i]), website: sites[i], count: 0 });
     }
   }
   var home = null;
@@ -95,7 +96,7 @@ function NIP_scrapeSite_(website) {
   for (var start = 0; start < fresh.length; start += 8) {
     var slice = fresh.slice(start, start + 8);
     var responses = UrlFetchApp.fetchAll(slice.map(function (card) {
-      return { url: card.href, muteHttpExceptions: true, followRedirects: true, headers: { 'User-Agent': 'Mozilla/5.0' } };
+      return { url: String(card.href).replace(/\+/g, '%2B'), muteHttpExceptions: true, followRedirects: true, headers: { 'User-Agent': 'Mozilla/5.0' } };
     }));
     for (var r = 0; r < responses.length; r++) {
       var html = responses[r].getContentText() || '';
@@ -349,13 +350,13 @@ function NIP_price_(html) {
   while ((match = stack.exec(source))) {
     var line = match[1].replace(/\s+/g, ' ').replace(/:$/, '').trim();
     var dollars = Math.round(Math.abs(Number(String(match[2]).replace(/[^0-9.-]/g, '')) || 0));
-    if (/^msrp$/i.test(line) && msrp == null) msrp = dollars;
+    if (/^msrp$|^retail value$/i.test(line) && msrp == null) msrp = dollars;
     if (/^internet price$/i.test(line) && internetPrice == null) internetPrice = dollars;
     var lineKey = line.toLowerCase();
     if (!dollars || seenLines[lineKey]) continue;
     seenLines[lineKey] = true;
     if (/doc|documentation|notary|title|tag|lien|processing/i.test(line)) fees += dollars;
-    else if (!/^msrp$|^internet price$|^price$/i.test(line) && !/accessor/i.test(line)) sellingPrices.push(dollars);
+    else if (!/^msrp$|^retail value$|^internet price$|^price$/i.test(line) && !/accessor/i.test(line)) sellingPrices.push(dollars);
     if (NIP_isStoreSavings_('priceBlockItem', line)) {
       dealerDiscount += dollars;
       sawDealerLine = true;
@@ -415,7 +416,7 @@ function NIP_dealeronCards_(origin) {
 }
 
 function NIP_clean_(value) {
-  return String(value || '').replace(/[®™]/g, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return String(value || '').replace(/[®™]/g, '').replace(/\+/g, ' ').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function NIP_model_(model) {

@@ -59,6 +59,7 @@ test("Bill Hood's unnamed discount and Bayou Ford's dealer discount line both co
     <span class="priceBlocItemPriceLabel">Bayou Price</span><span class="priceBlocItemPriceValue">$63,359</span>
   `);
   assert.equal(bayou.dealerDiscount, 7000);
+  assert.equal(bayou.msrp, 67890);
 });
 
 test("Hollingsworth subtract row and Robinson discount row are the dealer discount", () => {

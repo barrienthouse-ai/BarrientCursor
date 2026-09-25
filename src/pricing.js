@@ -128,13 +128,13 @@ export function priceFromHtml(html) {
   while ((match = dealeron.exec(source))) {
     const label = match[1].replace(/\s+/g, " ").replace(/:$/, "").trim();
     const amount = money(match[2]);
-    if (/^msrp$/i.test(label) && amount != null && msrp == null) msrp = amount;
+    if (/^msrp$|^retail value$/i.test(label) && amount != null && msrp == null) msrp = amount;
     if (/^internet price$/i.test(label) && amount != null && internetPrice == null) internetPrice = amount;
     const lineKey = label.toLowerCase();
     if (amount == null || seenLines.has(lineKey)) continue;
     seenLines.add(lineKey);
     if (/doc|documentation|notary|title|tag|lien|processing/i.test(label)) fees += amount;
-    else if (!/^msrp$|^internet price$|^price$/i.test(label) && !/accessor/i.test(label)) sellingPrices.push(amount);
+    else if (!/^msrp$|^retail value$|^internet price$|^price$/i.test(label) && !/accessor/i.test(label)) sellingPrices.push(amount);
     if (isStoreSavingsLine("priceBlockItem", label)) {
       dealerDiscount += amount;
       sawDealerLine = true;
