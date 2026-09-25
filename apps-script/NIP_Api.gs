@@ -281,7 +281,8 @@ function NIP_isStoreSavings_(cls, label) {
 }
 
 function NIP_fromUrl_(url) {
-  var slug = decodeURIComponent(String(url || '').split('?')[0].split('/').pop() || '');
+  var path = String(url || '').split('?')[0].replace(/\/+$/, '');
+  var slug = decodeURIComponent(path.split('/').pop() || '');
   slug = NIP_clean_(slug).replace(/\b[A-HJ-NPR-Z0-9]{17}$/i, '').replace(/\s+/g, ' ').trim();
   var year = (slug.match(/\b20\d{2}\b/) || [''])[0];
   if (!year) return null;
@@ -455,7 +456,7 @@ function NIP_trim_(trim) {
 function NIP_align_(vehicle) {
   var text = NIP_clean_((vehicle.model || '') + ' ' + (vehicle.trim || ''));
   text = text.replace(NIP_DRIVETRAIN_, ' ').replace(NIP_CAB_, ' ').replace(/\b(srw|drw)\b/ig, ' ').replace(/\s+/g, ' ').trim();
-  text = text.replace(/\b\d{2,3}a\b/ig, ' ').replace(/\s+/g, ' ').trim();
+  text = text.replace(/\b\d{2,3}a\b/ig, ' ').replace(/\b(sport utility|for sale|suv|crossover|pickup|hatchback|wagon|sedan)\b/ig, ' ').replace(/\s+/g, ' ').trim();
   var trims = ['custom trail boss', 'lt trail boss', 'high country', 'work truck', 'outer banks', 'black diamond', 'king ranch', 'dark horse', 'big bend', 'trail boss', 'wildtrak', 'badlands', 'platinum', 'heritage', 'limited', 'lariat', 'tremor', 'raptor', 'premier', 'active', 'activ', 'custom', 'lobo', 'ecoboost', 'stx', 'xlt', 'st line', 'rst', 'z71', 'zr2', 'ltz', 'wt', 'xl', 'st', 'rs', 'lt', 'ls', 'gt'];
   var trim = '';
   for (var pass = 0; pass < 3; pass++) {
