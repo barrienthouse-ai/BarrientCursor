@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { margin: 0; font: 15px/1.4 Georgia, serif; color: #172018; background: #f6f7f3; }
+      .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+      .banner { background: #1d4e89; color: white; font: 700 12px/1 system-ui, sans-serif; letter-spacing: .04em; padding: 8px 16px; }
+      h1 { font-size: 26px; margin: 0 0 8px; }
+      .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+      .card { background: white; border: 1px solid #d7e0d6; border-radius: 10px; padding: 10px; }
+      .card b { display: block; font: 700 28px/1 system-ui, sans-serif; }
+      .card span { font: 12px system-ui, sans-serif; color: #5d6b60; }
+      .red { color: #b42318; } .green { color: #067647; } .orange { color: #b54708; }
+      .legend { font: 12px system-ui, sans-serif; color: #5d6b60; }
+      .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 4px 0 8px; }
+      table { font-size: 12px; }
+      thead th { background: #1c2430; color: white; }
+      td.left, th.left { text-align: left; }
+      label, .head { display: block; font: 600 12px/1.2 system-ui, sans-serif; margin-top: 10px; }
+      input { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px; border: 1px solid #d7e0d6; border-radius: 8px; font: 15px system-ui, sans-serif; }
+      .row { display: flex; gap: 8px; align-items: center; }
+      button { margin-top: 12px; border: 0; border-radius: 999px; background: #1f6b3a; color: white; padding: 10px 14px; font: 600 14px system-ui, sans-serif; }
+      button.secondary { background: white; color: #144828; border: 1px solid #d7e0d6; }
+      .hint, .status, .source { font: 13px/1.4 system-ui, sans-serif; color: #5d6b60; }
+      .run { margin-top: 14px; background: white; border: 1px solid #d7e0d6; border-radius: 12px; padding: 12px 14px; }
+      .run-label { font: 700 13px/1.2 system-ui, sans-serif; letter-spacing: .08em; color: #1f6b3a; }
+      .track { height: 10px; margin: 10px 0 8px; background: #e7eee6; border-radius: 999px; overflow: hidden; }
+      .fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #1f6b3a, #3dbe6e); transition: width .4s ease; position: relative; }
+      .fill:after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent); animation: sweep 1.2s linear infinite; }
+      @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+      .steps { display: flex; justify-content: space-between; gap: 8px; font: 10px/1.2 system-ui, sans-serif; letter-spacing: .04em; color: #8aa092; }
+      .steps span.on { color: #1f6b3a; font-weight: 700; }
+      .steps span.done { color: #144828; }
+      table { width: 100%; border-collapse: collapse; background: white; font: 13px system-ui, sans-serif; }
+      th, td { padding: 8px; border-bottom: 1px solid #d7e0d6; text-align: right; }
+      th:first-child, td:first-child { text-align: left; }
+      tr.summary { cursor: pointer; }
+      .gap-pos { color: #8d2d2d; font-weight: 700; }
+      .gap-neg { color: #144828; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <div class="banner">COMPETITIVE PRICING — LAPLACE</div>
+    <div class="wrap">
+      <h1>Geaux Chevy Discount Position</h1>
+      <p class="hint">Geaux Chevrolet against Supreme, Ross Downing, Best, MB Chevy Metairie, and Gerry Lane. Discount is the dealer discount only, separate from manufacturer rebates.</p>
+      <label>Your website <input id="home" value="https://www.geauxchevy.com" /></label>
+      <div class="head">Competitor websites</div>
+      <div id="list"></div>
+      <button type="button" class="secondary" id="add">Add website</button>
+      <button type="button" id="go">Compare new inventory</button>
+      <div class="run" id="run" hidden>
+        <div class="run-label" id="run-label">SCANNING COMPETITORS</div>
+        <div class="track"><div class="fill" id="run-fill"></div></div>
+        <div class="steps" id="run-steps">
+          <span>SCANNING COMPETITORS</span>
+          <span>EXTRACTING DATA</span>
+          <span>MATCHING MODELS</span>
+          <span>BUILDING REPORT</span>
+        </div>
+      </div>
+      <p class="status" id="status"></p>
+      <div id="report"></div>
+      <p class="source">The report lists only the year, make, model, and trim Geaux Chevy has in stock. Each model year is its own row. NO STOCK means that competitor has none of that year and trim. Refresh at least monthly.</p>
+    </div>
+    <script>
+      var list = document.getElementById('list');
+      function add(value) {
+        if (list.children.length >= 5) return;
+        var row = document.createElement('div');
+        row.className = 'row';
+        var input = document.createElement('input');
+        input.placeholder = 'https://competitor.com';
+        input.value = value || '';
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'secondary';
+        remove.textContent = 'Remove';
+        remove.onclick = function () { row.remove(); };
+        row.appendChild(input);
+        row.appendChild(remove);
+        list.appendChild(row);
+      }
+      add('https://www.supremechevy.com');
+      add('https://www.rossdowningchevrolet.com');
+      add('https://www.bestchevrolet.com');
+      add('https://www.mbchevymetairie.com');
+      add('https://www.gerrylanechevy.com');
+      document.getElementById('add').onclick = function () { add(''); };
+      function money(value) {
+        if (value == null) return '—';
+        return Number(value).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+      }
+      function code(dealer) {
+        var host = String(dealer.id || dealer.website || dealer.name || '');
+        if (/supremechevy/i.test(host)) return 'SC';
+        if (/rossdowning/i.test(host)) return 'RD';
+        if (/bestchevrolet/i.test(host)) return 'BE';
+        if (/mbchevy/i.test(host)) return 'MB';
+        if (/gerrylane/i.test(host)) return 'GL';
+        if (/geauxchev/i.test(host)) return 'GC';
+        return String(dealer.name || 'Store').split(/\s+/).map(function (word) { return word.charAt(0); }).join('').slice(0, 3).toUpperCase();
+      }
+      function render(job) {
+        var report = document.getElementById('report');
+        var rows = job.rows || [];
+        if (!rows.length) {
+          report.innerHTML = '<p class="hint">No matching new vehicles with a dealer discount line.</p>';
+          return;
+        }
+        var competitors = job.dealers.filter(function (dealer) { return dealer.website !== job.home; });
+        var beaten = 0;
+        var ahead = 0;
+        var gapSum = 0;
+        rows.forEach(function (row) {
+          var best = null;
+          row.competitors.forEach(function (dealer) {
+            if (!dealer.count) return;
+            if (!best || dealer.avgDiscount > best.avgDiscount) best = dealer;
+          });
+          row.best = best;
+          row.beatenBy = best && row.home.count ? best.avgDiscount - (row.home.avgDiscount || 0) : null;
+          if (row.beatenBy == null) return;
+          if (row.beatenBy > 0) { beaten += 1; gapSum += row.beatenBy; }
+          else ahead += 1;
+        });
+        var html = '<div class="cards"><div class="card"><b>' + rows.length + '</b><span>Trims compared (Geaux has stock)</span></div>'
+          + '<div class="card"><b class="red">' + beaten + '</b><span>Trims where a competitor discounts deeper</span></div>'
+          + '<div class="card"><b class="green">' + ahead + '</b><span>Trims where Geaux leads or ties</span></div>'
+          + '<div class="card"><b>' + money(beaten ? Math.round(gapSum / beaten) : 0) + '</b><span>Avg gap on trims where beaten</span></div></div>';
+        html += '<p class="legend"><span class="dot" style="background:#067647"></span>Geaux leads or ties<span class="dot" style="background:#b54708"></span>Beaten by under $3,000<span class="dot" style="background:#b42318"></span>Beaten by $3,000 or more</p>';
+        html += '<table><thead><tr><th class="left">Year</th><th class="left">Make</th><th class="left">Model</th><th class="left">Trim</th><th>Geaux n</th><th>Geaux $</th><th>Geaux %</th>'
+          + competitors.map(function (dealer) { return '<th>' + code(dealer) + ' $</th>'; }).join('')
+          + '<th>Leader</th><th>Gap</th></tr></thead>';
+        rows.forEach(function (row, index) {
+          var tone = row.beatenBy == null ? '' : row.beatenBy >= 3000 ? 'red' : row.beatenBy > 0 ? 'orange' : 'green';
+          var gapText = row.beatenBy == null ? 'NO STOCK' : row.beatenBy > 0 ? money(row.beatenBy) : row.beatenBy < 0 ? '+' + money(Math.abs(row.beatenBy)) : 'even';
+          html += '<tr class="summary" data-i="' + index + '"><td class="left">' + (row.year || '') + '</td><td class="left">' + (row.make || '') + '</td><td class="left">' + (row.model || '') + '</td><td class="left">' + (row.trim || '') + '</td><td>' + (row.home.count || 0) + '</td><td>' + (row.home.count ? money(row.home.avgDiscount) : 'NO STOCK') + '</td><td>' + (row.home.count ? (row.home.avgPercent == null ? '' : row.home.avgPercent + '%') : 'NO STOCK') + '</td>';
+          competitors.forEach(function (dealer) {
+            var match = null;
+            row.competitors.forEach(function (item) { if (item.id === dealer.id || item.name === dealer.name) match = item; });
+            html += '<td>' + (match && match.count ? money(match.avgDiscount) + ' (' + match.count + ')' : 'NO STOCK') + '</td>';
+          });
+          html += '<td class="' + tone + '">' + (row.best ? code(row.best) : 'NO STOCK') + '</td><td class="' + tone + '">' + gapText + '</td></tr>';
+          html += '<tr id="detail-' + index + '" hidden><td colspan="' + (9 + competitors.length) + '">';
+          [{ name: 'Geaux Chevy', units: row.home.units }].concat(row.competitors.filter(function (dealer) { return dealer.count; })).forEach(function (dealer) {
+            html += '<strong>' + (dealer.name || 'Geaux Chevy') + '</strong><table><tr><th class="left">Stock</th><th class="left">VIN</th><th>Dealer discount</th><th>%</th></tr>';
+            (dealer.units || []).forEach(function (unit) {
+              html += '<tr><td class="left">' + (unit.stock || '') + '</td><td class="left">' + unit.vin + '</td><td>' + money(unit.dealerDiscount) + '</td><td>' + (unit.discountPercent == null ? '' : unit.discountPercent + '%') + '</td></tr>';
+            });
+            html += '</table>';
+          });
+          html += '</td></tr>';
+        });
+        report.innerHTML = html + '</table>';
+        report.querySelectorAll('tr.summary').forEach(function (summary) {
+          summary.onclick = function () {
+            var detail = document.getElementById('detail-' + summary.getAttribute('data-i'));
+            detail.hidden = !detail.hidden;
+          };
+        });
+      }
+      var runTimer = null;
+      var stages = ['SCANNING COMPETITORS', 'EXTRACTING DATA', 'MATCHING MODELS', 'BUILDING REPORT'];
+      function paintRun(stage, width) {
+        document.getElementById('run-label').textContent = stages[stage];
+        document.getElementById('run-fill').style.width = width + '%';
+        var marks = document.querySelectorAll('#run-steps span');
+        for (var i = 0; i < marks.length; i++) {
+          marks[i].className = i < stage ? 'done' : i === stage ? 'on' : '';
+        }
+      }
+      function stopRun(done) {
+        if (runTimer) clearInterval(runTimer);
+        runTimer = null;
+        document.getElementById('go').disabled = false;
+        if (done) paintRun(3, 100);
+        else document.getElementById('run').hidden = true;
+      }
+      document.getElementById('go').onclick = function () {
+        var competitors = [].map.call(list.querySelectorAll('input'), function (input) { return input.value.trim(); }).filter(Boolean);
+        var started = Date.now();
+        document.getElementById('report').innerHTML = '';
+        document.getElementById('status').textContent = '';
+        document.getElementById('run').hidden = false;
+        document.getElementById('go').disabled = true;
+        paintRun(0, 8);
+        runTimer = setInterval(function () {
+          var elapsed = Date.now() - started;
+          var stage = Math.min(3, Math.floor(elapsed / 8000));
+          var width = Math.min(92, 8 + (elapsed / 8000) * 22);
+          paintRun(stage, width);
+        }, 400);
+        google.script.run.withSuccessHandler(function (job) {
+          stopRun(true);
+          var extra = (job.errors || []).map(function (error) { return error.website + ': ' + error.message; }).join(' ');
+          document.getElementById('status').textContent = (job.rows || []).length + ' matching trims. ' + extra;
+          render(job);
+        }).withFailureHandler(function (error) {
+          stopRun(false);
+          document.getElementById('status').textContent = error.message;
+        }).GCY_compare({ home: document.getElementById('home').value.trim(), competitors: competitors });
+      };
+    </script>
+  </body>
+</html>
