@@ -401,14 +401,51 @@ function NIP_dealeronCards_(origin) {
   return cards;
 }
 
+function NIP_clean_(value) {
+  return String(value || '').replace(/[®™]/g, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function NIP_model_(model) {
+  var text = NIP_clean_(model).toLowerCase().replace(/\b(srw|drw|super duty)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  text = text.replace(/\bf\s*(\d{3})(?:\s*sd)?\b/g, 'f-$1');
+  return text.replace(/\s+/g, ' ').trim();
+}
+
 function NIP_trim_(trim) {
-  var text = String(trim || '').replace(NIP_DRIVETRAIN_, ' ').replace(NIP_CAB_, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-  if (text === 'wt' || text === 'work truck') return 'work truck';
-  return text;
+  var text = NIP_clean_(trim).toLowerCase().replace(NIP_DRIVETRAIN_, ' ').replace(NIP_CAB_, ' ').replace(/\b(srw|drw|super duty)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  if (text === 'wt' || text === 'work truck') return 'Work Truck';
+  if (text === 'st line') return 'ST-Line';
+  var codes = { xlt: 'XLT', xl: 'XL', stx: 'STX', st: 'ST', lt: 'LT', ls: 'LS', rs: 'RS', rst: 'RST', ltz: 'LTZ', gt: 'GT' };
+  if (codes[text]) return codes[text];
+  if (!text) return '';
+  return text.replace(/\b[a-z]/g, function (letter) { return letter.toUpperCase(); });
+}
+
+function NIP_align_(vehicle) {
+  var text = NIP_clean_((vehicle.model || '') + ' ' + (vehicle.trim || ''));
+  text = text.replace(NIP_DRIVETRAIN_, ' ').replace(NIP_CAB_, ' ').replace(/\b(srw|drw)\b/ig, ' ').replace(/\s+/g, ' ').trim();
+  var trims = ['custom trail boss', 'lt trail boss', 'high country', 'work truck', 'outer banks', 'black diamond', 'king ranch', 'dark horse', 'big bend', 'trail boss', 'wildtrak', 'badlands', 'platinum', 'heritage', 'limited', 'lariat', 'tremor', 'raptor', 'premier', 'activ', 'custom', 'lobo', 'ecoboost', 'stx', 'xlt', 'st line', 'rst', 'z71', 'zr2', 'ltz', 'wt', 'xl', 'st', 'rs', 'lt', 'ls', 'gt'];
+  var lower = text.toLowerCase();
+  var trim = '';
+  for (var i = 0; i < trims.length; i++) {
+    var needle = trims[i];
+    if (lower.length < needle.length || lower.slice(lower.length - needle.length) !== needle) continue;
+    if (lower.length !== needle.length && lower.charAt(lower.length - needle.length - 1) !== ' ') continue;
+    trim = needle;
+    text = text.slice(0, text.length - needle.length).replace(/\s+/g, ' ').trim();
+    break;
+  }
+  vehicle.model = NIP_model_(text);
+  vehicle.trim = NIP_trim_(trim || vehicle.trim);
+  if (vehicle.model) {
+    var shown = vehicle.model.replace(/\bf-(\d{3})\b/g, function (_, num) { return 'F-' + num; });
+    vehicle.model = shown.replace(/\b[a-z]/g, function (letter) { return letter.toUpperCase(); });
+  }
 }
 
 function NIP_key_(vehicle) {
-  return [vehicle.year, String(vehicle.make || '').toLowerCase(), String(vehicle.model || '').toLowerCase(), NIP_trim_(vehicle.trim)].join('|');
+  NIP_align_(vehicle);
+  return [vehicle.year, String(vehicle.make || '').toLowerCase(), NIP_model_(vehicle.model), NIP_trim_(vehicle.trim).toLowerCase()].join('|');
 }
 
 function NIP_rows_(home, dealers, vehicles) {

@@ -90,6 +90,14 @@ test("trim normalization drops cab and drivetrain suffixes", () => {
   assert.equal(vehicleKey({ year: "2026", make: "Chevrolet", model: "Silverado 1500", trim: "LT Trail Boss 4x4" }), "2026|chevrolet|silverado 1500|lt trail boss");
 });
 
+test("super duty, srw, and f250 are the same model", () => {
+  const home = vehicleKey({ year: "2026", make: "Ford", model: "Super Duty F-250®", trim: "Lariat®" });
+  const srw = vehicleKey({ year: "2026", make: "Ford", model: "Super Duty F-250 SRW", trim: "Lariat" });
+  const plain = vehicleKey({ year: "2026", make: "Ford", model: "F250", trim: "Lariat" });
+  assert.equal(home, plain);
+  assert.equal(srw, plain);
+});
+
 test("a home unit with no dealer discount stays when a competitor discounts that trim", () => {
   const home = { id: "geauxford.com", name: "Geaux Ford" };
   const other = { id: "hollingsworth.com", name: "Hollingsworth" };

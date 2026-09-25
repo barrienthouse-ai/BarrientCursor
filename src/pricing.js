@@ -21,6 +21,8 @@ export function normalizeTrim(trim) {
     .replace(DRIVETRAIN, " ")
     .replace(CAB, " ")
     .replace(BOX, " ")
+    .replace(/[®™]/g, "")
+    .replace(/\b(srw|drw|super duty)\b/gi, " ")
     .replace(/[|/]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
@@ -33,17 +35,24 @@ export function normalizeTrim(trim) {
 
 export function normalizeName(value) {
   return String(value || "")
+    .replace(/[®™]/g, "")
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
 }
 
+export function normalizeModel(model) {
+  let text = normalizeName(model).replace(/\b(srw|drw|super duty)\b/g, " ").replace(/\s+/g, " ").trim();
+  text = text.replace(/\bf\s*(\d{3})(?:\s*sd)?\b/g, "f-$1");
+  return text.replace(/\s+/g, " ").trim();
+}
+
 export function vehicleKey(vehicle) {
   return [
     String(vehicle.year || "").trim(),
     normalizeName(vehicle.make),
-    normalizeName(vehicle.model),
+    normalizeModel(vehicle.model),
     normalizeTrim(vehicle.trim),
   ].join("|");
 }
