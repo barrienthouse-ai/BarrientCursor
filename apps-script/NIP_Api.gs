@@ -90,6 +90,14 @@ function NIP_scrapeSite_(website) {
       page++;
     }
   }
+  var dealeron = false;
+  for (var c = 0; c < cards.length; c++) {
+    if (/\/new-[^/]*20\d{2}-/i.test(cards[c].href || '')) { dealeron = true; break; }
+  }
+  if (dealeron) {
+    var fed = NIP_dealeronFeed_(origin);
+    if (fed.length) return { id: NIP_host_(origin), name: name, vehicles: fed };
+  }
   var fresh = [];
   for (var i = 0; i < cards.length; i++) if (/^new$/i.test(cards[i].type || 'New')) fresh.push(cards[i]);
   var vehicles = [];
@@ -184,6 +192,65 @@ function NIP_algoliaCards_(cfg, origin) {
     }
   }
   throw new Error(lastError);
+}
+
+function NIP_dealeronFeed_(origin) {
+  var html = NIP_fetch_(origin + '/searchnew.aspx');
+  var tag = (String(html).match(/id="dealeron_tagging_data"[^>]*>(\{[\s\S]*?\})<\/script>/) || [])[1];
+  if (!tag) return [];
+  var meta;
+  try { meta = JSON.parse(tag); } catch (error) { return []; }
+  if (!meta.dealerId || !meta.pageId) return [];
+  var vehicles = [];
+  var seen = {};
+  for (var page = 1; page <= 8; page++) {
+    var body = NIP_fetch_(origin + '/api/vhcliaa/vehicle-pages/cosmos/srp/vehicles/' + meta.dealerId + '/' + meta.pageId + '?pn=96&pt=' + page);
+    var data;
+    try { data = JSON.parse(body); } catch (error) { break; }
+    var cards = data.DisplayCards || [];
+    if (!cards.length) break;
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i] && cards[i].VehicleCard;
+      if (!card || !/^new$/i.test(card.VehicleType || '') || !card.VehicleVin) continue;
+      var vin = String(card.VehicleVin).toUpperCase();
+      if (seen[vin]) continue;
+      seen[vin] = true;
+      var msrp = Math.round(Number(card.VehicleMsrp) || 0);
+      if (!msrp) continue;
+      var discount = NIP_libraryDiscount_(NIP_decodePrice_(card.VehiclePriceLibrary));
+      vehicles.push({
+        vin: vin,
+        stock: card.VehicleStockNumber || '',
+        year: String(card.VehicleYear || ''),
+        make: card.VehicleMake || '',
+        model: card.VehicleModel || '',
+        trim: card.VehicleTrim || '',
+        msrp: msrp,
+        dealerDiscount: discount == null ? 0 : discount,
+        url: card.VehicleDetailUrl || ''
+      });
+    }
+    var total = data.Paging && data.Paging.PaginationDataModel && data.Paging.PaginationDataModel.TotalPages;
+    if (!total || page >= total) break;
+  }
+  return vehicles;
+}
+
+function NIP_decodePrice_(encoded) {
+  try {
+    return Utilities.newBlob(Utilities.base64Decode(String(encoded || ''))).getDataAsString();
+  } catch (error) {
+    return '';
+  }
+}
+
+function NIP_libraryDiscount_(text) {
+  var parts = String(text || '').split(';');
+  for (var i = 0; i < parts.length; i++) {
+    var bits = parts[i].split(':');
+    if (bits[0] === 'calc_Dealer Discount') return Math.round(Number(bits[1]) || 0);
+  }
+  return null;
 }
 
 function NIP_fetchUrl_(url) {
@@ -472,7 +539,7 @@ function NIP_align_(vehicle) {
   var text = NIP_clean_((vehicle.model || '') + ' ' + (vehicle.trim || ''));
   text = text.replace(NIP_DRIVETRAIN_, ' ').replace(NIP_CAB_, ' ').replace(/\b(srw|drw)\b/ig, ' ').replace(/\s+/g, ' ').trim();
   text = text.replace(/\b\d{2,3}a\b/ig, ' ').replace(/\b(sport utility|for sale|suv|crossover|pickup|hatchback|wagon|sedan)\b/ig, ' ').replace(/\s+/g, ' ').trim();
-  var trims = ['custom trail boss', 'lt trail boss', 'high country', 'work truck', 'outer banks', 'black diamond', 'king ranch', 'dark horse', 'big bend', 'trail boss', 'wildtrak', 'badlands', 'platinum', 'heritage', 'limited', 'lariat', 'tremor', 'raptor', 'premier', 'active', 'activ', 'custom', 'lobo', 'ecoboost', 'stx', 'xlt', 'st line', 'rst', 'z71', 'zr2', 'ltz', 'wt', 'xl', 'st', 'rs', 'lt', 'ls', 'gt'];
+  var trims = ['custom trail boss', 'lt trail boss', 'high country', 'work truck', 'outer banks', 'black diamond', 'king ranch', 'dark horse', 'big bend', 'trail boss', 'wildtrak', 'badlands', 'platinum', 'heritage edition', 'heritage', 'limited', 'lariat', 'tremor', 'raptor', 'premier', 'active', 'activ', 'custom', 'lobo', 'ecoboost', 'stx', 'xlt', 'st line', 'rst', 'z71', 'zr2', 'ltz', 'wt', 'xl', 'st', 'rs', 'lt', 'ls', 'gt'];
   var trim = '';
   for (var pass = 0; pass < 3; pass++) {
     var lower = text.toLowerCase();
