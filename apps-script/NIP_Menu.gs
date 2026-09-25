@@ -14,6 +14,7 @@ function NIP_onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('New Inventory Pricing')
     .addItem('Compare discounts', 'NIP_open')
+    .addItem('Web app link', 'NIP_showWebAppUrl')
     .addToUi();
 }
 
@@ -22,4 +23,14 @@ function NIP_open() {
     .setWidth(1100)
     .setHeight(780);
   SpreadsheetApp.getUi().showModalDialog(html, 'New inventory pricing');
+}
+
+function NIP_showWebAppUrl() {
+  var url = '';
+  try { url = ScriptApp.getService().getUrl(); } catch (error) { url = ''; }
+  if (!url) {
+    SpreadsheetApp.getUi().alert('Deploy the web app first. In Apps Script choose Deploy, then New deployment, then Web app. Execute as Me. Who has access: Anyone.');
+    return;
+  }
+  SpreadsheetApp.getUi().alert('Web app', url);
 }

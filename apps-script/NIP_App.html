@@ -2,9 +2,10 @@
 <html>
   <head>
     <base target="_top" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       body { margin: 0; font: 15px/1.4 Georgia, serif; color: #172018; background: #f6f7f3; }
-      .wrap { padding: 16px; }
+      .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
       .banner { background: #1d4e89; color: white; font: 700 12px/1 system-ui, sans-serif; letter-spacing: .04em; padding: 8px 16px; }
       h1 { font-size: 26px; margin: 0 0 8px; }
       .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
@@ -62,7 +63,7 @@
       </div>
       <p class="status" id="status"></p>
       <div id="report"></div>
-      <p class="source">Opened from the GEAUX REPORTS menu. The report lists only the year, make, model, and trim Geaux Ford has in stock. Each model year is its own row. NO STOCK means that competitor has none of that year and trim. Refresh at least monthly.</p>
+      <p class="source">The report lists only the year, make, model, and trim Geaux Ford has in stock. Each model year is its own row. NO STOCK means that competitor has none of that year and trim. Refresh at least monthly.</p>
     </div>
     <script>
       var list = document.getElementById('list');
