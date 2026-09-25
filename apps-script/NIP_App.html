@@ -23,6 +23,15 @@
       button { margin-top: 12px; border: 0; border-radius: 999px; background: #1f6b3a; color: white; padding: 10px 14px; font: 600 14px system-ui, sans-serif; }
       button.secondary { background: white; color: #144828; border: 1px solid #d7e0d6; }
       .hint, .status, .source { font: 13px/1.4 system-ui, sans-serif; color: #5d6b60; }
+      .run { margin-top: 14px; background: white; border: 1px solid #d7e0d6; border-radius: 12px; padding: 12px 14px; }
+      .run-label { font: 700 13px/1.2 system-ui, sans-serif; letter-spacing: .08em; color: #1f6b3a; }
+      .track { height: 10px; margin: 10px 0 8px; background: #e7eee6; border-radius: 999px; overflow: hidden; }
+      .fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #1f6b3a, #3dbe6e); transition: width .4s ease; position: relative; }
+      .fill:after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent); animation: sweep 1.2s linear infinite; }
+      @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+      .steps { display: flex; justify-content: space-between; gap: 8px; font: 10px/1.2 system-ui, sans-serif; letter-spacing: .04em; color: #8aa092; }
+      .steps span.on { color: #1f6b3a; font-weight: 700; }
+      .steps span.done { color: #144828; }
       table { width: 100%; border-collapse: collapse; background: white; font: 13px system-ui, sans-serif; }
       th, td { padding: 8px; border-bottom: 1px solid #d7e0d6; text-align: right; }
       th:first-child, td:first-child { text-align: left; }
@@ -41,6 +50,16 @@
       <div id="list"></div>
       <button type="button" class="secondary" id="add">Add website</button>
       <button type="button" id="go">Compare new inventory</button>
+      <div class="run" id="run" hidden>
+        <div class="run-label" id="run-label">SCANNING COMPETITORS</div>
+        <div class="track"><div class="fill" id="run-fill"></div></div>
+        <div class="steps" id="run-steps">
+          <span>SCANNING COMPETITORS</span>
+          <span>EXTRACTING DATA</span>
+          <span>MATCHING MODELS</span>
+          <span>BUILDING REPORT</span>
+        </div>
+      </div>
       <p class="status" id="status"></p>
       <div id="report"></div>
       <p class="source">Opened from the GEAUX REPORTS menu. The report lists only the year, make, model, and trim Geaux Ford has in stock. Each model year is its own row. NO STOCK means that competitor has none of that year and trim. Refresh at least monthly.</p>
@@ -140,14 +159,44 @@
           };
         });
       }
+      var runTimer = null;
+      var stages = ['SCANNING COMPETITORS', 'EXTRACTING DATA', 'MATCHING MODELS', 'BUILDING REPORT'];
+      function paintRun(stage, width) {
+        document.getElementById('run-label').textContent = stages[stage];
+        document.getElementById('run-fill').style.width = width + '%';
+        var marks = document.querySelectorAll('#run-steps span');
+        for (var i = 0; i < marks.length; i++) {
+          marks[i].className = i < stage ? 'done' : i === stage ? 'on' : '';
+        }
+      }
+      function stopRun(done) {
+        if (runTimer) clearInterval(runTimer);
+        runTimer = null;
+        document.getElementById('go').disabled = false;
+        if (done) paintRun(3, 100);
+        else document.getElementById('run').hidden = true;
+      }
       document.getElementById('go').onclick = function () {
         var competitors = [].map.call(list.querySelectorAll('input'), function (input) { return input.value.trim(); }).filter(Boolean);
-        document.getElementById('status').textContent = 'Reading public new inventory…';
+        var started = Date.now();
+        document.getElementById('report').innerHTML = '';
+        document.getElementById('status').textContent = '';
+        document.getElementById('run').hidden = false;
+        document.getElementById('go').disabled = true;
+        paintRun(0, 8);
+        runTimer = setInterval(function () {
+          var elapsed = Date.now() - started;
+          var stage = Math.min(3, Math.floor(elapsed / 8000));
+          var width = Math.min(92, 8 + (elapsed / 8000) * 22);
+          paintRun(stage, width);
+        }, 400);
         google.script.run.withSuccessHandler(function (job) {
+          stopRun(true);
           var extra = (job.errors || []).map(function (error) { return error.website + ': ' + error.message; }).join(' ');
           document.getElementById('status').textContent = (job.rows || []).length + ' matching trims. ' + extra;
           render(job);
         }).withFailureHandler(function (error) {
+          stopRun(false);
           document.getElementById('status').textContent = error.message;
         }).NIP_compare({ home: document.getElementById('home').value.trim(), competitors: competitors });
       };
