@@ -5,7 +5,18 @@
     <style>
       body { margin: 0; font: 15px/1.4 Georgia, serif; color: #172018; background: #f6f7f3; }
       .wrap { padding: 16px; }
+      .banner { background: #1d4e89; color: white; font: 700 12px/1 system-ui, sans-serif; letter-spacing: .04em; padding: 8px 16px; }
       h1 { font-size: 26px; margin: 0 0 8px; }
+      .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+      .card { background: white; border: 1px solid #d7e0d6; border-radius: 10px; padding: 10px; }
+      .card b { display: block; font: 700 28px/1 system-ui, sans-serif; }
+      .card span { font: 12px system-ui, sans-serif; color: #5d6b60; }
+      .red { color: #b42318; } .green { color: #067647; } .orange { color: #b54708; }
+      .legend { font: 12px system-ui, sans-serif; color: #5d6b60; }
+      .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 4px 0 8px; }
+      table { font-size: 12px; }
+      thead th { background: #1c2430; color: white; }
+      td.left, th.left { text-align: left; }
       label, .head { display: block; font: 600 12px/1.2 system-ui, sans-serif; margin-top: 10px; }
       input { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px; border: 1px solid #d7e0d6; border-radius: 8px; font: 15px system-ui, sans-serif; }
       .row { display: flex; gap: 8px; align-items: center; }
@@ -21,10 +32,11 @@
     </style>
   </head>
   <body>
+    <div class="banner">COMPETITIVE PRICING — DENHAM SPRINGS / BATON ROUGE</div>
     <div class="wrap">
-      <h1>New inventory discount comparison</h1>
-      <p class="hint">Your site plus two or three competitors. Discount is the dealer discount line on each new vehicle, separate from manufacturer rebates.</p>
-      <label>Your website <input id="home" value="https://www.geauxchevrolet.com" /></label>
+      <h1>Geaux Discount Position</h1>
+      <p class="hint">Geaux Ford Denham Springs against the other Ford stores. Geaux Chevrolet is not in this comparison. Discount is the dealer discount only, separate from manufacturer rebates.</p>
+      <label>Your website <input id="home" value="https://www.geauxforddenhamsprings.com" /></label>
       <div class="head">Competitor websites</div>
       <div id="list"></div>
       <button type="button" class="secondary" id="add">Add website</button>
@@ -51,33 +63,65 @@
         row.appendChild(remove);
         list.appendChild(row);
       }
-      add('');
-      add('');
+      add('https://www.hollingsworthrichardsford.com');
+      add('https://robinsonbrothers.com');
       document.getElementById('add').onclick = function () { add(''); };
       function money(value) {
         if (value == null) return '—';
         return Number(value).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
       }
+      function code(dealer) {
+        var host = String(dealer.id || dealer.website || dealer.name || '');
+        if (/hollingsworth/i.test(host)) return 'HR';
+        if (/robinson/i.test(host)) return 'RB';
+        if (/geauxford/i.test(host)) return 'GF';
+        return String(dealer.name || 'Store').split(/\s+/).map(function (word) { return word.charAt(0); }).join('').slice(0, 3).toUpperCase();
+      }
       function render(job) {
         var report = document.getElementById('report');
-        if (!job.rows || !job.rows.length) {
+        var rows = (job.rows || []).filter(function (row) { return row.home && row.home.count; });
+        if (!rows.length) {
           report.innerHTML = '<p class="hint">No matching new vehicles with a dealer discount line.</p>';
           return;
         }
         var competitors = job.dealers.filter(function (dealer) { return dealer.website !== job.home; });
-        var html = '<table><tr><th>Vehicle</th><th>Your discount</th>' + competitors.map(function (dealer) {
-          return '<th>' + dealer.name + '<br>discount / gap</th>';
-        }).join('') + '</tr>';
-        job.rows.forEach(function (row, index) {
-          html += '<tr class="summary" data-i="' + index + '"><td>▸ ' + row.label + '<div>' + row.home.count + ' on your lot</div></td><td>' + money(row.home.avgDiscount) + '</td>';
+        var beaten = 0;
+        var ahead = 0;
+        var gapSum = 0;
+        rows.forEach(function (row) {
+          var best = null;
           row.competitors.forEach(function (dealer) {
-            html += '<td>' + (dealer.count ? money(dealer.avgDiscount) + '<div class="' + (dealer.gap > 0 ? 'gap-pos' : 'gap-neg') + '">' + (dealer.gap > 0 ? '+' : '') + money(dealer.gap) + ' gap</div>' : '—') + '</td>';
+            if (!dealer.count) return;
+            if (!best || dealer.avgDiscount > best.avgDiscount) best = dealer;
           });
-          html += '</tr><tr id="detail-' + index + '" hidden><td colspan="' + (2 + competitors.length) + '">';
-          [row.home].concat(row.competitors.filter(function (dealer) { return dealer.count; })).forEach(function (dealer) {
-            html += '<strong>' + (dealer.name || 'Your store') + '</strong><table><tr><th>Stock</th><th>VIN</th><th>Dealer discount</th><th>%</th></tr>';
+          row.best = best;
+          row.beatenBy = best ? best.avgDiscount - row.home.avgDiscount : 0;
+          if (row.beatenBy > 0) { beaten += 1; gapSum += row.beatenBy; }
+          else ahead += 1;
+        });
+        var html = '<div class="cards"><div class="card"><b>' + rows.length + '</b><span>Trims compared (Geaux has stock)</span></div>'
+          + '<div class="card"><b class="red">' + beaten + '</b><span>Trims where a competitor discounts deeper</span></div>'
+          + '<div class="card"><b class="green">' + ahead + '</b><span>Trims where Geaux leads or ties</span></div>'
+          + '<div class="card"><b>' + money(beaten ? Math.round(gapSum / beaten) : 0) + '</b><span>Avg gap on trims where beaten</span></div></div>';
+        html += '<p class="legend"><span class="dot" style="background:#067647"></span>Geaux leads or ties<span class="dot" style="background:#b54708"></span>Beaten by under $3,000<span class="dot" style="background:#b42318"></span>Beaten by $3,000 or more</p>';
+        html += '<table><thead><tr><th class="left">Year</th><th class="left">Make</th><th class="left">Model</th><th class="left">Trim</th><th>Geaux n</th><th>Geaux $</th><th>Geaux %</th>'
+          + competitors.map(function (dealer) { return '<th>' + code(dealer) + ' $</th>'; }).join('')
+          + '<th>Leader</th><th>Gap</th></tr></thead>';
+        rows.forEach(function (row, index) {
+          var tone = row.beatenBy >= 3000 ? 'red' : row.beatenBy > 0 ? 'orange' : 'green';
+          var gapText = row.beatenBy > 0 ? money(row.beatenBy) : row.beatenBy < 0 ? '+' + money(Math.abs(row.beatenBy)) : 'even';
+          html += '<tr class="summary" data-i="' + index + '"><td class="left">' + (row.year || '') + '</td><td class="left">' + (row.make || '') + '</td><td class="left">' + (row.model || '') + '</td><td class="left">' + (row.trim || '') + '</td><td>' + row.home.count + '</td><td>' + money(row.home.avgDiscount) + '</td><td>' + (row.home.avgPercent == null ? '' : row.home.avgPercent + '%') + '</td>';
+          competitors.forEach(function (dealer) {
+            var match = null;
+            row.competitors.forEach(function (item) { if (item.id === dealer.id || item.name === dealer.name) match = item; });
+            html += '<td>' + (match && match.count ? money(match.avgDiscount) + ' (' + match.count + ')' : '—') + '</td>';
+          });
+          html += '<td class="' + tone + '">' + (row.best ? code(row.best) : '—') + '</td><td class="' + tone + '">' + gapText + '</td></tr>';
+          html += '<tr id="detail-' + index + '" hidden><td colspan="' + (9 + competitors.length) + '">';
+          [{ name: 'Geaux Ford', units: row.home.units }].concat(row.competitors.filter(function (dealer) { return dealer.count; })).forEach(function (dealer) {
+            html += '<strong>' + (dealer.name || 'Geaux Ford') + '</strong><table><tr><th class="left">Stock</th><th class="left">VIN</th><th>Dealer discount</th><th>%</th></tr>';
             (dealer.units || []).forEach(function (unit) {
-              html += '<tr><td>' + (unit.stock || '') + '</td><td>' + unit.vin + '</td><td>' + money(unit.dealerDiscount) + '</td><td>' + (unit.discountPercent == null ? '' : unit.discountPercent + '%') + '</td></tr>';
+              html += '<tr><td class="left">' + (unit.stock || '') + '</td><td class="left">' + unit.vin + '</td><td>' + money(unit.dealerDiscount) + '</td><td>' + (unit.discountPercent == null ? '' : unit.discountPercent + '%') + '</td></tr>';
             });
             html += '</table>';
           });

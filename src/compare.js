@@ -40,13 +40,9 @@ export function compareDealers({ home, dealers, vehicles }) {
   const rows = [];
   for (const group of groups.values()) {
     const homeUnits = group.byDealer[home.id] || [];
-    const homeSummary = homeUnits.length ? summarize(homeUnits) : { count: 0, avgDiscount: null, avgPercent: null, units: [] };
-    const stocked = dealers.filter((dealer) => (group.byDealer[dealer.id] || []).length);
-    const someoneDiscounts = stocked.some((dealer) => (group.byDealer[dealer.id] || []).some((unit) => unit.dealerDiscount > 0));
-    if (stocked.length < 2 || !someoneDiscounts) continue;
-    const baseline = homeUnits.length
-      ? homeSummary.avgDiscount
-      : Math.min(...stocked.map((dealer) => summarize(group.byDealer[dealer.id]).avgDiscount));
+    if (!homeUnits.length) continue;
+    const homeSummary = summarize(homeUnits);
+    const baseline = homeSummary.avgDiscount;
     const competitors = dealers
       .filter((dealer) => dealer.id !== home.id)
       .map((dealer) => {
@@ -61,7 +57,7 @@ export function compareDealers({ home, dealers, vehicles }) {
         };
       });
     const matched = competitors.filter((dealer) => dealer.count > 0 && dealer.gap != null);
-    if (!matched.length && !homeUnits.length) continue;
+    if (!matched.length) continue;
     const widest = matched.reduce((best, dealer) => (dealer.gap > best.gap ? dealer : best), matched[0] || { gap: 0 });
     rows.push({
       key: group.key,
@@ -76,7 +72,7 @@ export function compareDealers({ home, dealers, vehicles }) {
     });
   }
 
-  rows.sort((a, b) => b.widestGap - a.widestGap || a.label.localeCompare(b.label));
+  rows.sort((a, b) => b.home.count - a.home.count || a.label.localeCompare(b.label));
   return rows;
 }
 

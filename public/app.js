@@ -34,7 +34,7 @@ function addCompetitor(value = "") {
   addButton.hidden = competitorList.children.length >= 3;
 }
 
-(stored.competitors?.length ? stored.competitors : ["", ""]).slice(0, 3).forEach(addCompetitor);
+(stored.competitors?.length ? stored.competitors : ["https://www.hollingsworthrichardsford.com", "https://robinsonbrothers.com"]).slice(0, 3).forEach(addCompetitor);
 addButton.addEventListener("click", () => addCompetitor());
 
 function money(value) {

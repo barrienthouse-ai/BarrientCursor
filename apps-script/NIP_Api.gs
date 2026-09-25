@@ -417,7 +417,7 @@ function NIP_rows_(home, dealers, vehicles) {
     var vehicle = vehicles[i];
     if (!vehicle.year || !vehicle.make || !vehicle.model || !vehicle.trim || vehicle.dealerDiscount == null) continue;
     var key = NIP_key_(vehicle);
-    if (!groups[key]) groups[key] = { label: [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].join(' '), by: {} };
+    if (!groups[key]) groups[key] = { year: vehicle.year, make: vehicle.make, model: vehicle.model, trim: vehicle.trim, label: [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].join(' '), by: {} };
     if (!groups[key].by[vehicle.dealerId]) groups[key].by[vehicle.dealerId] = [];
     groups[key].by[vehicle.dealerId].push(vehicle);
     if (vehicle.dealerId === home.id) groups[key].label = [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].join(' ');
@@ -425,22 +425,9 @@ function NIP_rows_(home, dealers, vehicles) {
   var rows = [];
   for (var key in groups) {
     var homeUnits = groups[key].by[home.id] || [];
-    var stocked = [];
-    var someoneDiscounts = false;
-    for (var s = 0; s < dealers.length; s++) {
-      var stock = groups[key].by[dealers[s].id] || [];
-      if (!stock.length) continue;
-      stocked.push(dealers[s].id);
-      for (var u = 0; u < stock.length; u++) if (stock[u].dealerDiscount > 0) someoneDiscounts = true;
-    }
-    if (stocked.length < 2 || !someoneDiscounts) continue;
-    var baseline = homeUnits.length ? NIP_avg_(homeUnits) : null;
-    if (baseline == null) {
-      for (var b = 0; b < stocked.length; b++) {
-        var stockAvg = NIP_avg_(groups[key].by[stocked[b]]);
-        if (baseline == null || stockAvg < baseline) baseline = stockAvg;
-      }
-    }
+    if (!homeUnits.length) continue;
+    var baseline = NIP_avg_(homeUnits);
+    var matched = false;
     var competitors = [];
     var widest = null;
     for (var d = 0; d < dealers.length; d++) {
@@ -450,21 +437,26 @@ function NIP_rows_(home, dealers, vehicles) {
         competitors.push({ id: dealers[d].id, name: dealers[d].name, count: 0 });
         continue;
       }
+      matched = true;
       var avg = NIP_avg_(units);
       var gap = avg - baseline;
       if (widest == null || gap > widest) widest = gap;
       competitors.push({ id: dealers[d].id, name: dealers[d].name, count: units.length, avgDiscount: avg, avgPercent: NIP_avgPercent_(units), gap: gap, units: units });
     }
-    if (widest == null) widest = 0;
+    if (!matched) continue;
     homeUnits.sort(function (a, b) { return b.dealerDiscount - a.dealerDiscount; });
     rows.push({
+      year: groups[key].year,
+      make: groups[key].make,
+      model: groups[key].model,
+      trim: groups[key].trim,
       label: groups[key].label,
       widestGap: widest,
       home: { id: home.id, name: home.name, count: homeUnits.length, avgDiscount: homeUnits.length ? NIP_avg_(homeUnits) : null, avgPercent: homeUnits.length ? NIP_avgPercent_(homeUnits) : null, units: homeUnits },
       competitors: competitors
     });
   }
-  rows.sort(function (a, b) { return b.widestGap - a.widestGap; });
+  rows.sort(function (a, b) { return b.home.count - a.home.count || String(a.label).localeCompare(String(b.label)); });
   return rows;
 }
 

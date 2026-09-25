@@ -113,10 +113,7 @@ test("a home unit with no dealer discount stays when a competitor discounts that
       attachDiscount({ dealerId: otherStore.id, year: "2026", make: "Ford", model: "F-150", trim: "XLT", vin: "B", stock: "160088", msrp: 66625, dealerDiscount: 7520 }),
     ],
   });
-  assert.equal(withoutHome.length, 1);
-  assert.equal(withoutHome[0].home.count, 0);
-  assert.equal(withoutHome[0].competitors[0].avgDiscount, 0);
-  assert.equal(withoutHome[0].competitors[1].gap, 7520);
+  assert.equal(withoutHome.length, 0);
 });
 
 test("gap is the extra competitor discount on units the home store stocks", () => {
