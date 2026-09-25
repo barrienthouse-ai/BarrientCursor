@@ -607,7 +607,7 @@ function NIP_align_(vehicle) {
 
 function NIP_key_(vehicle) {
   NIP_align_(vehicle);
-  return [vehicle.year, String(vehicle.make || '').toLowerCase(), NIP_model_(vehicle.model), NIP_trim_(vehicle.trim).toLowerCase()].join('|');
+  return [String(vehicle.make || '').toLowerCase(), NIP_model_(vehicle.model), NIP_trim_(vehicle.trim).toLowerCase()].join('|');
 }
 
 function NIP_rows_(home, dealers, vehicles) {
@@ -616,11 +616,14 @@ function NIP_rows_(home, dealers, vehicles) {
     var vehicle = vehicles[i];
     NIP_align_(vehicle);
     if (!vehicle.year || !vehicle.make || !vehicle.model || !vehicle.trim || vehicle.dealerDiscount == null) continue;
-    var key = [vehicle.year, String(vehicle.make || '').toLowerCase(), NIP_model_(vehicle.model), NIP_trim_(vehicle.trim).toLowerCase()].join('|');
+    var key = [String(vehicle.make || '').toLowerCase(), NIP_model_(vehicle.model), NIP_trim_(vehicle.trim).toLowerCase()].join('|');
     if (!groups[key]) groups[key] = { year: vehicle.year, make: vehicle.make, model: vehicle.model, trim: vehicle.trim, label: [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].join(' '), by: {} };
     if (!groups[key].by[vehicle.dealerId]) groups[key].by[vehicle.dealerId] = [];
     groups[key].by[vehicle.dealerId].push(vehicle);
-    if (vehicle.dealerId === home.id) groups[key].label = [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].join(' ');
+    if (vehicle.dealerId === home.id) {
+      groups[key].year = vehicle.year;
+      groups[key].label = [vehicle.year, vehicle.make, vehicle.model, vehicle.trim].join(' ');
+    }
   }
   var rows = [];
   for (var key in groups) {
