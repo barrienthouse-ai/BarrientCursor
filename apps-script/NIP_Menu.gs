@@ -25,6 +25,13 @@ function NIP_open() {
   SpreadsheetApp.getUi().showModalDialog(html, 'New inventory pricing');
 }
 
+function NIP_serveWebApp_() {
+  return HtmlService.createHtmlOutputFromFile('NIP_App')
+    .setTitle('Geaux Discount Position')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
 function NIP_showWebAppUrl() {
   var url = '';
   try { url = ScriptApp.getService().getUrl(); } catch (error) { url = ''; }
@@ -32,5 +39,6 @@ function NIP_showWebAppUrl() {
     SpreadsheetApp.getUi().alert('Deploy the web app first. In Apps Script choose Deploy, then New deployment, then Web app. Execute as Me. Who has access: Anyone.');
     return;
   }
+  if (url.indexOf('page=pricing') < 0) url += (url.indexOf('?') < 0 ? '?' : '&') + 'page=pricing';
   SpreadsheetApp.getUi().alert('Web app', url, SpreadsheetApp.getUi().ButtonSet.OK);
 }

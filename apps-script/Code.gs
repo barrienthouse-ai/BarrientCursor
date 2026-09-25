@@ -174,10 +174,3 @@ function nestOnOpenMenus_(ui, parent, openFn, fallbackTitle) {
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
-
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('NIP_App')
-    .setTitle('Geaux Discount Position')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
