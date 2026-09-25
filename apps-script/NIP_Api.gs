@@ -3,7 +3,7 @@ var NIP_CAB_ = /\b(crew cab|double cab|regular cab|extended cab|quad cab|mega ca
 
 function NIP_compare(payload) {
   var homeUrl = NIP_website_(payload && payload.home);
-  var competitors = NIP_unique_((payload && payload.competitors) || []).slice(0, 3);
+  var competitors = NIP_unique_((payload && payload.competitors) || []).slice(0, 5);
   if (!homeUrl) throw new Error('Enter your dealership website.');
   if (!competitors.length) throw new Error('Add at least one competitor website.');
   var sites = [homeUrl].concat(competitors);
@@ -261,7 +261,8 @@ function NIP_newUrls_(xml) {
   var urls = [];
   var matches = String(xml || '').match(/https?:\/\/[^<\s"]+/gi) || [];
   for (var i = 0; i < matches.length; i++) {
-    var isNew = /\/inventory\/new-|\/new\/[^/]+\/20\d{2}-/i.test(matches[i]);
+    matches[i] = matches[i].replace(/&#x2B;/gi, '+').replace(/&amp;/g, '&');
+    var isNew = /\/inventory\/new-|\/new\/[^/]+\/20\d{2}-|\/new-[^/]*20\d{2}-/i.test(matches[i]) && !/\/used-/i.test(matches[i]);
     var isRetail = /\/for-sale\//i.test(matches[i]) && !/\/for-sale\/(?:used|certified)-/i.test(matches[i]) && /20\d{2}-/i.test(matches[i]);
     if (!isNew && !isRetail) continue;
     urls.push(matches[i].replace(/\/$/, '') + '/');
@@ -274,6 +275,7 @@ function NIP_isStoreSavings_(cls, label) {
   if (/incentive-|consumer-cash|bonus-cash|dealer-fee|left-discounts/i.test(cls)) return false;
   if (/^msrp$|total savings|sales price|selling price|internet price|documentation|doc fee|notary|title fee/i.test(text)) return false;
   if (/customer cash|bonus cash|rebate|military|first responder|college|lease loyalty|conquest/i.test(text)) return false;
+  if (/^dealer discount\b/i.test(text)) return true;
   return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls) || /(^|\s)subtract(\s|$)/i.test(cls);
 }
 
@@ -342,6 +344,8 @@ function NIP_price_(html) {
   }
   var stack = /priceBloc[k]?ItemPriceLabel[^>]*>\s*([^<]+?)\s*<\/span>[\s\S]{0,1200}?priceBloc[k]?ItemPriceValue[^>]*>\s*([^<]+)/gi;
   var internetPrice = null;
+  var fees = 0;
+  var sellingPrices = [];
   while ((match = stack.exec(source))) {
     var line = match[1].replace(/\s+/g, ' ').replace(/:$/, '').trim();
     var dollars = Math.round(Math.abs(Number(String(match[2]).replace(/[^0-9.-]/g, '')) || 0));
@@ -350,8 +354,17 @@ function NIP_price_(html) {
     var lineKey = line.toLowerCase();
     if (!dollars || seenLines[lineKey]) continue;
     seenLines[lineKey] = true;
+    if (/doc|documentation|notary|title|tag|lien|processing/i.test(line)) fees += dollars;
+    else if (!/^msrp$|^internet price$|^price$/i.test(line) && !/accessor/i.test(line)) sellingPrices.push(dollars);
     if (NIP_isStoreSavings_('priceBlockItem', line)) {
       dealerDiscount += dollars;
+      sawDealerLine = true;
+    }
+  }
+  if (!sawDealerLine && internetPrice == null && msrp != null && sellingPrices.length === 1) {
+    var implied = msrp + fees - sellingPrices[0];
+    if (implied > 0) {
+      dealerDiscount = implied;
       sawDealerLine = true;
     }
   }

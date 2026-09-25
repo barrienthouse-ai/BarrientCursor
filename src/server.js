@@ -73,7 +73,7 @@ const server = createServer(async (request, response) => {
     if (request.method === "POST" && url.pathname === "/api/compare") {
       const body = await readBody(request);
       const home = normalizeSite(body.home);
-      const competitors = [...new Set((body.competitors || []).map(normalizeSite).filter(Boolean))].slice(0, 3);
+      const competitors = [...new Set((body.competitors || []).map(normalizeSite).filter(Boolean))].slice(0, 5);
       if (!home) return send(response, 400, JSON.stringify({ error: "Enter your dealership website." }));
       if (!competitors.length) return send(response, 400, JSON.stringify({ error: "Add at least one competitor website." }));
       const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;

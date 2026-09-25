@@ -46,6 +46,21 @@ test("DealerOn Supreme Savings is the dealer line and the SAVINGS headline is no
   assert.equal(priced.sawDealerLine, true);
 });
 
+test("Bill Hood's unnamed discount and Bayou Ford's dealer discount line both count", () => {
+  const hood = priceFromHtml(`
+    <span class="priceBlocItemPriceLabel">MSRP:</span><span class="priceBlocItemPriceValue">$55,375</span>
+    <span class="priceBlocItemPriceLabel">Documentation Fee:</span><span class="priceBlocItemPriceValue">$436</span>
+    <span class="priceBlocItemPriceLabel">Hood Ford Price</span><span class="priceBlocItemPriceValue">$50,811</span>
+  `);
+  assert.equal(hood.dealerDiscount, 5000);
+  const bayou = priceFromHtml(`
+    <span class="priceBlocItemPriceLabel">Retail Value</span><span class="priceBlocItemPriceValue">$67,890</span>
+    <span class="priceBlocItemPriceLabel">Dealer Discount</span><span class="priceBlocItemPriceValue">-$7,000</span>
+    <span class="priceBlocItemPriceLabel">Bayou Price</span><span class="priceBlocItemPriceValue">$63,359</span>
+  `);
+  assert.equal(bayou.dealerDiscount, 7000);
+});
+
 test("Hollingsworth subtract row and Robinson discount row are the dealer discount", () => {
   const hollingsworth = priceFromHtml(`
     <div class="price-block "><span class="price-label">MSRP</span><span class="price">$66,625</span></div>

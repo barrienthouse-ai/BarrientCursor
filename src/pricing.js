@@ -71,6 +71,7 @@ export function isStoreSavingsLine(className, label) {
   if (/incentive-|consumer-cash|bonus-cash|dealer-fee|left-discounts/i.test(cls)) return false;
   if (/^msrp$|total savings|sales price|selling price|internet price|documentation|doc fee|notary|title fee/i.test(text)) return false;
   if (/customer cash|bonus cash|rebate|military|first responder|college|lease loyalty|conquest/i.test(text)) return false;
+  if (/^dealer discount\b/i.test(text)) return true;
   return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls) || /(^|\s)subtract(\s|$)/i.test(cls);
 }
 
@@ -122,6 +123,8 @@ export function priceFromHtml(html) {
   }
   const dealeron = /priceBloc[k]?ItemPriceLabel[^>]*>\s*([^<]+?)\s*<\/span>[\s\S]{0,1200}?priceBloc[k]?ItemPriceValue[^>]*>\s*([^<]+)/gi;
   let internetPrice = null;
+  let fees = 0;
+  const sellingPrices = [];
   while ((match = dealeron.exec(source))) {
     const label = match[1].replace(/\s+/g, " ").replace(/:$/, "").trim();
     const amount = money(match[2]);
@@ -130,6 +133,8 @@ export function priceFromHtml(html) {
     const lineKey = label.toLowerCase();
     if (amount == null || seenLines.has(lineKey)) continue;
     seenLines.add(lineKey);
+    if (/doc|documentation|notary|title|tag|lien|processing/i.test(label)) fees += amount;
+    else if (!/^msrp$|^internet price$|^price$/i.test(label) && !/accessor/i.test(label)) sellingPrices.push(amount);
     if (isStoreSavingsLine("priceBlockItem", label)) {
       dealerDiscount += amount;
       sawDealerLine = true;
@@ -142,6 +147,13 @@ export function priceFromHtml(html) {
     const amount = money(discountRow[1]);
     if (amount != null) {
       dealerDiscount = amount;
+      sawDealerLine = true;
+    }
+  }
+  if (!sawDealerLine && internetPrice == null && msrp != null && sellingPrices.length === 1) {
+    const implied = msrp + fees - sellingPrices[0];
+    if (implied > 0) {
+      dealerDiscount = implied;
       sawDealerLine = true;
     }
   }

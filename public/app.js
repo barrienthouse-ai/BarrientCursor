@@ -13,7 +13,7 @@ const stored = JSON.parse(localStorage.getItem("pricing-sites") || "{}");
 if (stored.home) homeInput.value = stored.home;
 
 function addCompetitor(value = "") {
-  if (competitorList.children.length >= 3) return;
+  if (competitorList.children.length >= 5) return;
   const row = document.createElement("div");
   row.className = "competitor-row";
   const input = document.createElement("input");
@@ -27,14 +27,14 @@ function addCompetitor(value = "") {
   remove.textContent = "Remove";
   remove.addEventListener("click", () => {
     row.remove();
-    addButton.hidden = competitorList.children.length >= 3;
+    addButton.hidden = competitorList.children.length >= 5;
   });
   row.append(input, remove);
   competitorList.append(row);
-  addButton.hidden = competitorList.children.length >= 3;
+  addButton.hidden = competitorList.children.length >= 5;
 }
 
-(stored.competitors?.length ? stored.competitors : ["https://www.hollingsworthrichardsford.com", "https://robinsonbrothers.com"]).slice(0, 3).forEach(addCompetitor);
+(stored.competitors?.length ? stored.competitors : ["https://www.hollingsworthrichardsford.com", "https://robinsonbrothers.com", "https://www.billhoodfordhammond.com", "https://www.bayouford.net"]).slice(0, 5).forEach(addCompetitor);
 addButton.addEventListener("click", () => addCompetitor());
 
 function money(value) {
