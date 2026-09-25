@@ -96,7 +96,7 @@ function NIP_scrapeSite_(website) {
   for (var start = 0; start < fresh.length; start += 8) {
     var slice = fresh.slice(start, start + 8);
     var responses = UrlFetchApp.fetchAll(slice.map(function (card) {
-      return { url: String(card.href).replace(/\+/g, '%2B'), muteHttpExceptions: true, followRedirects: true, headers: { 'User-Agent': 'Mozilla/5.0' } };
+      return { url: NIP_fetchUrl_(card.href), muteHttpExceptions: true, followRedirects: true, headers: { 'User-Agent': 'Mozilla/5.0' } };
     }));
     for (var r = 0; r < responses.length; r++) {
       var html = responses[r].getContentText() || '';
@@ -184,6 +184,10 @@ function NIP_algoliaCards_(cfg, origin) {
     }
   }
   throw new Error(lastError);
+}
+
+function NIP_fetchUrl_(url) {
+  return String(url || '').replace(/%2B/gi, '').replace(/\+/g, '');
 }
 
 function NIP_fetch_(url) {
@@ -276,7 +280,7 @@ function NIP_isStoreSavings_(cls, label) {
   if (/incentive-|consumer-cash|bonus-cash|dealer-fee|left-discounts/i.test(cls)) return false;
   if (/^msrp$|total savings|sales price|selling price|internet price|documentation|doc fee|notary|title fee/i.test(text)) return false;
   if (/customer cash|bonus cash|rebate|military|first responder|college|lease loyalty|conquest/i.test(text)) return false;
-  if (/^dealer discount\b/i.test(text)) return true;
+  if (/^dealer discount$/i.test(text)) return true;
   return /dealer-incentive|dealer-discount/i.test(cls) || /(^|\s)discounts(\s|$)/i.test(cls) || /(^|\s)subtract(\s|$)/i.test(cls);
 }
 
@@ -400,6 +404,17 @@ function NIP_price_(html) {
   if (msrp == null) {
     var loose = source.match(/MSRP[^$]{0,80}\$([0-9,]{4,})/i) || source.match(/Retail Value[^$]{0,80}\$([0-9,]{4,})/i);
     if (loose) msrp = Math.round(Number(String(loose[1]).replace(/,/g, '')));
+  }
+  if (msrp == null) {
+    var attr = source.match(/data-msrp="([0-9]{4,})"/i);
+    if (attr) msrp = Math.round(Number(attr[1]));
+  }
+  if (!sawDealerLine) {
+    var savings = source.match(/dealerDiscount[\s\S]{0,500}?vehiclePricingHighlightAmount[^>]*>\s*\$?([0-9,]{3,})/i);
+    if (savings) {
+      dealerDiscount = Math.round(Number(String(savings[1]).replace(/,/g, '')));
+      sawDealerLine = dealerDiscount > 0;
+    }
   }
   return { dealerDiscount: dealerDiscount, msrp: msrp, sawDealerLine: sawDealerLine };
 }
