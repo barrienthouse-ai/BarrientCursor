@@ -1,5 +1,6 @@
 var NIP_DRIVETRAIN_ = /\b(4x4|4x2|4wd|2wd|awd|fwd|rwd|four wheel drive|rear wheel drive|front wheel drive|all wheel drive)\b/gi;
 var NIP_CAB_ = /\b(crew cab|double cab|regular cab|extended cab|quad cab|mega cab|supercrew|supercab|king cab)\b/gi;
+var NIP_BODY_ = /\b(advanced with automatic on demand engagement|with part time selectable engagement|part time selectable engagement|automatic on demand engagement|on demand|selectable engagement|4 door|2 door|four door|two door|fastback|convertible|sport utility|4d|2d|4dr|2dr|regular)\b/gi;
 
 function NIP_compare(payload) {
   var homeUrl = NIP_website_(payload && payload.home);
@@ -575,8 +576,8 @@ function NIP_dedupe_(text) {
 
 function NIP_align_(vehicle) {
   var text = NIP_dedupe_(NIP_clean_((vehicle.model || '') + ' ' + (vehicle.trim || '')));
-  text = text.replace(NIP_DRIVETRAIN_, ' ').replace(NIP_CAB_, ' ').replace(/\b(srw|drw)\b/ig, ' ').replace(/\s+/g, ' ').trim();
-  text = text.replace(/\b\d{2,3}a\b/ig, ' ').replace(/\b(sport utility|for sale|suv|crossover|pickup|hatchback|wagon|sedan)\b/ig, ' ').replace(/\s+/g, ' ').trim();
+  text = text.replace(NIP_DRIVETRAIN_, ' ').replace(NIP_CAB_, ' ').replace(NIP_BODY_, ' ').replace(/\b(srw|drw)\b/ig, ' ').replace(/\s+/g, ' ').trim();
+  text = text.replace(/\b\d{2,3}a\b/ig, ' ').replace(/\b(for sale|suv|crossover|pickup|hatchback|wagon|sedan|premium)\b/ig, ' ').replace(/\s+/g, ' ').trim();
   var trims = ['custom trail boss', 'lt trail boss', 'high country', 'work truck', 'outer banks', 'black diamond', 'king ranch', 'dark horse', 'big bend', 'trail boss', 'wildtrak', 'badlands', 'platinum', 'heritage edition', 'heritage', 'limited', 'lariat', 'tremor', 'raptor', 'premier', 'active', 'activ', 'custom', 'lobo', 'ecoboost', 'stx', 'xlt', 'st line', 'rst', 'z71', 'zr2', 'ltz', 'wt', 'xl', 'st', 'rs', 'lt', 'ls', 'gt'];
   var trim = '';
   for (var pass = 0; pass < 3; pass++) {
