@@ -7,13 +7,14 @@
  * In geauxMenuBlueprint_(), inside reports, add:
  *   { title: 'New Inventory Pricing', onOpen: 'NIP_onOpen' }
  *
- * That nests this menu under GEAUX REPORTS. This file does not write
+ * That nests this menu under GEAUX REPORTS. Geaux Chevy opens in the sheet.
+ * Web app link stays the Ford pricing page. This file does not write
  * DEALINPUT, DESKDATA, LOGDEAL, or any other sheet.
  */
 function NIP_onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('New Inventory Pricing')
-    .addItem('Compare discounts', 'NIP_open')
+    .addItem('Geaux Chevy', 'GCY_open')
     .addItem('Web app link', 'NIP_showWebAppUrl')
     .addToUi();
 }
