@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = readFileSync(new URL("../apps-script/GCY_Api.gs", import.meta.url), "utf8");
-const api = new Function(`${source}; return { GCY_key_, GCY_rows_, GCY_origin_, GCY_fromUrl_, GCY_platform_, GCY_dealercomPage_ };`)();
+const api = new Function(`${source}; return { GCY_key_, GCY_rows_, GCY_origin_, GCY_fromUrl_, GCY_platform_, GCY_dealercomPage_, GCY_exportTable_ };`)();
 
 function key(vehicle) {
   return api.GCY_key_(Object.assign({}, vehicle));
@@ -120,4 +120,81 @@ test("rows require Geaux Chevy stock and keep a zero-discount home unit", () => 
   assert.equal(rows[0].home.avgDiscount, 0);
   assert.equal(rows[0].competitors[0].count, 1);
   assert.equal(rows[0].competitors[0].gap, 2500);
+});
+
+test("the export table matches the on-screen comparison", () => {
+  const table = api.GCY_exportTable_({
+    home: "https://www.geauxchevy.com",
+    pulledAt: "2026-09-26T15:00:00.000Z",
+    dealers: [
+      { id: "geauxchevrolet.com", name: "Geaux Chevrolet", website: "https://www.geauxchevy.com" },
+      { id: "supremechevy.com", name: "Supreme Chevrolet", website: "https://www.supremechevy.com" },
+      { id: "rossdowningchevrolet.com", name: "Ross Downing Chevrolet", website: "https://www.rossdowningchevrolet.com" },
+    ],
+    rows: [
+      {
+        year: "2026",
+        make: "Chevrolet",
+        model: "Tahoe",
+        trim: "LT",
+        home: {
+          name: "Geaux Chevrolet",
+          count: 2,
+          avgDiscount: 1500,
+          avgPercent: 2.5,
+          units: [
+            { stock: "G1", vin: "VIN1", dealerDiscount: 2000, discountPercent: 3.3 },
+            { stock: "G2", vin: "VIN2", dealerDiscount: 1000, discountPercent: 1.7 },
+          ],
+        },
+        competitors: [
+          {
+            id: "supremechevy.com",
+            name: "Supreme Chevrolet",
+            count: 1,
+            avgDiscount: 4500,
+            units: [{ stock: "S1", vin: "VIN3", dealerDiscount: 4500, discountPercent: 7 }],
+          },
+          { id: "rossdowningchevrolet.com", name: "Ross Downing Chevrolet", count: 0 },
+        ],
+      },
+      {
+        year: "2026",
+        make: "Chevrolet",
+        model: "Blazer",
+        trim: "LT",
+        home: { name: "Geaux Chevrolet", count: 1, avgDiscount: 4000, avgPercent: 10, units: [{ stock: "G3", vin: "VIN4", dealerDiscount: 4000, discountPercent: 10 }] },
+        competitors: [
+          { id: "supremechevy.com", name: "Supreme Chevrolet", count: 1, avgDiscount: 2500, units: [{ stock: "S2", vin: "VIN5", dealerDiscount: 2500, discountPercent: 6 }] },
+          { id: "rossdowningchevrolet.com", name: "Ross Downing Chevrolet", count: 0 },
+        ],
+      },
+      {
+        year: "2027",
+        make: "Chevrolet",
+        model: "Equinox",
+        trim: "LT",
+        home: { name: "Geaux Chevrolet", count: 1, avgDiscount: 1000, avgPercent: 3, units: [] },
+        competitors: [
+          { id: "supremechevy.com", name: "Supreme Chevrolet", count: 0 },
+          { id: "rossdowningchevrolet.com", name: "Ross Downing Chevrolet", count: 0 },
+        ],
+      },
+    ],
+  });
+  assert.deepEqual(table.headers, ["Year", "Make", "Model", "Trim", "Geaux n", "Geaux $", "Geaux %", "SC $", "RD $", "Leader", "Gap"]);
+  assert.equal(table.fileName, "Geaux-Chevy-Discount-Position-2026-09-26");
+  assert.equal(table.rows[0][5], "$1,500");
+  assert.equal(table.rows[0][6], "2.5%");
+  assert.equal(table.rows[0][7], "$4,500 (1)");
+  assert.equal(table.rows[0][8], "NO STOCK");
+  assert.equal(table.rows[0][9], "SC");
+  assert.equal(table.rows[0][10], "$3,000");
+  assert.equal(table.rows[1][10], "+$1,500");
+  assert.equal(table.rows[2][9], "NO STOCK");
+  assert.equal(table.rows[2][10], "NO STOCK");
+  assert.equal(table.details.length, 5);
+  assert.deepEqual(table.details[0], ["Geaux Chevrolet", "2026", "Chevrolet", "Tahoe", "LT", "G1", "VIN1", "$2,000", "3.3%"]);
+  assert.equal(table.details[2][0], "Supreme Chevrolet");
+  assert.deepEqual(api.GCY_exportTable_({}).rows, []);
 });

@@ -20,6 +20,7 @@ test("inventory pricing adds a sheet menu without a second onOpen", () => {
   const chevyMenu = readFileSync(new URL("../apps-script/GCY_Menu.gs", import.meta.url), "utf8");
   const chevyApi = readFileSync(new URL("../apps-script/GCY_Api.gs", import.meta.url), "utf8");
   assert.match(chevyMenu, /function GCY_open\(/);
+  assert.match(chevyMenu, /function GCY_exportReport\(/);
   assert.match(chevyMenu, /GCY_App/);
   assert.doesNotMatch(chevyMenu, /function onOpen\(/);
   assert.doesNotMatch(chevyMenu, /function doGet\(/);

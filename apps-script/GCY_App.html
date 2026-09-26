@@ -21,9 +21,11 @@
       label, .head { display: block; font: 600 12px/1.2 system-ui, sans-serif; margin-top: 10px; }
       input { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px; border: 1px solid #d7e0d6; border-radius: 8px; font: 15px system-ui, sans-serif; }
       .row { display: flex; gap: 8px; align-items: center; }
-      button { margin-top: 12px; border: 0; border-radius: 999px; background: #1f6b3a; color: white; padding: 10px 14px; font: 600 14px system-ui, sans-serif; }
+      button { margin: 12px 8px 0 0; border: 0; border-radius: 999px; background: #1f6b3a; color: white; padding: 10px 14px; font: 600 14px system-ui, sans-serif; }
       button.secondary { background: white; color: #144828; border: 1px solid #d7e0d6; }
+      button:disabled { opacity: .45; }
       .hint, .status, .source { font: 13px/1.4 system-ui, sans-serif; color: #5d6b60; }
+      a.download { display: inline-block; margin-top: 8px; font: 600 14px system-ui, sans-serif; color: #144828; }
       .run { margin-top: 14px; background: white; border: 1px solid #d7e0d6; border-radius: 12px; padding: 12px 14px; }
       .run-label { font: 700 13px/1.2 system-ui, sans-serif; letter-spacing: .08em; color: #1f6b3a; }
       .track { height: 10px; margin: 10px 0 8px; background: #e7eee6; border-radius: 999px; overflow: hidden; }
@@ -51,6 +53,8 @@
       <div id="list"></div>
       <button type="button" class="secondary" id="add">Add website</button>
       <button type="button" id="go">Compare new inventory</button>
+      <button type="button" class="secondary" id="xlsx" disabled>Export Excel</button>
+      <button type="button" class="secondary" id="pdf" disabled>Export PDF</button>
       <div class="run" id="run" hidden>
         <div class="run-label" id="run-label">SCANNING COMPETITORS</div>
         <div class="track"><div class="fill" id="run-fill"></div></div>
@@ -62,8 +66,9 @@
         </div>
       </div>
       <p class="status" id="status"></p>
+      <a id="download" class="download" hidden></a>
       <div id="report"></div>
-      <p class="source">The report lists only the year, make, model, and trim Geaux Chevy has in stock. Each model year is its own row. NO STOCK means that competitor has none of that year and trim. Refresh at least monthly.</p>
+      <p class="source">The report lists only the year, make, model, and trim Geaux Chevy has in stock. Each model year is its own row. NO STOCK means that competitor has none of that year and trim. Excel includes this table and each vehicle. PDF is this table. Refresh at least monthly.</p>
     </div>
     <script>
       var list = document.getElementById('list');
@@ -103,13 +108,79 @@
         if (/geauxchev/i.test(host)) return 'GC';
         return String(dealer.name || 'Store').split(/\s+/).map(function (word) { return word.charAt(0); }).join('').slice(0, 3).toUpperCase();
       }
+      var lastJob = null;
+      function setExports(enabled) {
+        document.getElementById('xlsx').disabled = !enabled;
+        document.getElementById('pdf').disabled = !enabled;
+      }
+      function packSide(side) {
+        side = side || {};
+        return {
+          id: side.id,
+          name: side.name,
+          count: side.count || 0,
+          avgDiscount: side.avgDiscount,
+          avgPercent: side.avgPercent,
+          units: (side.units || []).map(function (unit) {
+            return { stock: unit.stock || '', vin: unit.vin || '', dealerDiscount: unit.dealerDiscount, discountPercent: unit.discountPercent };
+          })
+        };
+      }
+      function exportJob(job) {
+        return {
+          home: job.home,
+          pulledAt: job.pulledAt,
+          dealers: (job.dealers || []).map(function (dealer) {
+            return { id: dealer.id, name: dealer.name, website: dealer.website };
+          }),
+          rows: (job.rows || []).map(function (row) {
+            return {
+              year: row.year,
+              make: row.make,
+              model: row.model,
+              trim: row.trim,
+              home: packSide(row.home),
+              competitors: (row.competitors || []).map(packSide)
+            };
+          })
+        };
+      }
+      function saveFile(file) {
+        var href = 'data:' + file.mime + ';base64,' + file.base64;
+        var ready = document.getElementById('download');
+        ready.href = href;
+        ready.download = file.name;
+        ready.textContent = 'Download ' + file.name;
+        ready.hidden = false;
+        var link = document.createElement('a');
+        link.href = href;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      function exportFile(kind) {
+        if (!lastJob) return;
+        setExports(false);
+        document.getElementById('status').textContent = kind === 'pdf' ? 'Building the PDF…' : 'Building the Excel file…';
+        google.script.run.withSuccessHandler(function (file) {
+          setExports(true);
+          document.getElementById('status').textContent = 'Saved ' + file.name + '.';
+          saveFile(file);
+        }).withFailureHandler(function (error) {
+          setExports(true);
+          document.getElementById('status').textContent = error.message;
+        }).GCY_exportReport(kind, exportJob(lastJob));
+      }
       function render(job) {
         var report = document.getElementById('report');
         var rows = job.rows || [];
         if (!rows.length) {
           report.innerHTML = '<p class="hint">No matching new vehicles with a dealer discount line.</p>';
+          setExports(false);
           return;
         }
+        setExports(true);
         var competitors = job.dealers.filter(function (dealer) { return dealer.website !== job.home; });
         var beaten = 0;
         var ahead = 0;
@@ -182,6 +253,9 @@
       document.getElementById('go').onclick = function () {
         var competitors = [].map.call(list.querySelectorAll('input'), function (input) { return input.value.trim(); }).filter(Boolean);
         var started = Date.now();
+        lastJob = null;
+        setExports(false);
+        document.getElementById('download').hidden = true;
         document.getElementById('report').innerHTML = '';
         document.getElementById('status').textContent = '';
         document.getElementById('run').hidden = false;
@@ -195,6 +269,7 @@
         }, 400);
         google.script.run.withSuccessHandler(function (job) {
           stopRun(true);
+          lastJob = job;
           var extra = (job.errors || []).map(function (error) { return error.website + ': ' + error.message; }).join(' ');
           document.getElementById('status').textContent = (job.rows || []).length + ' matching trims. ' + extra;
           render(job);
@@ -203,6 +278,8 @@
           document.getElementById('status').textContent = error.message;
         }).GCY_compare({ home: document.getElementById('home').value.trim(), competitors: competitors });
       };
+      document.getElementById('xlsx').onclick = function () { exportFile('xlsx'); };
+      document.getElementById('pdf').onclick = function () { exportFile('pdf'); };
     </script>
   </body>
 </html>

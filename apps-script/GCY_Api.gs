@@ -877,3 +877,120 @@ function GCY_avgPercent_(units) {
   }
   return count ? Math.round((sum / count) * 10) / 10 : null;
 }
+
+function GCY_money_(value) {
+  if (value == null || value === '') return '';
+  var amount = Math.round(Number(value));
+  if (!isFinite(amount)) return '';
+  var sign = amount < 0 ? '-' : '';
+  var digits = String(Math.abs(amount));
+  var grouped = '';
+  for (var i = 0; i < digits.length; i++) {
+    if (i && (digits.length - i) % 3 === 0) grouped += ',';
+    grouped += digits.charAt(i);
+  }
+  return sign + '$' + grouped;
+}
+
+function GCY_code_(dealer) {
+  var host = String((dealer && (dealer.id || dealer.website || dealer.name)) || '');
+  if (/supremechevy/i.test(host)) return 'SC';
+  if (/rossdowning/i.test(host)) return 'RD';
+  if (/bestchevrolet/i.test(host)) return 'BE';
+  if (/mbchevy/i.test(host)) return 'MB';
+  if (/gerrylane/i.test(host)) return 'GL';
+  if (/geauxchev/i.test(host)) return 'GC';
+  var parts = String((dealer && dealer.name) || 'Store').split(/\s+/);
+  var letters = '';
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i]) letters += parts[i].charAt(0);
+  }
+  return (letters.slice(0, 3) || 'STR').toUpperCase();
+}
+
+function GCY_gapText_(beatenBy) {
+  if (beatenBy == null) return 'NO STOCK';
+  if (beatenBy > 0) return GCY_money_(beatenBy);
+  if (beatenBy < 0) return '+' + GCY_money_(Math.abs(beatenBy));
+  return 'even';
+}
+
+function GCY_exportStamp_(pulledAt) {
+  var match = String(pulledAt || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : '';
+}
+
+function GCY_exportTable_(job) {
+  job = job || {};
+  var dealers = job.dealers || [];
+  var competitors = [];
+  for (var i = 0; i < dealers.length; i++) {
+    if (dealers[i].website !== job.home) competitors.push(dealers[i]);
+  }
+  var headers = ['Year', 'Make', 'Model', 'Trim', 'Geaux n', 'Geaux $', 'Geaux %'];
+  for (var c = 0; c < competitors.length; c++) headers.push(GCY_code_(competitors[c]) + ' $');
+  headers.push('Leader', 'Gap');
+  var rows = [];
+  var details = [];
+  var source = job.rows || [];
+  for (var r = 0; r < source.length; r++) {
+    var row = source[r];
+    var home = row.home || { count: 0 };
+    var comps = row.competitors || [];
+    var best = null;
+    for (var k = 0; k < comps.length; k++) {
+      if (!comps[k].count) continue;
+      if (!best || comps[k].avgDiscount > best.avgDiscount) best = comps[k];
+    }
+    var beatenBy = best && home.count ? best.avgDiscount - (home.avgDiscount || 0) : null;
+    var line = [
+      row.year || '',
+      row.make || '',
+      row.model || '',
+      row.trim || '',
+      home.count || 0,
+      home.count ? GCY_money_(home.avgDiscount) : 'NO STOCK',
+      home.count ? (home.avgPercent == null ? '' : home.avgPercent + '%') : 'NO STOCK'
+    ];
+    for (var n = 0; n < competitors.length; n++) {
+      var match = null;
+      for (var m = 0; m < comps.length; m++) {
+        if (comps[m].id === competitors[n].id || comps[m].name === competitors[n].name) match = comps[m];
+      }
+      line.push(match && match.count ? GCY_money_(match.avgDiscount) + ' (' + match.count + ')' : 'NO STOCK');
+    }
+    line.push(best ? GCY_code_(best) : 'NO STOCK');
+    line.push(GCY_gapText_(beatenBy));
+    rows.push(line);
+    var stores = [{ name: home.name || 'Geaux Chevy', units: home.units || [] }];
+    for (var s = 0; s < comps.length; s++) {
+      if (comps[s].count) stores.push(comps[s]);
+    }
+    for (var store = 0; store < stores.length; store++) {
+      var units = stores[store].units || [];
+      for (var u = 0; u < units.length; u++) {
+        var unit = units[u];
+        details.push([
+          stores[store].name || 'Geaux Chevy',
+          row.year || '',
+          row.make || '',
+          row.model || '',
+          row.trim || '',
+          unit.stock || '',
+          unit.vin || '',
+          GCY_money_(unit.dealerDiscount),
+          unit.discountPercent == null ? '' : unit.discountPercent + '%'
+        ]);
+      }
+    }
+  }
+  var stamp = GCY_exportStamp_(job.pulledAt);
+  return {
+    title: 'Geaux Chevy Discount Position',
+    fileName: 'Geaux-Chevy-Discount-Position' + (stamp ? '-' + stamp : ''),
+    headers: headers,
+    rows: rows,
+    detailHeaders: ['Store', 'Year', 'Make', 'Model', 'Trim', 'Stock', 'VIN', 'Dealer discount', '%'],
+    details: details
+  };
+}
