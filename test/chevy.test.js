@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = readFileSync(new URL("../apps-script/GCY_Api.gs", import.meta.url), "utf8");
-const api = new Function(`${source}; return { GCY_key_, GCY_rows_, GCY_origin_, GCY_fromUrl_ };`)();
+const api = new Function(`${source}; return { GCY_key_, GCY_rows_, GCY_origin_, GCY_fromUrl_, GCY_platform_, GCY_dealercomPage_ };`)();
 
 function key(vehicle) {
   return api.GCY_key_(Object.assign({}, vehicle));
@@ -11,7 +11,62 @@ function key(vehicle) {
 
 test("www.geauxchevy.com scrapes the Chevrolet inventory host", () => {
   assert.equal(api.GCY_origin_("https://www.geauxchevy.com"), "https://www.geauxchevrolet.com");
+  assert.equal(api.GCY_origin_("https://www.gerrylanechevy.com"), "https://www.gerrylanechevrolet.com");
   assert.equal(api.GCY_origin_("https://www.supremechevy.com"), "https://www.supremechevy.com");
+});
+
+test("the host is read from the page", () => {
+  assert.equal(api.GCY_platform_('<script id="dealeron_tagging_data" type="application/json">{"dealerId":"1"}</script>'), "dealeron");
+  assert.equal(api.GCY_platform_('accountId:"mattbowerschevymetairie" https://shop.dealer.com/widget.js DDC.WS.state'), "dealer.com");
+  assert.equal(api.GCY_platform_('<script>algoliaConfig = {"appId":"ABC"}</script> dealer-inspire'), "inspire");
+});
+
+test("Dealer.com keeps the dealer discount and drops manufacturer cash", () => {
+  const parsed = api.GCY_dealercomPage_({
+    inventory: [
+      {
+        type: "new",
+        year: 2026,
+        make: "Chevrolet",
+        model: "Silverado 1500",
+        trim: "RST",
+        vin: "1GTEST00000000001",
+        stockNumber: "A1",
+        link: "/new/Chevrolet/2026-Chevrolet-Silverado-1500.htm",
+        incentiveIds: ["store_customer", "store_sale"],
+        pricing: { dprice: [
+          { typeClass: "msrp", label: "MSRP", value: "$60,884" },
+          { typeClass: "AsubBRule", isDiscount: true, label: "60th Anniversary Sale Savings", value: "$8,000" },
+          { typeClass: "documentFee", label: "Dealer Fees", value: "$467" },
+          { typeClass: "SICRule", label: "Offers", value: "$4,250" }
+        ] }
+      },
+      {
+        type: "new",
+        year: 2026,
+        make: "Chevrolet",
+        model: "Blazer",
+        trim: "2LT",
+        vin: "1GTEST00000000002",
+        incentiveIds: ["mb_event", "mb_military"],
+        pricing: { dprice: [
+          { typeClass: "msrp", label: "MSRP", value: "$38,815" },
+          { typeClass: "invoicePrice", label: "Doc & Convenience Fee", value: "$436" },
+          { typeClass: "SICRule", label: "Offers", value: "$5,850" }
+        ] }
+      }
+    ],
+    incentives: {
+      "[store_customer]": { conditional: false, disclaimer: "Not available with special financing.", specific: { cashOption: 4250 } },
+      "[mb_event]": { conditional: false, disclaimer: "Dealer discount off MSRP. Available to Everyone.", specific: { cashOption: 5850 } },
+      "[mb_military]": { conditional: true, disclaimer: "Eligible military personnel.", specific: { cashOption: 500 } }
+    }
+  }, "https://www.example.com");
+  assert.equal(parsed[0].dealerDiscount, 8000);
+  assert.equal(parsed[0].msrp, 60884);
+  assert.equal(parsed[1].dealerDiscount, 5850);
+  assert.equal(parsed[1].msrp, 38815);
+  assert.equal(key(parsed[1]), "2026|chevrolet|blazer|lt");
 });
 
 test("Chevy trims and model lines stay distinct", () => {

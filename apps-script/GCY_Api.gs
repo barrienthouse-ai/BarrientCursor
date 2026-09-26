@@ -67,17 +67,50 @@ function GCY_origin_(website) {
   var match = String(website).match(/^(https?:\/\/[^\/]+)/i);
   var origin = match ? match[1] : website;
   if (/^https?:\/\/(?:www\.)?geauxchevy\.com$/i.test(origin)) return 'https://www.geauxchevrolet.com';
+  if (/^https?:\/\/(?:www\.)?gerrylanechevy\.com$/i.test(origin)) return 'https://www.gerrylanechevrolet.com';
   return origin;
+}
+
+function GCY_platform_(html) {
+  var text = String(html || '');
+  if (/dealeron_tagging_data/i.test(text)) return 'dealeron';
+  if (/accountId/i.test(text) && (/dealer\.com/i.test(text) || /DDC\.WS/i.test(text) || /websiteProviderId":"ddc"/i.test(text))) return 'dealer.com';
+  if (/dealer-inspire|algoliaConfig/i.test(text)) return 'inspire';
+  return '';
+}
+
+function GCY_dollars_(value) {
+  return Math.round(Math.abs(Number(String(value == null ? '' : value).replace(/[^0-9.-]/g, '')) || 0));
 }
 
 function GCY_scrapeSite_(website) {
   var origin = GCY_origin_(website);
+  var home = GCY_fetch_(origin + '/');
+  var platform = GCY_blocked_(home) ? '' : GCY_platform_(home);
+  if (!platform) {
+    var search = GCY_fetch_(origin + '/searchnew.aspx');
+    if (!GCY_blocked_(search) && GCY_platform_(search) === 'dealeron') platform = 'dealeron';
+  }
+  var name = GCY_storeName_(home, GCY_host_(origin));
+  if (platform === 'dealeron') {
+    var fed = GCY_dealeronFeed_(origin);
+    if (fed.length) return { id: GCY_host_(origin), name: name, vehicles: fed };
+  }
+  if (platform === 'dealer.com') {
+    var listed = GCY_dealercomFeed_(origin, home);
+    if (listed.length) return { id: GCY_host_(origin), name: name, vehicles: listed };
+  }
+  if (!platform && (GCY_blocked_(home) || String(home || '').length < 500)) {
+    var recovered = GCY_dealercomFromSitemap_(origin);
+    if (recovered.vehicles.length) return { id: GCY_host_(origin), name: recovered.name || name, vehicles: recovered.vehicles };
+  }
+  if (GCY_blocked_(home)) throw new Error('The dealer site blocked the inventory request.');
   var inventoryUrl = /new-vehicles|new-inventory|searchnew/i.test(website)
     ? String(website).replace(/[?#].*$/, '')
     : origin + '/new-vehicles/';
   var list = GCY_fetch_(inventoryUrl);
   if (GCY_blocked_(list)) throw new Error('The dealer site blocked the inventory request.');
-  var name = GCY_storeName_(list, GCY_host_(origin));
+  if (!name || name === GCY_host_(origin)) name = GCY_storeName_(list, GCY_host_(origin));
   var cards = GCY_sitemapCards_(origin);
   if (!cards.length) cards = GCY_dealeronCards_(origin);
   if (!cards.length) cards = GCY_cards_(list, origin);
@@ -258,6 +291,138 @@ function GCY_libraryDiscount_(text) {
     if (bits[0] === 'calc_Dealer Discount') return Math.round(Number(bits[1]) || 0);
   }
   return null;
+}
+
+function GCY_dealercomAccount_(html) {
+  var text = String(html || '');
+  var account = (text.match(/accountId["']?\s*[:=]\s*["']([A-Za-z0-9_-]+)/) || [])[1] || '';
+  var site = (text.match(/siteId["']?\s*[:=]\s*["']([A-Za-z0-9_-]+)/) || [])[1] || account;
+  return { account: account, site: site };
+}
+
+function GCY_dealercomDiscount_(vehicle, incentives) {
+  var discount = 0;
+  var saw = false;
+  var rows = vehicle && vehicle.pricing && vehicle.pricing.dprice ? vehicle.pricing.dprice : [];
+  for (var i = 0; i < rows.length; i++) {
+    if (!rows[i] || !rows[i].isDiscount) continue;
+    var amount = GCY_dollars_(rows[i].value);
+    if (!amount) continue;
+    discount += amount;
+    saw = true;
+  }
+  var ids = vehicle && vehicle.incentiveIds ? vehicle.incentiveIds : [];
+  incentives = incentives || {};
+  for (var j = 0; j < ids.length; j++) {
+    var inc = incentives[ids[j]] || incentives['[' + ids[j] + ']'];
+    if (!inc || inc.conditional) continue;
+    if (!/dealer discount/i.test(String(inc.disclaimer || ''))) continue;
+    var cash = Math.round(Number(inc.specific && inc.specific.cashOption) || 0);
+    if (!cash) continue;
+    discount += cash;
+    saw = true;
+  }
+  return { discount: discount, saw: saw };
+}
+
+function GCY_dealercomPage_(data, origin) {
+  var vehicles = [];
+  var list = data && data.inventory ? data.inventory : [];
+  var incentives = data && data.incentives ? data.incentives : {};
+  for (var i = 0; i < list.length; i++) {
+    var card = list[i];
+    if (!card || !/^new$/i.test(card.type || card.condition || '')) continue;
+    var msrp = null;
+    var rows = card.pricing && card.pricing.dprice ? card.pricing.dprice : [];
+    for (var r = 0; r < rows.length; r++) {
+      var label = String(rows[r].label || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (rows[r].typeClass === 'msrp' || /^msrp$/i.test(label)) msrp = GCY_dollars_(rows[r].value);
+    }
+    if (!msrp) continue;
+    var priced = GCY_dealercomDiscount_(card, incentives);
+    var href = String(card.link || '');
+    if (href && href.indexOf('http') !== 0) href = origin + href;
+    vehicles.push({
+      vin: String(card.vin || '').toUpperCase(),
+      stock: card.stockNumber || '',
+      year: String(card.year || ''),
+      make: card.make || '',
+      model: card.model || '',
+      trim: card.trim || '',
+      msrp: msrp,
+      dealerDiscount: priced.saw ? priced.discount : 0,
+      url: href
+    });
+  }
+  return vehicles;
+}
+
+function GCY_dealercomSample_(xml) {
+  var urls = String(xml || '').match(/https?:\/\/[^<\s"]+/gi) || [];
+  for (var i = 0; i < urls.length; i++) {
+    var href = urls[i].replace(/&amp;/g, '&');
+    if (/\/new\/[^/]+\/20\d{2}-/i.test(href)) return href;
+  }
+  return '';
+}
+
+function GCY_dealercomFromSitemap_(origin) {
+  var xml = GCY_fetch_(origin + '/sitemap.xml');
+  var page = GCY_dealercomSample_(xml);
+  if (!page) {
+    var maps = String(xml).match(/https?:\/\/[^<\s"]+sitemap[^<\s"]*/gi) || [];
+    for (var i = 0; i < maps.length && !page; i++) {
+      if (!/vehicle/i.test(maps[i])) continue;
+      page = GCY_dealercomSample_(GCY_fetch_(maps[i]));
+    }
+  }
+  if (!page) return { name: '', vehicles: [] };
+  var html = GCY_fetch_(page);
+  if (GCY_platform_(html) !== 'dealer.com') return { name: '', vehicles: [] };
+  return { name: GCY_storeName_(html, GCY_host_(origin)), vehicles: GCY_dealercomFeed_(origin, html) };
+}
+
+function GCY_dealercomFeed_(origin, homeHtml) {
+  var ids = GCY_dealercomAccount_(homeHtml);
+  if (!ids.account) return [];
+  var vehicles = [];
+  var seen = {};
+  var start = 0;
+  for (var page = 0; page < 12; page++) {
+    var payload = {
+      siteId: ids.site,
+      locale: 'en_US',
+      device: 'DESKTOP',
+      pageAlias: 'INVENTORY_LISTING_DEFAULT_AUTO_NEW',
+      windowId: 'inventory-data-bus1',
+      widgetName: 'ws-inv-data',
+      includePricing: true,
+      inventoryParameters: { inventoryType: 'new', classification: 'new', start: String(start) },
+      preferences: { pageSize: '48', 'listing.config.id': 'auto-new' }
+    };
+    var response = UrlFetchApp.fetch(origin + '/api/widget/ws-inv-data/getInventory', {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+      followRedirects: true,
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    var data;
+    try { data = JSON.parse(response.getContentText() || ''); } catch (error) { break; }
+    var received = data.inventory ? data.inventory.length : 0;
+    if (!received) break;
+    var batch = GCY_dealercomPage_(data, origin);
+    for (var i = 0; i < batch.length; i++) {
+      if (!batch[i].vin || seen[batch[i].vin]) continue;
+      seen[batch[i].vin] = true;
+      vehicles.push(batch[i]);
+    }
+    var total = data.pageInfo && data.pageInfo.totalCount;
+    start += received;
+    if (!total || start >= total) break;
+  }
+  return vehicles;
 }
 
 function GCY_fetchUrl_(url) {
