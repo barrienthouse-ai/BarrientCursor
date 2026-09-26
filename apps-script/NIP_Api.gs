@@ -68,14 +68,46 @@ function NIP_origin_(website) {
   return match ? match[1] : website;
 }
 
+function NIP_platform_(html) {
+  var text = String(html || '');
+  if (/dealeron_tagging_data/i.test(text)) return 'dealeron';
+  if (/accountId/i.test(text) && (/dealer\.com/i.test(text) || /DDC\.WS/i.test(text) || /websiteProviderId":"ddc"/i.test(text))) return 'dealer.com';
+  if (/dealer-inspire|algoliaConfig/i.test(text)) return 'inspire';
+  return '';
+}
+
+function NIP_dollars_(value) {
+  return Math.round(Math.abs(Number(String(value == null ? '' : value).replace(/[^0-9.-]/g, '')) || 0));
+}
+
 function NIP_scrapeSite_(website) {
   var origin = NIP_origin_(website);
+  var home = NIP_fetch_(origin + '/');
+  var platform = NIP_blocked_(home) ? '' : NIP_platform_(home);
+  if (!platform) {
+    var search = NIP_fetch_(origin + '/searchnew.aspx');
+    if (!NIP_blocked_(search) && NIP_platform_(search) === 'dealeron') platform = 'dealeron';
+  }
+  var name = NIP_storeName_(home, NIP_host_(origin));
+  if (platform === 'dealeron') {
+    var dealeronFed = NIP_dealeronFeed_(origin);
+    if (dealeronFed.length) return { id: NIP_host_(origin), name: name, vehicles: dealeronFed };
+  }
+  if (platform === 'dealer.com') {
+    var listed = NIP_dealercomFeed_(origin, home);
+    if (listed.length) return { id: NIP_host_(origin), name: name, vehicles: listed };
+  }
+  if (!platform && (NIP_blocked_(home) || String(home || '').length < 500)) {
+    var recovered = NIP_dealercomFromSitemap_(origin);
+    if (recovered.vehicles.length) return { id: NIP_host_(origin), name: recovered.name || name, vehicles: recovered.vehicles };
+  }
+  if (NIP_blocked_(home)) throw new Error('The dealer site blocked the inventory request.');
   var inventoryUrl = /new-vehicles|new-inventory|searchnew/i.test(website)
     ? String(website).replace(/[?#].*$/, '')
     : origin + '/new-vehicles/';
   var list = NIP_fetch_(inventoryUrl);
   if (NIP_blocked_(list)) throw new Error('The dealer site blocked the inventory request.');
-  var name = NIP_storeName_(list, NIP_host_(origin));
+  if (!name || name === NIP_host_(origin)) name = NIP_storeName_(list, NIP_host_(origin));
   var cards = NIP_sitemapCards_(origin);
   if (!cards.length) cards = NIP_dealeronCards_(origin);
   if (!cards.length) cards = NIP_cards_(list, origin);
@@ -256,6 +288,138 @@ function NIP_libraryDiscount_(text) {
     if (bits[0] === 'calc_Dealer Discount') return Math.round(Number(bits[1]) || 0);
   }
   return null;
+}
+
+function NIP_dealercomAccount_(html) {
+  var text = String(html || '');
+  var account = (text.match(/accountId["']?\s*[:=]\s*["']([A-Za-z0-9_-]+)/) || [])[1] || '';
+  var site = (text.match(/siteId["']?\s*[:=]\s*["']([A-Za-z0-9_-]+)/) || [])[1] || account;
+  return { account: account, site: site };
+}
+
+function NIP_dealercomDiscount_(vehicle, incentives) {
+  var discount = 0;
+  var saw = false;
+  var rows = vehicle && vehicle.pricing && vehicle.pricing.dprice ? vehicle.pricing.dprice : [];
+  for (var i = 0; i < rows.length; i++) {
+    if (!rows[i] || !rows[i].isDiscount) continue;
+    var amount = NIP_dollars_(rows[i].value);
+    if (!amount) continue;
+    discount += amount;
+    saw = true;
+  }
+  var ids = vehicle && vehicle.incentiveIds ? vehicle.incentiveIds : [];
+  incentives = incentives || {};
+  for (var j = 0; j < ids.length; j++) {
+    var inc = incentives[ids[j]] || incentives['[' + ids[j] + ']'];
+    if (!inc || inc.conditional) continue;
+    if (!/dealer discount/i.test(String(inc.disclaimer || ''))) continue;
+    var cash = Math.round(Number(inc.specific && inc.specific.cashOption) || 0);
+    if (!cash) continue;
+    discount += cash;
+    saw = true;
+  }
+  return { discount: discount, saw: saw };
+}
+
+function NIP_dealercomPage_(data, origin) {
+  var vehicles = [];
+  var list = data && data.inventory ? data.inventory : [];
+  var incentives = data && data.incentives ? data.incentives : {};
+  for (var i = 0; i < list.length; i++) {
+    var card = list[i];
+    if (!card || !/^new$/i.test(card.type || card.condition || '')) continue;
+    var msrp = null;
+    var rows = card.pricing && card.pricing.dprice ? card.pricing.dprice : [];
+    for (var r = 0; r < rows.length; r++) {
+      var label = String(rows[r].label || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (rows[r].typeClass === 'msrp' || /^msrp$/i.test(label)) msrp = NIP_dollars_(rows[r].value);
+    }
+    if (!msrp) continue;
+    var priced = NIP_dealercomDiscount_(card, incentives);
+    var href = String(card.link || '');
+    if (href && href.indexOf('http') !== 0) href = origin + href;
+    vehicles.push({
+      vin: String(card.vin || '').toUpperCase(),
+      stock: card.stockNumber || '',
+      year: String(card.year || ''),
+      make: card.make || '',
+      model: card.model || '',
+      trim: card.trim || '',
+      msrp: msrp,
+      dealerDiscount: priced.saw ? priced.discount : 0,
+      url: href
+    });
+  }
+  return vehicles;
+}
+
+function NIP_dealercomSample_(xml) {
+  var urls = String(xml || '').match(/https?:\/\/[^<\s"]+/gi) || [];
+  for (var i = 0; i < urls.length; i++) {
+    var href = urls[i].replace(/&amp;/g, '&');
+    if (/\/new\/[^/]+\/20\d{2}-/i.test(href)) return href;
+  }
+  return '';
+}
+
+function NIP_dealercomFromSitemap_(origin) {
+  var xml = NIP_fetch_(origin + '/sitemap.xml');
+  var page = NIP_dealercomSample_(xml);
+  if (!page) {
+    var maps = String(xml).match(/https?:\/\/[^<\s"]+sitemap[^<\s"]*/gi) || [];
+    for (var i = 0; i < maps.length && !page; i++) {
+      if (!/vehicle/i.test(maps[i])) continue;
+      page = NIP_dealercomSample_(NIP_fetch_(maps[i]));
+    }
+  }
+  if (!page) return { name: '', vehicles: [] };
+  var html = NIP_fetch_(page);
+  if (NIP_platform_(html) !== 'dealer.com') return { name: '', vehicles: [] };
+  return { name: NIP_storeName_(html, NIP_host_(origin)), vehicles: NIP_dealercomFeed_(origin, html) };
+}
+
+function NIP_dealercomFeed_(origin, homeHtml) {
+  var ids = NIP_dealercomAccount_(homeHtml);
+  if (!ids.account) return [];
+  var vehicles = [];
+  var seen = {};
+  var start = 0;
+  for (var page = 0; page < 12; page++) {
+    var payload = {
+      siteId: ids.site,
+      locale: 'en_US',
+      device: 'DESKTOP',
+      pageAlias: 'INVENTORY_LISTING_DEFAULT_AUTO_NEW',
+      windowId: 'inventory-data-bus1',
+      widgetName: 'ws-inv-data',
+      includePricing: true,
+      inventoryParameters: { inventoryType: 'new', classification: 'new', start: String(start) },
+      preferences: { pageSize: '48', 'listing.config.id': 'auto-new' }
+    };
+    var response = UrlFetchApp.fetch(origin + '/api/widget/ws-inv-data/getInventory', {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+      followRedirects: true,
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    var data;
+    try { data = JSON.parse(response.getContentText() || ''); } catch (error) { break; }
+    var received = data.inventory ? data.inventory.length : 0;
+    if (!received) break;
+    var batch = NIP_dealercomPage_(data, origin);
+    for (var i = 0; i < batch.length; i++) {
+      if (!batch[i].vin || seen[batch[i].vin]) continue;
+      seen[batch[i].vin] = true;
+      vehicles.push(batch[i]);
+    }
+    var total = data.pageInfo && data.pageInfo.totalCount;
+    start += received;
+    if (!total || start >= total) break;
+  }
+  return vehicles;
 }
 
 function NIP_fetchUrl_(url) {
@@ -687,4 +851,120 @@ function NIP_avgPercent_(units) {
     count++;
   }
   return count ? Math.round((sum / count) * 10) / 10 : null;
+}
+
+function NIP_money_(value) {
+  if (value == null || value === '') return '';
+  var amount = Math.round(Number(value));
+  if (!isFinite(amount)) return '';
+  var sign = amount < 0 ? '-' : '';
+  var digits = String(Math.abs(amount));
+  var grouped = '';
+  for (var i = 0; i < digits.length; i++) {
+    if (i && (digits.length - i) % 3 === 0) grouped += ',';
+    grouped += digits.charAt(i);
+  }
+  return sign + '$' + grouped;
+}
+
+function NIP_code_(dealer) {
+  var host = String((dealer && (dealer.id || dealer.website || dealer.name)) || '');
+  if (/hollingsworth/i.test(host)) return 'HR';
+  if (/robinson/i.test(host)) return 'RB';
+  if (/billhood/i.test(host)) return 'BH';
+  if (/bayouford/i.test(host)) return 'BY';
+  if (/geauxford/i.test(host)) return 'GF';
+  var parts = String((dealer && dealer.name) || 'Store').split(/\s+/);
+  var letters = '';
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i]) letters += parts[i].charAt(0);
+  }
+  return (letters.slice(0, 3) || 'STR').toUpperCase();
+}
+
+function NIP_gapText_(beatenBy) {
+  if (beatenBy == null) return 'NO STOCK';
+  if (beatenBy > 0) return NIP_money_(beatenBy);
+  if (beatenBy < 0) return '+' + NIP_money_(Math.abs(beatenBy));
+  return 'even';
+}
+
+function NIP_exportStamp_(pulledAt) {
+  var match = String(pulledAt || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : '';
+}
+
+function NIP_exportTable_(job) {
+  job = job || {};
+  var dealers = job.dealers || [];
+  var competitors = [];
+  for (var i = 0; i < dealers.length; i++) {
+    if (dealers[i].website !== job.home) competitors.push(dealers[i]);
+  }
+  var headers = ['Year', 'Make', 'Model', 'Trim', 'Geaux n', 'Geaux $', 'Geaux %'];
+  for (var c = 0; c < competitors.length; c++) headers.push(NIP_code_(competitors[c]) + ' $');
+  headers.push('Leader', 'Gap');
+  var rows = [];
+  var details = [];
+  var source = job.rows || [];
+  for (var r = 0; r < source.length; r++) {
+    var row = source[r];
+    var home = row.home || { count: 0 };
+    var comps = row.competitors || [];
+    var best = null;
+    for (var k = 0; k < comps.length; k++) {
+      if (!comps[k].count) continue;
+      if (!best || comps[k].avgDiscount > best.avgDiscount) best = comps[k];
+    }
+    var beatenBy = best && home.count ? best.avgDiscount - (home.avgDiscount || 0) : null;
+    var line = [
+      row.year || '',
+      row.make || '',
+      row.model || '',
+      row.trim || '',
+      home.count || 0,
+      home.count ? NIP_money_(home.avgDiscount) : 'NO STOCK',
+      home.count ? (home.avgPercent == null ? '' : home.avgPercent + '%') : 'NO STOCK'
+    ];
+    for (var n = 0; n < competitors.length; n++) {
+      var match = null;
+      for (var m = 0; m < comps.length; m++) {
+        if (comps[m].id === competitors[n].id || comps[m].name === competitors[n].name) match = comps[m];
+      }
+      line.push(match && match.count ? NIP_money_(match.avgDiscount) + ' (' + match.count + ')' : 'NO STOCK');
+    }
+    line.push(best ? NIP_code_(best) : 'NO STOCK');
+    line.push(NIP_gapText_(beatenBy));
+    rows.push(line);
+    var stores = [{ name: home.name || 'Geaux Ford', units: home.units || [] }];
+    for (var s = 0; s < comps.length; s++) {
+      if (comps[s].count) stores.push(comps[s]);
+    }
+    for (var store = 0; store < stores.length; store++) {
+      var units = stores[store].units || [];
+      for (var u = 0; u < units.length; u++) {
+        var unit = units[u];
+        details.push([
+          stores[store].name || 'Geaux Ford',
+          row.year || '',
+          row.make || '',
+          row.model || '',
+          row.trim || '',
+          unit.stock || '',
+          unit.vin || '',
+          NIP_money_(unit.dealerDiscount),
+          unit.discountPercent == null ? '' : unit.discountPercent + '%'
+        ]);
+      }
+    }
+  }
+  var stamp = NIP_exportStamp_(job.pulledAt);
+  return {
+    title: 'Geaux Discount Position',
+    fileName: 'Geaux-Ford-Discount-Position' + (stamp ? '-' + stamp : ''),
+    headers: headers,
+    rows: rows,
+    detailHeaders: ['Store', 'Year', 'Make', 'Model', 'Trim', 'Stock', 'VIN', 'Dealer discount', '%'],
+    details: details
+  };
 }

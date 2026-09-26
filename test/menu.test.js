@@ -14,6 +14,9 @@ test("inventory pricing adds a sheet menu without a second onOpen", () => {
   assert.match(menu, /function NIP_onOpen\(/);
   assert.match(menu, /addItem\('Geaux Chevy', 'GCY_open'\)/);
   assert.match(menu, /addItem\('Web app link', 'NIP_showWebAppUrl'\)/);
+  assert.match(menu, /function NIP_exportReport\(/);
+  assert.match(api, /function NIP_platform_\(/);
+  assert.match(api, /function NIP_dealercomFeed_\(/);
   assert.doesNotMatch(menu, /Compare discounts/);
   assert.match(menu, /showModalDialog/);
   assert.doesNotMatch(menu, /function onOpen\(/);
