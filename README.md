@@ -1,3 +1,5 @@
 # BarrientCursor
 
-Open `public/index.html` for the page badge and button. The bell shows an unread count, and **Schedule a visit** is the main action.
+The Geaux Chevrolet lifetime-warranty badge lives in `public/`.
+
+Open `public/index.html` to see it on a vehicle card, to the right of the Silverado Selldown badge. The artwork files are `public/warranty-badge.png` and `public/warranty-badge.svg`.

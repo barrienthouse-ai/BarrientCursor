@@ -3,70 +3,65 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Badge and button</title>
+  <title>Geaux Chevrolet warranty for life badge</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <p class="brand">Barrient</p>
-    <div class="topbar-actions">
-      <button
-        type="button"
-        class="icon-button"
-        id="alerts-button"
-        aria-expanded="false"
-        aria-controls="alerts-panel"
-        aria-label="Alerts, 3 unread"
-      >
-        <svg class="bell" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v2.2c0 .7-.2 1.4-.7 2L4.4 15a1 1 0 0 0 .8 1.6h13.6a1 1 0 0 0 .8-1.6l-1.4-1.8c-.5-.6-.7-1.3-.7-2V9A5.5 5.5 0 0 0 12 3.5Z"
-          />
-          <path d="M9.5 18.2a2.5 2.5 0 0 0 5 0" />
-        </svg>
-        <span class="count-badge" id="alerts-badge">3</span>
-      </button>
-      <button type="button" class="button button-quiet" id="contact-button">Contact</button>
-    </div>
+  <header class="page-head">
+    <p class="eyebrow">Geaux Chevrolet</p>
+    <h1>Warranty for Life badge</h1>
+    <p class="intro">
+      A separate badge for every new vehicle. On Silverado cards it sits in the open space to the right of the Silverado Selldown badge.
+    </p>
   </header>
 
-  <section class="alerts-panel" id="alerts-panel" hidden>
-    <div class="alerts-head">
-      <h2>Alerts</h2>
-      <button type="button" class="text-button" id="mark-read">Mark all read</button>
-    </div>
-    <ul class="alert-list">
-      <li>
-        <span class="status-badge">New</span>
-        <span>Lead assigned to your desk</span>
-      </li>
-      <li>
-        <span class="status-badge">Update</span>
-        <span>Price change is waiting for review</span>
-      </li>
-      <li>
-        <span class="status-badge">Soon</span>
-        <span>Appointment starts in 30 minutes</span>
-      </li>
-    </ul>
-  </section>
+  <main>
+    <section class="preview" aria-label="Badge placement on vehicle cards">
+      <article class="vehicle-card">
+        <p class="stock">Stock: 1114795 · VIN 1GCPAAED4TZ470612</p>
+        <h2>Silverado 1500</h2>
+        <p class="price-line"><span>Geaux Sales Price</span> <strong>$43,074</strong></p>
+        <div class="badge-row">
+          <p class="selldown">
+            <span>Silverado<br>Selldown</span>
+            <svg class="bowtie" viewBox="0 0 36 16" aria-hidden="true">
+              <polygon points="1,1 16,8 1,15" fill="#d5a241"/>
+              <polygon points="35,1 20,8 35,15" fill="#d5a241"/>
+            </svg>
+          </p>
+          <p class="life-badge">
+            <span class="life-brand">Geaux Chevrolet</span>
+            <span class="life-title">Warranty for Life</span>
+            <span class="life-note">Included</span>
+          </p>
+        </div>
+        <p class="savings-cue">For Additional Savings, START HERE!</p>
+      </article>
 
-  <main id="main">
-    <article class="card">
-      <p class="kicker">
-        <span class="status-badge status-badge-available">Available</span>
+      <article class="vehicle-card">
+        <p class="stock">Stock: 1114802 · New Equinox</p>
+        <h2>Equinox</h2>
+        <p class="price-line"><span>Geaux Sales Price</span> <strong>$28,440</strong></p>
+        <div class="badge-row">
+          <p class="life-badge">
+            <span class="life-brand">Geaux Chevrolet</span>
+            <span class="life-title">Warranty for Life</span>
+            <span class="life-note">Included</span>
+          </p>
+        </div>
+        <p class="savings-cue">For Additional Savings, START HERE!</p>
+      </article>
+    </section>
+
+    <section class="asset" aria-label="Standalone badge">
+      <h2>Badge on its own</h2>
+      <img src="warranty-badge.png" width="152" height="52" alt="Geaux Chevrolet. Warranty for life included.">
+      <p class="asset-note">Shown at 152 × 52 pixels, the size that fits to the right of the Selldown badge. The file is 304 × 104 so it stays sharp.</p>
+      <p class="file-links">
+        <a class="file-link" href="warranty-badge.png">warranty-badge.png</a>
+        <a class="file-link" href="warranty-badge.svg">warranty-badge.svg</a>
       </p>
-      <h1>Schedule a visit</h1>
-      <p class="lede">
-        The red badge shows unread alerts. The button below records a visit request on this page.
-      </p>
-      <div class="card-actions">
-        <button type="button" class="button button-primary" id="visit-button">Schedule a visit</button>
-      </div>
-      <p class="status-line" id="page-status" aria-live="polite"></p>
-    </article>
+    </section>
   </main>
-
-  <script src="app.js"></script>
 </body>
 </html>
