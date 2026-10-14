@@ -1,0 +1,209 @@
+:root {
+  --navy: #16325c;
+  --gold: #d5a241;
+  --gold-text: #e8c36a;
+  --ink: #1a1a1a;
+  --muted: #5c6570;
+  --card-line: #e6e6e6;
+  --cue: #f0c400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--ink);
+  background: #f4f5f7;
+}
+
+.page-head,
+main {
+  width: min(860px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.page-head {
+  padding: 28px 0 8px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--navy);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 1.8rem;
+  line-height: 1.15;
+}
+
+.intro {
+  margin: 0;
+  max-width: 40rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 22px 0 8px;
+}
+
+.vehicle-card {
+  width: 278px;
+  background: #fff;
+  border: 1px solid var(--card-line);
+  padding: 14px 16px 16px;
+}
+
+.stock {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.vehicle-card h2 {
+  margin: 4px 0 10px;
+  font-size: 1.05rem;
+}
+
+.price-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--card-line);
+  font-size: 0.82rem;
+}
+
+.price-line strong {
+  font-size: 0.95rem;
+}
+
+.badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+}
+
+.selldown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  width: 86px;
+  height: 52px;
+  margin: 0;
+  padding: 6px 6px 6px 7px;
+  background: #000;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.bowtie {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 9px;
+}
+
+.life-badge {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 152px;
+  height: 52px;
+  margin: 0;
+  padding: 0 8px 0 12px;
+  background: var(--navy);
+  box-shadow: inset 4px 0 0 var(--gold);
+}
+
+.life-brand,
+.life-title,
+.life-note {
+  display: block;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.life-brand {
+  color: var(--gold-text);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.life-title {
+  margin-top: 3px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.life-note {
+  margin-top: 2px;
+  color: var(--gold-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+}
+
+.savings-cue {
+  margin: 14px 0 0;
+  color: #111;
+  font-size: 0.95rem;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.asset {
+  margin: 10px 0 40px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--card-line);
+}
+
+.asset h2 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+
+.asset img {
+  display: block;
+  width: 152px;
+  height: 52px;
+}
+
+.asset-note {
+  margin: 12px 0 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.file-links {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+}
+
+.file-link {
+  color: var(--navy);
+  font-weight: 700;
+}
