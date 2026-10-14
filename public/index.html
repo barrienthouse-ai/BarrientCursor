@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Badge and button</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <p class="brand">Barrient</p>
+    <div class="topbar-actions">
+      <button
+        type="button"
+        class="icon-button"
+        id="alerts-button"
+        aria-expanded="false"
+        aria-controls="alerts-panel"
+        aria-label="Alerts, 3 unread"
+      >
+        <svg class="bell" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v2.2c0 .7-.2 1.4-.7 2L4.4 15a1 1 0 0 0 .8 1.6h13.6a1 1 0 0 0 .8-1.6l-1.4-1.8c-.5-.6-.7-1.3-.7-2V9A5.5 5.5 0 0 0 12 3.5Z"
+          />
+          <path d="M9.5 18.2a2.5 2.5 0 0 0 5 0" />
+        </svg>
+        <span class="count-badge" id="alerts-badge">3</span>
+      </button>
+      <button type="button" class="button button-quiet" id="contact-button">Contact</button>
+    </div>
+  </header>
+
+  <section class="alerts-panel" id="alerts-panel" hidden>
+    <div class="alerts-head">
+      <h2>Alerts</h2>
+      <button type="button" class="text-button" id="mark-read">Mark all read</button>
+    </div>
+    <ul class="alert-list">
+      <li>
+        <span class="status-badge">New</span>
+        <span>Lead assigned to your desk</span>
+      </li>
+      <li>
+        <span class="status-badge">Update</span>
+        <span>Price change is waiting for review</span>
+      </li>
+      <li>
+        <span class="status-badge">Soon</span>
+        <span>Appointment starts in 30 minutes</span>
+      </li>
+    </ul>
+  </section>
+
+  <main id="main">
+    <article class="card">
+      <p class="kicker">
+        <span class="status-badge status-badge-available">Available</span>
+      </p>
+      <h1>Schedule a visit</h1>
+      <p class="lede">
+        The red badge shows unread alerts. The button below records a visit request on this page.
+      </p>
+      <div class="card-actions">
+        <button type="button" class="button button-primary" id="visit-button">Schedule a visit</button>
+      </div>
+      <p class="status-line" id="page-status" aria-live="polite"></p>
+    </article>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

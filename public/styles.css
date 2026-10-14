@@ -1,0 +1,269 @@
+:root {
+  --ink: #14202b;
+  --muted: #5c6b76;
+  --paper: #eef2f4;
+  --card: #ffffff;
+  --line: #d5dee4;
+  --navy: #16324f;
+  --navy-deep: #0e243a;
+  --badge: #c53636;
+  --available: #0d6b45;
+  --available-bg: #e5f6ef;
+  --focus: #1d6fe0;
+  --shadow: 0 16px 40px rgba(20, 32, 43, 0.08);
+  --radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, #ffffff 0, transparent 42%),
+    var(--paper);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 20px 0;
+}
+
+.brand {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.button,
+.icon-button,
+.text-button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.button {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0 18px;
+  font-weight: 650;
+}
+
+.button-primary {
+  color: #fff;
+  background: var(--navy);
+}
+
+.button-primary:hover {
+  background: var(--navy-deep);
+}
+
+.button-quiet {
+  color: var(--navy);
+  background: transparent;
+  border-color: var(--line);
+}
+
+.button-quiet:hover,
+.button-quiet[aria-pressed="true"] {
+  background: #fff;
+}
+
+.button:disabled {
+  cursor: default;
+  color: var(--available);
+  background: var(--available-bg);
+}
+
+.icon-button {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--navy);
+}
+
+.icon-button:hover,
+.icon-button[aria-expanded="true"] {
+  border-color: var(--navy);
+}
+
+.bell {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.count-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 2px solid var(--paper);
+  border-radius: 999px;
+  background: var(--badge);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+.button:focus-visible,
+.icon-button:focus-visible,
+.text-button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.alerts-panel {
+  max-width: 760px;
+  margin: 12px auto 0;
+  padding: 0 20px;
+}
+
+.alerts-panel[hidden] {
+  display: none;
+}
+
+.alerts-head,
+.alert-list,
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+.alerts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 14px 16px;
+}
+
+.alerts-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.text-button {
+  border: 0;
+  background: transparent;
+  color: var(--navy);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.alert-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.alert-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 0 8px;
+  background: #e8eef5;
+  color: var(--navy);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.status-badge-available {
+  background: var(--available-bg);
+  color: var(--available);
+}
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+}
+
+.card {
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+.kicker {
+  margin: 0 0 12px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  line-height: 1.15;
+}
+
+.lede {
+  margin: 0;
+  max-width: 42rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.card-actions {
+  margin-top: 22px;
+}
+
+.status-line {
+  min-height: 1.4em;
+  margin: 14px 0 0;
+  color: var(--available);
+  font-weight: 650;
+}
+
+@media (max-width: 560px) {
+  .card {
+    padding: 22px 18px;
+  }
+
+  .alert-list li {
+    align-items: flex-start;
+  }
+}
