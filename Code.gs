@@ -30,7 +30,7 @@ function geauxMenuBlueprint_() {
         ]
       },
       { title: 'Service Manager Report', onOpen: 'SMR_onOpen' },
-      { title: 'SLM', onOpen: 'SLM_onOpen' },
+      { title: 'Sales Manager Report', onOpen: 'SLM_onOpen' },
       {
         title: 'GEAUX Desk',
         always: true,

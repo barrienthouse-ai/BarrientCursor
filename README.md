@@ -11,7 +11,7 @@ Copy every `.gs` and `.html` file plus `appsscript.json` into a container-bound 
 ## First run
 
 1. Reload the spreadsheet. The menu bar has two items: **GEAUX TOOLS** and **GEAUX REPORTS** (to the right of Help), not in GitHub and not as tabs at the bottom of the workbook.
-   - **GEAUX TOOLS:** Lease Engine, Dealer Bonuses, GEAUX Terminal, Service Manager Report (SMR), SLM, GEAUX Desk, Deal Log.
+   - **GEAUX TOOLS:** Lease Engine, Dealer Bonuses, GEAUX Terminal, Service Manager Report (SMR), Sales Manager Report (end-of-day recap), GEAUX Desk, Deal Log.
    - **GEAUX REPORTS:** Deal Reports and Dealer Tool Kit.
    - If they are missing: **Extensions → Apps Script**, confirm `Code.gs` is in the script bound to this spreadsheet, then reload. First run: **Run → onOpen** in the Apps Script editor and click Allow.
    - **Delete any other `function onOpen()`** in the same Apps Script project (keep the rest of those files). Two `onOpen` functions cannot share one project. Use `LeaseEngine.gs` for the lease calculator (no `onOpen` in that file).
@@ -40,6 +40,16 @@ Existing `SETUP` (salespeople A7:A52, managers A57:A62), `INV`, and `DESKDATA` k
 3. The dialog field **etch** maps to LOGDEAL **paint** (B24). **Spiff 2** is the commissions `spiff2b` box and writes `J31`.
 4. Clear resets both the dialog and the LOGDEAL formula cells on the sheet.
 5. Sidebar **Deal Manager** (`OPENDEALMANAGER` / `dealDialog.html`) is not in the menu until that HTML file exists. Do not add a second `onOpen()` in `DealManager.gs`.
+
+## Sales Manager end-of-day recap
+
+Copy every `SLM_*.gs` file plus `SLM_App.html` into the bound Apps Script. Do **not** add another `onOpen()` — `Code.gs` already calls `SLM_onOpen()`.
+
+1. **GEAUX TOOLS → Sales Manager Report → Open end-of-day recap.**
+2. First run: **Run → `SLM_install`** once. That creates only `SLM_*` tabs. It does not write `DEALINPUT`, `SUMMARY`, `LOGDEAL`, or `SMR_*`.
+3. Pick the date. Retail new/used units and front/back/total gross fill from `DEALINPUT` (wholesale, fleet, and dealer trades are skipped). Type appointments, shown, showroom visits, and next-day appointments.
+4. **Email this report** saves the recap then sends it. Recipient is `SLM_Config` → **Report email**, or **Set report email** in the menu.
+5. Full paste list and daily steps: `apps-script/INSTALL.md`.
 
 ## Changing customer quote options (no code deploy)
 

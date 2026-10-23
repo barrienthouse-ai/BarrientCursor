@@ -165,13 +165,160 @@ test('LeaseEngine.gs keeps lease tools and has no onOpen', function() {
   assert.ok(!/^function\s+onOpen\s*\(/m.test(src));
 });
 
+test('Sales Manager recap files exist, have no onOpen, and normalize a daily report', function() {
+  const names = [
+    'SLM_Api.gs', 'SLM_App.html', 'SLM_Compatibility.gs', 'SLM_Config.gs',
+    'SLM_Dashboard.gs', 'SLM_Email.gs', 'SLM_Import.gs', 'SLM_Menu.gs', 'SLM_Sheets.gs'
+  ];
+  names.forEach(function(name) {
+    assert.ok(fs.existsSync(path.join(root, name)), 'missing ' + name);
+  });
+  const menu = fs.readFileSync(path.join(root, 'SLM_Menu.gs'), 'utf8');
+  assert.ok(!/^function\s+onOpen\s*\(/m.test(menu));
+  assert.ok(menu.indexOf('function SLM_onOpen') !== -1);
+  assert.ok(menu.indexOf('function SLM_openRecap') !== -1);
+  assert.ok(menu.indexOf("createTemplateFromFile('SLM_App')") !== -1);
+  assert.ok(menu.indexOf('ScriptApp.newTrigger') === -1);
+  const html = fs.readFileSync(path.join(root, 'SLM_App.html'), 'utf8');
+  assert.ok(html.indexOf('<?!= seedJson ?>') !== -1);
+  assert.ok(html.indexOf('End-of-day recap') !== -1);
+  vm.runInContext(fs.readFileSync(path.join(root, 'SLM_Config.gs'), 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync(path.join(root, 'SLM_Api.gs'), 'utf8'), ctx);
+  const report = ctx.SLM_normalizeReport_({
+    date: '2026-10-23',
+    newSold: 2,
+    usedSold: 1,
+    frontGross: 1500.2,
+    backGross: 499.8,
+    appointments: 10,
+    shownAppointments: 8,
+    showroomVisits: 12
+  });
+  assert.strictEqual(report.totalSold, 3);
+  assert.strictEqual(report.totalGross, 2000);
+  const metrics = ctx.SLM_metrics_(report);
+  assert.strictEqual(metrics.showRate, 0.8);
+  assert.strictEqual(metrics.closeRate, 0.25);
+  assert.strictEqual(ctx.SLM_isRetail_('RETAIL'), true);
+  assert.strictEqual(ctx.SLM_isRetail_('WHOLESALE'), false);
+  assert.strictEqual(ctx.SLM_dept_('NEW'), 'new');
+  assert.strictEqual(ctx.SLM_dept_('FLEET'), 'other');
+  assert.strictEqual(ctx.SLM_nextBusinessDay_('2026-10-24'), '2026-10-26');
+});
+
+test('Sales Manager recap overwrites the same date and recalculates totals', function() {
+  vm.runInContext(fs.readFileSync(path.join(root, 'SLM_Config.gs'), 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync(path.join(root, 'SLM_Sheets.gs'), 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync(path.join(root, 'SLM_Api.gs'), 'utf8'), ctx);
+
+  var threw = false;
+  try {
+    ctx.SLM_requireDateKey_('');
+  } catch (err) {
+    threw = true;
+    assert.ok(String(err.message).indexOf('report date') !== -1);
+  }
+  assert.ok(threw, 'empty date must be rejected');
+  assert.strictEqual(ctx.SLM_requireDateKey_('10/23/2026'), '2026-10-23');
+  assert.ok(ctx.SLM_sameDateKey_('10/23/2026', '2026-10-23'));
+
+  var headers = ctx.SLM_HEADERS.DAILY;
+  function reportRow(overrides) {
+    return ctx.SLM_normalizeReport_(Object.assign({
+      date: '2026-10-23',
+      newSold: 2,
+      usedSold: 1,
+      frontGross: 4000,
+      backGross: 1000,
+      appointments: 10,
+      shownAppointments: 8,
+      showroomVisits: 12,
+      nextDayAppointments: 4
+    }, overrides));
+  }
+  function valuesFor(overrides) {
+    return ctx.SLM_valuesFromReport_(reportRow(overrides));
+  }
+
+  var first = reportRow({ newSold: 2, usedSold: 1, frontGross: 4000, backGross: 1000 });
+  var usDuplicate = valuesFor({ date: '2026-10-23', newSold: 9, usedSold: 9, frontGross: 9999, backGross: 9999 });
+  usDuplicate[0] = '10/23/2026';
+  var table = {
+    headers: headers,
+    values: [
+      valuesFor({ date: '2026-10-22', newSold: 1, usedSold: 1, frontGross: 1500, backGross: 500 }),
+      usDuplicate,
+      valuesFor({ date: '2026-10-23', newSold: 8, usedSold: 8, frontGross: 8888, backGross: 8888 })
+    ]
+  };
+  var upsert = ctx.SLM_applyDailyUpsertToTable_(table, first);
+  assert.strictEqual(upsert.overwritten, true);
+  assert.strictEqual(upsert.removedDuplicates, 1);
+  assert.strictEqual(upsert.values.length, 2);
+  assert.strictEqual(ctx.SLM_dateKeyFast_(upsert.values[0][0]), '2026-10-22');
+  assert.strictEqual(upsert.values[1][0], '2026-10-23');
+  assert.strictEqual(upsert.values[1][1], 2);
+  assert.strictEqual(upsert.values[1][2], 1);
+  assert.strictEqual(upsert.values[1][6], 5000);
+
+  var secondDay = reportRow({ date: '2026-10-24', newSold: 3, usedSold: 0, frontGross: 2000, backGross: 200 });
+  var appended = ctx.SLM_applyDailyUpsertToTable_(upsert, secondDay);
+  assert.strictEqual(appended.overwritten, false);
+  assert.strictEqual(appended.values.length, 3);
+
+  var reports = ctx.SLM_reportsFromTable_({
+    headers: headers,
+    values: [
+      valuesFor({ date: '2026-10-22', newSold: 1, usedSold: 1, frontGross: 1500, backGross: 500 }),
+      valuesFor({ date: '2026-10-23', newSold: 2, usedSold: 1, frontGross: 4000, backGross: 1000 }),
+      valuesFor({ date: '2026-10-23', newSold: 20, usedSold: 20, frontGross: 40000, backGross: 10000 })
+    ]
+  });
+  var unique = ctx.SLM_uniqueReportsByDate_(reports);
+  assert.strictEqual(unique.length, 2);
+  assert.strictEqual(unique[1].newSold, 20);
+  var doubled = ctx.SLM_sumReports_(reports);
+  var uniqueSum = ctx.SLM_sumReports_(unique);
+  assert.strictEqual(doubled.newSold, 23);
+  assert.strictEqual(uniqueSum.newSold, 21);
+  assert.strictEqual(uniqueSum.totalGross, 52000);
+
+  var snapshot = ctx.SLM_buildSnapshot_('2026-10-23', reports, { daily: ctx.SLM_emptyTotals_() });
+  assert.strictEqual(snapshot.saved, true);
+  assert.strictEqual(snapshot.monthly.newSold, 21);
+  assert.strictEqual(snapshot.monthly.usedSold, 21);
+  assert.strictEqual(snapshot.monthly.totalGross, 52000);
+  assert.strictEqual(snapshot.monthlyPrior.newSold, 1);
+  assert.strictEqual(snapshot.monthly.entryCount, 2);
+
+  var overwrittenAgain = ctx.SLM_applyDailyUpsertToTable_({
+    headers: headers,
+    values: unique.map(function(row) { return ctx.SLM_valuesFromReport_(row); })
+  }, reportRow({ newSold: 4, usedSold: 2, frontGross: 3000, backGross: 700 }));
+  var afterOverwrite = ctx.SLM_reportsFromTable_(overwrittenAgain);
+  var afterSnap = ctx.SLM_buildSnapshot_('2026-10-23', afterOverwrite, { daily: ctx.SLM_emptyTotals_() });
+  assert.strictEqual(overwrittenAgain.overwritten, true);
+  assert.strictEqual(afterSnap.monthly.newSold, 5);
+  assert.strictEqual(afterSnap.monthly.usedSold, 3);
+  assert.strictEqual(afterSnap.monthly.totalGross, 5700);
+
+  var html = fs.readFileSync(path.join(root, 'SLM_App.html'), 'utf8');
+  assert.ok(html.indexOf('Updated existing recap for') !== -1);
+  assert.ok(html.indexOf('Totals recalculated') !== -1);
+  assert.ok(html.indexOf('Choose a report date before saving.') !== -1);
+  assert.ok(html.indexOf('Save will overwrite it and recalculate totals') !== -1);
+
+  var menu = fs.readFileSync(path.join(root, 'SLM_Menu.gs'), 'utf8');
+  assert.ok(menu.indexOf('SLM_dedupeDailySheet_') !== -1);
+});
+
 test('Code.gs groups dealer menus under GEAUX TOOLS and GEAUX REPORTS', function() {
   vm.runInContext(fs.readFileSync(path.join(root, 'Code.gs'), 'utf8'), ctx);
   const plan = ctx.geauxMenuBlueprint_();
   assert.strictEqual(plan.toolsTitle, 'GEAUX TOOLS');
   assert.strictEqual(plan.reportsTitle, 'GEAUX REPORTS');
   assert.strictEqual(plan.tools.map(function(g) { return g.title; }).join('|'),
-    'Lease Engine|Dealer Bonuses|GEAUX Terminal|Service Manager Report|SLM|GEAUX Desk|Deal Log');
+    'Lease Engine|Dealer Bonuses|GEAUX Terminal|Service Manager Report|Sales Manager Report|GEAUX Desk|Deal Log');
   assert.strictEqual(plan.reports.map(function(g) { return g.title; }).join('|'),
     'Deal Reports|Dealer Tool Kit');
   assert.strictEqual(plan.tools[3].onOpen, 'SMR_onOpen');
@@ -202,7 +349,7 @@ test('Code.gs groups dealer menus under GEAUX TOOLS and GEAUX REPORTS', function
     ctx.SpreadsheetApp.getUi().createMenu('Service Manager Report').addItem('Open SMR', 'SMR_open').addToUi();
   };
   ctx.SLM_onOpen = function() {
-    ctx.SpreadsheetApp.getUi().createMenu('SLM').addItem('Open SLM', 'SLM_open').addToUi();
+    ctx.SpreadsheetApp.getUi().createMenu('Sales Manager Report').addItem('Open end-of-day recap', 'SLM_openRecap').addToUi();
   };
   ctx.launchDealComparisonReport = function() {};
   ctx.launchTradeDashboardFromMenu = function() {};
@@ -218,7 +365,7 @@ test('Code.gs groups dealer menus under GEAUX TOOLS and GEAUX REPORTS', function
   ctx.onOpen();
   assert.strictEqual(added.join('|'), 'GEAUX TOOLS|GEAUX REPORTS');
   assert.strictEqual(menus['GEAUX TOOLS'].items.map(function(i) { return i.submenu; }).join('|'),
-    'Lease Engine|Dealer Bonuses|GEAUX Terminal|Service Manager Report|SLM|GEAUX Desk|Deal Log');
+    'Lease Engine|Dealer Bonuses|GEAUX Terminal|Service Manager Report|Sales Manager Report|GEAUX Desk|Deal Log');
   assert.strictEqual(menus['GEAUX REPORTS'].items.map(function(i) { return i.submenu; }).join('|'),
     'Deal Reports|Dealer Tool Kit');
   assert.ok(added.indexOf('Service Manager Report') === -1);
@@ -779,6 +926,83 @@ const logMock = [
 const logPreview = logTpl.replace('</head>', logMock + '\n</head>');
 fs.writeFileSync(path.join(root, 'test', 'log-deal-preview.html'), logPreview);
 console.log('Wrote ' + path.join(root, 'test', 'log-deal-preview.html'));
+
+const slmSeed = {
+  date: '2026-10-23',
+  nextBusinessDate: '2026-10-26',
+  saved: false,
+  fromDealLog: true,
+  loading: false,
+  report: ctx.SLM_normalizeReport_({
+    date: '2026-10-23',
+    newSold: 2,
+    usedSold: 1,
+    frontGross: 4200,
+    backGross: 1850,
+    appointments: 10,
+    shownAppointments: 8,
+    showroomVisits: 12,
+    nextDayAppointments: 4,
+    notes: 'Solid Friday. Two new Traverses and one certified used.'
+  }),
+  monthlyPrior: {
+    newSold: 18, usedSold: 11, totalGross: 41250,
+    appointments: 92, shownAppointments: 70, showroomVisits: 88
+  },
+  dealLog: {
+    date: '2026-10-23',
+    lastRetailDate: '2026-10-23',
+    available: true,
+    daily: { newSold: 2, usedSold: 1, frontGross: 4200, backGross: 1850, totalGross: 6050, dealCount: 3 }
+  }
+};
+const slmMock = [
+  '<script>',
+  'window.google = { script: { host: { close: function(){}, setWidth: function(){}, setHeight: function(){} }, run: (function(){',
+  '  var api = {',
+  '    withSuccessHandler: function(fn) { api._ok = fn; return api; },',
+  '    withFailureHandler: function(fn) { api._err = fn; return api; },',
+  '    SLM_getSummary: function() { api._ok(window._slmSeed); },',
+  '    SLM_getEmailConfig: function() { api._ok({ reportEmail: \"gm@geauxchevrolet.example\" }); },',
+  '    SLM_fillFromDealLog: function() { api._ok(window._slmSeed); },',
+  '    SLM_saveDailyReport: function(payload) {',
+  '      var overwritten = window._slmSavedOnce === true;',
+  '      window._slmSavedOnce = true;',
+  '      var neu = Number(payload && payload.newSold) || 0;',
+  '      var used = Number(payload && payload.usedSold) || 0;',
+  '      var front = Number(payload && payload.frontGross) || 0;',
+  '      var back = Number(payload && payload.backGross) || 0;',
+  '      var report = Object.assign({}, window._slmSeed.report, payload, {',
+  '        totalSold: neu + used,',
+  '        totalGross: Math.round((front + back) * 100) / 100',
+  '      });',
+  '      var prior = window._slmSeed.monthlyPrior || {};',
+  '      var snapshot = Object.assign({}, window._slmSeed, {',
+  '        saved: true,',
+  '        overwritten: overwritten,',
+  '        report: report,',
+  '        monthly: {',
+  '          newSold: (Number(prior.newSold) || 0) + neu,',
+  '          usedSold: (Number(prior.usedSold) || 0) + used,',
+  '          totalGross: (Number(prior.totalGross) || 0) + front + back',
+  '        }',
+  '      });',
+  '      window._slmSeed = snapshot;',
+  '      api._ok(snapshot);',
+  '    },',
+  '    SLM_emailDailyReport: function() { api._ok({ sent: true, to: \"gm@geauxchevrolet.example\", snapshot: window._slmSeed }); }',
+  '  };',
+  '  return api;',
+  '})() } };',
+  'window._slmSeed = ' + JSON.stringify(slmSeed) + ';',
+  '</script>'
+].join('\n');
+const slmTpl = fs.readFileSync(path.join(root, 'SLM_App.html'), 'utf8');
+const slmPreview = slmTpl
+  .replace('<?!= seedJson ?>', JSON.stringify(slmSeed))
+  .replace('</head>', slmMock + '\n</head>');
+fs.writeFileSync(path.join(root, 'test', 'slm-recap-preview.html'), slmPreview);
+console.log('Wrote ' + path.join(root, 'test', 'slm-recap-preview.html'));
 
 if (failures.length) {
   console.log('\n' + failures.length + ' failed');
