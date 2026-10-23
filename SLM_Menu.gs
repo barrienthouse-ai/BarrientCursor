@@ -24,10 +24,12 @@ function SLM_onOpen() {
 
 function SLM_install() {
   SLM_ensureSheets();
+  SLM_dedupeDailySheet_();
   SLM_refreshDashboard();
   SpreadsheetApp.getUi().alert(
     'Sales Manager Report is installed.\n\n' +
     'Created or reused only SLM_* tabs. Existing sheets (including DEALINPUT, SUMMARY, and SMR_*) were not renamed or deleted.\n\n' +
+    'Each calendar day can have only one recap. Saving the same date overwrites that row and recalculates totals.\n\n' +
     'Reload the spreadsheet. Open it from GEAUX TOOLS → Sales Manager Report → Open end-of-day recap.'
   );
 }

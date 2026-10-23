@@ -23,7 +23,7 @@ Last logged retail day when this was read: 2026-08-31 (5 new, 2 used).
 
 SLM adds only `SLM_Dashboard`, `SLM_Daily`, and `SLM_Config`.
 
-- End-of-day units and gross live on `SLM_Daily`, even when they started as a `DEALINPUT` hint.
+- End-of-day units and gross live on `SLM_Daily`, even when they started as a `DEALINPUT` hint. `Date` is unique: a second save for the same day overwrites that row and rebuilds month-to-date totals.
 - Appointments, shown, showroom visits, and next-day appointments are typed by the sales manager. They do not exist on `DEALINPUT`.
 - `SUMMARY` stays the sales-side MTD formula sheet.
 

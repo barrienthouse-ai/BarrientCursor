@@ -75,10 +75,29 @@ function SLM_reportsFromTable_(table) {
   });
 }
 
+function SLM_uniqueReportsByDate_(reports) {
+  var byDate = {};
+  var order = [];
+  (reports || []).forEach(function (row) {
+    var key = SLM_dateKeyFast_(row && row.date);
+    if (!key) {
+      return;
+    }
+    if (!byDate[key]) {
+      order.push(key);
+    }
+    byDate[key] = row;
+  });
+  return order.map(function (key) {
+    return byDate[key];
+  });
+}
+
 function SLM_findDaily_(reports, dateKey) {
   var found = null;
+  var key = SLM_dateKeyFast_(dateKey) || SLM_toDateKey_(dateKey);
   (reports || []).forEach(function (row) {
-    if (row.date === dateKey) {
+    if (SLM_sameDateKey_(row.date, key)) {
       found = row;
     }
   });
@@ -96,6 +115,7 @@ function SLM_monday_(dateKey) {
 
 function SLM_buildSnapshot_(dateKey, reports, dealLog) {
   var key = SLM_toDateKey_(dateKey);
+  reports = SLM_uniqueReportsByDate_(reports);
   var month = key.slice(0, 7);
   var weekStart = SLM_monday_(key);
   var weekEnd = SLM_addDaysKey_(weekStart, 5);
@@ -159,12 +179,17 @@ function SLM_getSummary(dateKey) {
 }
 
 function SLM_saveDailyReport(payload) {
+  var dateKey = SLM_requireDateKey_(payload && payload.date);
   var report = SLM_normalizeReport_(payload || {});
+  report.date = dateKey;
   SLM_ensureSheets();
-  SLM_upsertDaily_(report);
-  var reports = SLM_reportsFromTable_(SLM_readDailyTable_());
+  SLM_dedupeDailySheet_();
+  var upsert = SLM_upsertDaily_(report);
+  var reports = SLM_uniqueReportsByDate_(SLM_reportsFromTable_(SLM_readDailyTable_()));
   var snapshot = SLM_buildSnapshot_(report.date, reports, SLM_peekDealInput_(report.date));
   snapshot.saved = true;
+  snapshot.overwritten = upsert.overwritten;
+  snapshot.removedDuplicates = upsert.removedDuplicates;
   snapshot.report = report;
   snapshot.metrics = SLM_metrics_(report);
   SLM_briefStorePut_(report.date, snapshot);
@@ -194,7 +219,7 @@ function SLM_fillFromDealLog(payload) {
 }
 
 function SLM_listHistory() {
-  return { rows: SLM_reportsFromTable_(SLM_readDailyTable_()) };
+  return { rows: SLM_uniqueReportsByDate_(SLM_reportsFromTable_(SLM_readDailyTable_())) };
 }
 
 function SLM_overlayMonthToDate_(prior, today) {

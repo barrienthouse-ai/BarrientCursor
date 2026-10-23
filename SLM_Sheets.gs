@@ -139,23 +139,113 @@ function SLM_valuesFromReport_(report) {
   ];
 }
 
-function SLM_upsertDaily_(report) {
-  var sheet = SLM_sheet_(SLM_SHEETS.DAILY);
-  var table = SLM_readDailyTable_();
+function SLM_matchDailyIndexes_(table, dateKey) {
   var dateIdx = SLM_col_(table.headers, 'Date');
-  var rowNumber = -1;
-  for (var i = 0; i < table.values.length; i++) {
-    if (SLM_dateKeyFast_(table.values[i][dateIdx]) === report.date) {
-      rowNumber = i + 2;
-      break;
+  var matches = [];
+  for (var i = 0; i < (table.values || []).length; i++) {
+    if (SLM_sameDateKey_(table.values[i][dateIdx], dateKey)) {
+      matches.push(i);
     }
   }
+  return matches;
+}
+
+/**
+ * Pure upsert used by tests and the sheet writer.
+ * Writes the first matching date, drops later same-date rows, or appends.
+ */
+function SLM_applyDailyUpsertToTable_(table, report) {
+  if (!report || !SLM_dateKeyFast_(report.date)) {
+    throw new Error('Choose a report date before saving.');
+  }
+  var values = (table.values || []).slice();
+  var matches = SLM_matchDailyIndexes_({ headers: table.headers, values: values }, report.date);
+  var row = SLM_valuesFromReport_(report);
+  var overwritten = matches.length > 0;
+  if (overwritten) {
+    values[matches[0]] = row;
+    for (var i = matches.length - 1; i >= 1; i--) {
+      values.splice(matches[i], 1);
+    }
+  } else {
+    values.push(row);
+  }
+  return {
+    headers: table.headers,
+    values: values,
+    overwritten: overwritten,
+    removedDuplicates: Math.max(0, matches.length - 1),
+    date: report.date
+  };
+}
+
+function SLM_dedupeDailyValues_(headers, values) {
+  var dateIdx = SLM_col_(headers, 'Date');
+  var seen = {};
+  var out = [];
+  var removed = 0;
+  for (var i = 0; i < (values || []).length; i++) {
+    var key = SLM_dateKeyFast_(values[i][dateIdx]);
+    if (key && seen[key]) {
+      removed += 1;
+      continue;
+    }
+    if (key) {
+      seen[key] = true;
+    }
+    out.push(values[i]);
+  }
+  return { headers: headers, values: out, removedDuplicates: removed };
+}
+
+function SLM_upsertDaily_(report) {
+  if (!report || !SLM_dateKeyFast_(report.date)) {
+    throw new Error('Choose a report date before saving.');
+  }
+  var sheet = SLM_sheet_(SLM_SHEETS.DAILY);
+  var table = SLM_readDailyTable_();
+  var planned = SLM_applyDailyUpsertToTable_(table, report);
   var values = SLM_valuesFromReport_(report);
-  if (rowNumber > 0) {
-    sheet.getRange(rowNumber, 1, 1, values.length).setValues([values]);
+  if (planned.overwritten) {
+    var matches = SLM_matchDailyIndexes_(table, report.date);
+    sheet.getRange(matches[0] + 2, 1, 1, values.length).setValues([values]);
+    for (var d = matches.length - 1; d >= 1; d--) {
+      sheet.deleteRow(matches[d] + 2);
+    }
   } else {
     sheet.appendRow(values);
   }
+  return {
+    overwritten: planned.overwritten,
+    removedDuplicates: planned.removedDuplicates,
+    date: report.date
+  };
+}
+
+function SLM_dedupeDailySheet_() {
+  var sheet = SLM_existingSheet_(SLM_SHEETS.DAILY);
+  if (!sheet || sheet.getLastRow() < 2) {
+    return { removedDuplicates: 0 };
+  }
+  var table = SLM_readDailyTable_();
+  var dateIdx = SLM_col_(table.headers, 'Date');
+  var seen = {};
+  var deleteRows = [];
+  for (var i = 0; i < table.values.length; i++) {
+    var key = SLM_dateKeyFast_(table.values[i][dateIdx]);
+    if (!key) {
+      continue;
+    }
+    if (seen[key]) {
+      deleteRows.push(i + 2);
+    } else {
+      seen[key] = true;
+    }
+  }
+  for (var d = deleteRows.length - 1; d >= 0; d--) {
+    sheet.deleteRow(deleteRows[d]);
+  }
+  return { removedDuplicates: deleteRows.length };
 }
 
 function SLM_ensureConfigKeys_() {

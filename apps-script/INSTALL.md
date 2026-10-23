@@ -36,6 +36,7 @@ Create these Apps Script files and paste the matching source from the repo root:
 
 ## Daily use
 
+- Each calendar day can have only one recap. Saving a date that already exists overwrites that row (extra same-day rows are removed) and recalculates month-to-date totals. It will not append a second row for the same day.
 - The recap window opens maximized. Month-to-date new, used, gross, appts, shown appts, showroom visits, show %, and close % sit above the notes box and include today’s form numbers.
 - Pick the date (defaults to today). Retail new/used units and front/back/total gross fill from `DEALINPUT` automatically. Wholesale, fleet, and dealer trades are skipped.
 - Type **appts for the day**, **shown appts**, **total showroom visits**, and **appts for the next business day**. Those are not in the deal log.

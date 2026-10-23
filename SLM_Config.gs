@@ -131,6 +131,20 @@ function SLM_dateKeyFast_(value) {
   return SLM_parseSheetDate_(value);
 }
 
+function SLM_requireDateKey_(value) {
+  var key = SLM_dateKeyFast_(value);
+  if (!key) {
+    throw new Error('Choose a report date before saving.');
+  }
+  return key;
+}
+
+function SLM_sameDateKey_(left, right) {
+  var a = SLM_dateKeyFast_(left);
+  var b = SLM_dateKeyFast_(right);
+  return Boolean(a && b && a === b);
+}
+
 function SLM_toNumber_(value) {
   if (value === '' || value === null || value === undefined) {
     return 0;
