@@ -1,0 +1,12 @@
+**/**
+!appsscript.json
+!Code.gs
+!Sidebar.html
+!**/.git/**
+!**/.gitignore
+preview/**
+test/**
+README.md
+.clasp.json.example
+.git/**
+node_modules/**
