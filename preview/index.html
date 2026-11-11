@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deal Logger — local sidebar preview</title>
+    <style>
+      :root {
+        --ink: #14241f;
+        --muted: #5b6f68;
+        --line: #d7e3de;
+        --panel: #f3f7f5;
+        --surface: #ffffff;
+        --accent: #0f766e;
+        --accent-deep: #0b5a54;
+        --accent-soft: #d9f2ee;
+        --warn: #9a3412;
+        --ok: #166534;
+        --shadow: 0 1px 0 rgba(20, 36, 31, 0.04);
+        --radius: 10px;
+        --font: "Google Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #c8d5cf;
+        font-family: var(--font);
+      }
+
+      .chrome {
+        max-width: 1100px;
+        margin: 24px auto;
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 18px 50px rgba(20, 36, 31, 0.18);
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        min-height: 720px;
+      }
+
+      .sheet-fake {
+        background:
+          linear-gradient(#e8f0ec, #e8f0ec) 0 0 / 100% 48px no-repeat,
+          repeating-linear-gradient(
+            90deg,
+            transparent 0,
+            transparent 99px,
+            #e4ebe7 99px,
+            #e4ebe7 100px
+          ),
+          repeating-linear-gradient(
+            0deg,
+            transparent 0,
+            transparent 27px,
+            #e4ebe7 27px,
+            #e4ebe7 28px
+          ),
+          #fff;
+        padding: 64px 24px 24px;
+        color: #5b6f68;
+      }
+
+      .sheet-fake h2 {
+        margin: 0 0 8px;
+        color: #14241f;
+      }
+
+      .sidebar-frame {
+        border-left: 1px solid #d7e3de;
+        background:
+          radial-gradient(120% 80% at 0% 0%, #e7f6f2 0%, transparent 55%),
+          linear-gradient(180deg, #fbfcfb 0%, #eef4f1 100%);
+        color: var(--ink);
+        font-size: 13px;
+        line-height: 1.35;
+        overflow: auto;
+      }
+
+      .wrap {
+        padding: 14px 14px 20px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .mark {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: linear-gradient(145deg, #14b8a6 0%, var(--accent) 55%, var(--accent-deep) 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        position: relative;
+        flex: 0 0 auto;
+      }
+
+      .mark::after {
+        content: "";
+        position: absolute;
+        inset: 9px 8px 8px 9px;
+        border: 2px solid rgba(255, 255, 255, 0.9);
+        border-left: 0;
+        border-bottom: 0;
+        transform: rotate(45deg);
+        border-radius: 1px;
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+      }
+
+      .brand p {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: 11.5px;
+      }
+
+      form {
+        display: grid;
+        gap: 10px;
+      }
+
+      .field {
+        display: grid;
+        gap: 4px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--ink);
+        padding: 8px 10px;
+        font: inherit;
+        outline: none;
+        box-shadow: var(--shadow);
+        transition: border-color 120ms ease, box-shadow 120ms ease;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+      }
+
+      textarea {
+        min-height: 68px;
+        resize: vertical;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        margin-top: 2px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 8px;
+        font: inherit;
+        font-weight: 650;
+        cursor: pointer;
+        padding: 9px 12px;
+        transition: transform 100ms ease, background 120ms ease, opacity 120ms ease;
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: default;
+        transform: none;
+      }
+
+      .btn-primary {
+        background: linear-gradient(180deg, #129487 0%, var(--accent) 100%);
+        color: #fff;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: linear-gradient(180deg, #0f8579 0%, var(--accent-deep) 100%);
+      }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--line);
+      }
+
+      .status {
+        min-height: 18px;
+        font-size: 12px;
+        margin-top: 2px;
+      }
+
+      .status.ok {
+        color: var(--ok);
+      }
+
+      .status.err {
+        color: var(--warn);
+      }
+
+      .recent {
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+      }
+
+      .recent h2 {
+        margin: 0 0 8px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 12px;
+        padding: 10px 12px;
+        background: var(--panel);
+        border-radius: var(--radius);
+      }
+
+      .deal {
+        padding: 10px 11px;
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid var(--line);
+        margin-bottom: 8px;
+        animation: rise 220ms ease;
+      }
+
+      .deal-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+      }
+
+      .deal-name {
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+
+      .deal-amount {
+        color: var(--accent-deep);
+        font-weight: 650;
+        white-space: nowrap;
+      }
+
+      .deal-meta {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 11.5px;
+      }
+
+      .stage {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent-deep);
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 800px) {
+        .chrome {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chrome">
+      <div class="sheet-fake">
+        <h2>Deals</h2>
+        <p>Local preview of the Sheets side panel. Saves into an in-memory mock, not Google Sheets.</p>
+      </div>
+      <div class="sidebar-frame">
+        <div class="wrap">
+          <div class="brand">
+            <div class="mark" aria-hidden="true"></div>
+            <div>
+              <h1>Deal Logger</h1>
+              <p>Capture pipeline into this sheet</p>
+            </div>
+          </div>
+
+          <form id="deal-form" autocomplete="off">
+            <div class="field">
+              <label for="dealName">Deal name</label>
+              <input id="dealName" name="dealName" required maxlength="120" placeholder="Acme renewal" />
+            </div>
+
+            <div class="field">
+              <label for="company">Company</label>
+              <input id="company" name="company" required maxlength="120" placeholder="Acme Corp" />
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="amount">Amount</label>
+                <input id="amount" name="amount" required inputmode="decimal" placeholder="25000" />
+              </div>
+              <div class="field">
+                <label for="probability">Prob %</label>
+                <input id="probability" name="probability" type="number" min="0" max="100" placeholder="auto" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="stage">Stage</label>
+              <select id="stage" name="stage" required></select>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="expectedClose">Close date</label>
+                <input id="expectedClose" name="expectedClose" type="date" />
+              </div>
+              <div class="field">
+                <label for="owner">Owner</label>
+                <input id="owner" name="owner" list="owner-list" placeholder="you@company.com" />
+                <datalist id="owner-list"></datalist>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="notes">Notes</label>
+              <textarea id="notes" name="notes" maxlength="2000" placeholder="Next step, champion, risk…"></textarea>
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="btn-primary" id="submit-btn">Log deal</button>
+              <button type="button" class="btn-ghost" id="clear-btn">Clear</button>
+            </div>
+            <div class="status" id="status" role="status" aria-live="polite"></div>
+          </form>
+
+          <section class="recent" aria-label="Recent deals">
+            <h2>Recent</h2>
+            <div id="recent-list"><div class="empty">No deals logged yet.</div></div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var memory = [];
+        var STAGES = [
+          'Prospecting',
+          'Qualification',
+          'Proposal',
+          'Negotiation',
+          'Closed Won',
+          'Closed Lost'
+        ];
+
+        function defaults(stage) {
+          return (
+            {
+              Prospecting: 10,
+              Qualification: 25,
+              Proposal: 50,
+              Negotiation: 75,
+              'Closed Won': 100,
+              'Closed Lost': 0
+            }[stage] || 0
+          );
+        }
+
+        function recent() {
+          return memory
+            .slice()
+            .reverse()
+            .slice(0, 8)
+            .map(function (d) {
+              return Object.assign({}, d);
+            });
+        }
+
+        function runner() {
+          var state = { ok: null, fail: null };
+          return {
+            withSuccessHandler: function (ok) {
+              state.ok = ok;
+              return this;
+            },
+            withFailureHandler: function (fail) {
+              state.fail = fail;
+              return this;
+            },
+            getFormOptions: function () {
+              setTimeout(function () {
+                if (state.ok) {
+                  state.ok({
+                    stages: STAGES,
+                    owners: ['you@company.com'],
+                    recentDeals: recent()
+                  });
+                }
+              }, 40);
+            },
+            logDeal: function (deal) {
+              setTimeout(function () {
+                try {
+                  if (!deal.dealName || !String(deal.dealName).trim()) {
+                    throw new Error('Deal name is required.');
+                  }
+                  if (!deal.company || !String(deal.company).trim()) {
+                    throw new Error('Company is required.');
+                  }
+                  var amount = Number(String(deal.amount || '').replace(/[$,\s]/g, ''));
+                  if (!isFinite(amount) || amount < 0) {
+                    throw new Error('Enter a valid amount (0 or greater).');
+                  }
+                  var probability =
+                    deal.probability === '' || deal.probability == null
+                      ? defaults(deal.stage)
+                      : Number(deal.probability);
+                  var normalized = {
+                    loggedAt: new Date().toLocaleString(),
+                    dealName: String(deal.dealName).trim(),
+                    company: String(deal.company).trim(),
+                    amount: amount,
+                    stage: deal.stage,
+                    probability: Math.round(probability),
+                    expectedClose: deal.expectedClose || '',
+                    owner: deal.owner || 'you@company.com',
+                    notes: deal.notes || ''
+                  };
+                  memory.push(normalized);
+                  if (state.ok) {
+                    state.ok({
+                      ok: true,
+                      message: 'Logged “' + normalized.dealName + '”.',
+                      recentDeals: recent()
+                    });
+                  }
+                } catch (err) {
+                  if (state.ok) {
+                    state.ok({ ok: false, message: err.message || String(err) });
+                  }
+                }
+              }, 120);
+            }
+          };
+        }
+
+        window.google = {
+          script: {
+            run: {
+              withSuccessHandler: function (ok) {
+                return runner().withSuccessHandler(ok);
+              },
+              withFailureHandler: function (fail) {
+                return runner().withFailureHandler(fail);
+              }
+            }
+          }
+        };
+      })();
+    </script>
+
+    <script>
+      var STAGE_DEFAULTS = {
+        Prospecting: 10,
+        Qualification: 25,
+        Proposal: 50,
+        Negotiation: 75,
+        'Closed Won': 100,
+        'Closed Lost': 0
+      };
+
+      var form = document.getElementById('deal-form');
+      var stageSelect = document.getElementById('stage');
+      var probabilityInput = document.getElementById('probability');
+      var ownerList = document.getElementById('owner-list');
+      var statusEl = document.getElementById('status');
+      var submitBtn = document.getElementById('submit-btn');
+      var recentList = document.getElementById('recent-list');
+      var userTouchedProbability = false;
+
+      function money(n) {
+        try {
+          return new Intl.NumberFormat(undefined, {
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0
+          }).format(n || 0);
+        } catch (e) {
+          return '$' + Math.round(n || 0);
+        }
+      }
+
+      function setStatus(message, kind) {
+        statusEl.textContent = message || '';
+        statusEl.className = 'status' + (kind ? ' ' + kind : '');
+      }
+
+      function fillStages(stages) {
+        stageSelect.innerHTML = '';
+        (stages || []).forEach(function (stage, index) {
+          var opt = document.createElement('option');
+          opt.value = stage;
+          opt.textContent = stage;
+          if (index === 0) {
+            opt.selected = true;
+          }
+          stageSelect.appendChild(opt);
+        });
+        applyStageProbability(false);
+      }
+
+      function fillOwners(owners) {
+        ownerList.innerHTML = '';
+        (owners || []).forEach(function (owner) {
+          var opt = document.createElement('option');
+          opt.value = owner;
+          ownerList.appendChild(opt);
+        });
+      }
+
+      function renderRecent(deals) {
+        if (!deals || !deals.length) {
+          recentList.innerHTML = '<div class="empty">No deals logged yet.</div>';
+          return;
+        }
+        recentList.innerHTML = deals
+          .map(function (deal) {
+            return (
+              '<article class="deal">' +
+              '<div class="deal-top">' +
+              '<div class="deal-name">' +
+              escapeHtml(deal.dealName) +
+              '</div>' +
+              '<div class="deal-amount">' +
+              money(deal.amount) +
+              '</div>' +
+              '</div>' +
+              '<div class="deal-meta">' +
+              escapeHtml(deal.company) +
+              (deal.owner ? ' · ' + escapeHtml(deal.owner) : '') +
+              '</div>' +
+              '<span class="stage">' +
+              escapeHtml(deal.stage) +
+              '</span>' +
+              '</article>'
+            );
+          })
+          .join('');
+      }
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function applyStageProbability(force) {
+        if (!force && userTouchedProbability && probabilityInput.value !== '') {
+          return;
+        }
+        var stage = stageSelect.value;
+        if (STAGE_DEFAULTS[stage] != null) {
+          probabilityInput.value = STAGE_DEFAULTS[stage];
+        }
+      }
+
+      function readDeal() {
+        return {
+          dealName: document.getElementById('dealName').value,
+          company: document.getElementById('company').value,
+          amount: document.getElementById('amount').value,
+          stage: stageSelect.value,
+          probability: probabilityInput.value,
+          expectedClose: document.getElementById('expectedClose').value,
+          owner: document.getElementById('owner').value,
+          notes: document.getElementById('notes').value
+        };
+      }
+
+      function resetFormKeepOwner() {
+        var owner = document.getElementById('owner').value;
+        form.reset();
+        userTouchedProbability = false;
+        applyStageProbability(true);
+        document.getElementById('owner').value = owner;
+        document.getElementById('dealName').focus();
+      }
+
+      stageSelect.addEventListener('change', function () {
+        applyStageProbability(false);
+      });
+
+      probabilityInput.addEventListener('input', function () {
+        userTouchedProbability = true;
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', function () {
+        resetFormKeepOwner();
+        setStatus('');
+      });
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        setStatus('Saving…');
+        submitBtn.disabled = true;
+
+        google.script.run
+          .withSuccessHandler(function (result) {
+            submitBtn.disabled = false;
+            if (!result || !result.ok) {
+              setStatus((result && result.message) || 'Could not save deal.', 'err');
+              return;
+            }
+            setStatus(result.message, 'ok');
+            renderRecent(result.recentDeals || []);
+            resetFormKeepOwner();
+          })
+          .withFailureHandler(function (err) {
+            submitBtn.disabled = false;
+            setStatus(err && err.message ? err.message : String(err), 'err');
+          })
+          .logDeal(readDeal());
+      });
+
+      google.script.run
+        .withSuccessHandler(function (options) {
+          fillStages((options && options.stages) || Object.keys(STAGE_DEFAULTS));
+          fillOwners((options && options.owners) || []);
+          renderRecent((options && options.recentDeals) || []);
+          if (options && options.owners && options.owners.length === 1) {
+            document.getElementById('owner').value = options.owners[0];
+          }
+        })
+        .withFailureHandler(function (err) {
+          fillStages(Object.keys(STAGE_DEFAULTS));
+          setStatus(err && err.message ? err.message : String(err), 'err');
+        })
+        .getFormOptions();
+    </script>
+  </body>
+</html>
